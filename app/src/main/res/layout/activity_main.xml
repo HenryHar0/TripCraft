@@ -5,7 +5,10 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+<<<<<<< HEAD
     android:background="#F5F5F5"
+=======
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
     tools:context=".MainActivity">
 
     <TextView
@@ -17,8 +20,12 @@
         android:layout_marginTop="40dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+<<<<<<< HEAD
         android:textColor="#008080"
         app:layout_constraintTop_toTopOf="parent" />
+=======
+        app:layout_constraintTop_toTopOf="parent"/>
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
 
     <EditText
         android:id="@+id/cityInput"
@@ -28,7 +35,11 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/cityLabel"
+<<<<<<< HEAD
         android:layout_marginTop="16dp" />
+=======
+        android:layout_marginTop="16dp"/>
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
 
     <TextView
         android:id="@+id/interestsLabel"
@@ -39,7 +50,11 @@
         android:layout_marginTop="40dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+<<<<<<< HEAD
         app:layout_constraintTop_toBottomOf="@id/cityInput" />
+=======
+        app:layout_constraintTop_toBottomOf="@id/cityInput"/>
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
 
     <LinearLayout
         android:id="@+id/interestsLayout"
@@ -57,21 +72,33 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Interest 1"
+<<<<<<< HEAD
             android:layout_marginEnd="16dp" />
+=======
+            android:layout_marginEnd="16dp"/>
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
 
         <Button
             android:id="@+id/interestButton2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Interest 2"
+<<<<<<< HEAD
             android:layout_marginEnd="16dp" />
+=======
+            android:layout_marginEnd="16dp"/>
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
 
         <Button
             android:id="@+id/interestButton3"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Interest 3"
+<<<<<<< HEAD
             android:layout_marginEnd="16dp" />
+=======
+            android:layout_marginEnd="16dp"/>
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
     </LinearLayout>
 
     <TextView
@@ -83,7 +110,11 @@
         android:layout_marginTop="40dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+<<<<<<< HEAD
         app:layout_constraintTop_toBottomOf="@id/interestsLayout" />
+=======
+        app:layout_constraintTop_toBottomOf="@id/interestsLayout"/>
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
 
     <EditText
         android:id="@+id/daysInput"
@@ -94,7 +125,11 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/daysLabel"
+<<<<<<< HEAD
         android:layout_marginTop="16dp" />
+=======
+        android:layout_marginTop="16dp"/>
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
 
     <Button
         android:id="@+id/generatePlanButton"
@@ -104,7 +139,11 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/daysInput"
+<<<<<<< HEAD
         android:layout_marginTop="32dp" />
+=======
+        android:layout_marginTop="32dp"/>
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
 
     <Button
         android:id="@+id/saveButton"
@@ -114,7 +153,11 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/generatePlanButton"
+<<<<<<< HEAD
         android:layout_marginTop="16dp" />
+=======
+        android:layout_marginTop="16dp"/>
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
 
     <Button
         android:id="@+id/loadButton"
@@ -124,7 +167,11 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/saveButton"
+<<<<<<< HEAD
         android:layout_marginTop="16dp" />
+=======
+        android:layout_marginTop="16dp"/>
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
 
     <ListView
         android:id="@+id/savedPlansList"
@@ -133,7 +180,11 @@
         android:layout_marginTop="16dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+<<<<<<< HEAD
         app:layout_constraintTop_toBottomOf="@id/loadButton" />
+=======
+        app:layout_constraintTop_toBottomOf="@id/loadButton"/>
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
 
     <TextView
         android:id="@+id/generatedPlanText"
@@ -145,6 +196,10 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/savedPlansList"
+<<<<<<< HEAD
         android:padding="16dp" />
+=======
+        android:padding="16dp"/>
+>>>>>>> 165e07266e57daefc3b4372e96d14c5a03868053
 
 </androidx.constraintlayout.widget.ConstraintLayout>
