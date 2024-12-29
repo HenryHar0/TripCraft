@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "578855284295",
+    "project_id": "tripcraft-715ba",
+    "storage_bucket": "tripcraft-715ba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:578855284295:android:c9d5e013f027d7445c0b62",
+        "android_client_info": {
+          "package_name": "com.example.tripcraft000"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhyy4HZHjvsJYR0jxIm1UY_CGPdXUzTlA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
