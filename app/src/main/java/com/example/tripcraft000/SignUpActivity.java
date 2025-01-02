@@ -1,45 +1,47 @@
 package com.example.tripcraft000;
 
-import android.app.AlertDialog;
-import android.content.Context;
-import android.content.DialogInterface;
-import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.View;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
+import android.text.TextUtils;
 import android.widget.EditText;
-import android.widget.ListView;
-import android.widget.TextView;
+import android.widget.Button;
 import android.widget.Toast;
 import com.google.firebase.auth.FirebaseAuth;
-import android.text.TextUtils;
-import android.content.Intent;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
-
+import android.content.Intent;
 
 import androidx.appcompat.app.AppCompatActivity;
-
 
 public class SignUpActivity extends AppCompatActivity {
 
     private EditText editTextName, editTextEmail, editTextPassword;
-    private Button buttonSignUp;
+    private Button buttonSignUp, buttonLogIn;
     private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        mAuth = FirebaseAuth.getInstance();
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+
+        if (currentUser != null) {
+            Intent intent = new Intent(SignUpActivity.this, MainActivity.class);
+            startActivity(intent);
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_signup);
 
         editTextName = findViewById(R.id.editTextName);
         editTextEmail = findViewById(R.id.editTextEmail);
         editTextPassword = findViewById(R.id.editTextPassword);
         buttonSignUp = findViewById(R.id.buttonSignUp);
-        mAuth = FirebaseAuth.getInstance();
+        buttonLogIn = findViewById(R.id.buttonLogin);
 
         buttonSignUp.setOnClickListener(v -> signUp());
+        buttonLogIn.setOnClickListener(v -> login());
     }
 
     private void signUp() {
@@ -63,6 +65,11 @@ public class SignUpActivity extends AppCompatActivity {
                 });
     }
 
+    private void login() {
+        Intent intent = new Intent(SignUpActivity.this, LoginActivity.class);
+        startActivity(intent);
+    }
+
     private void updateUserName(FirebaseUser user, String name) {
         UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
                 .setDisplayName(name).build();
@@ -71,13 +78,10 @@ public class SignUpActivity extends AppCompatActivity {
             if (task.isSuccessful()) {
                 Toast.makeText(SignUpActivity.this, "User profile updated.", Toast.LENGTH_SHORT).show();
 
-                // After successful sign-up and profile update, navigate to MainActivity
                 Intent intent = new Intent(SignUpActivity.this, MainActivity.class);
                 startActivity(intent);
-                finish(); // Close SignUpActivity so user cannot go back to it
+                finish();
             }
         });
     }
-
 }
-

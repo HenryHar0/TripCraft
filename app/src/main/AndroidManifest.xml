@@ -12,9 +12,8 @@
         android:theme="@style/Theme.Tripcraft000"
         tools:targetApi="31">
 
-        <!-- Ensure LoginActivity is the first one to launch -->
         <activity
-            android:name=".LoginActivity"
+            android:name=".SignUpActivity"
             android:label="@string/app_name"
             android:exported="true">
             <intent-filter>
@@ -24,7 +23,11 @@
         </activity>
 
         <activity android:name=".MainActivity" android:exported="true"/>
-        <activity android:name=".SignUpActivity" android:exported="true"/>
+        <activity android:name=".LoginActivity" android:exported="true"/>
+        <activity android:name=".ProfileActivity" android:exported="true"/>
+        <activity android:name=".CityActivity" android:exported="true"/>
+        <activity android:name=".CalendarActivity" android:exported="true"/>
+        <activity android:name=".PlanActivity" android:exported="true"/>
     </application>
 
 </manifest>
