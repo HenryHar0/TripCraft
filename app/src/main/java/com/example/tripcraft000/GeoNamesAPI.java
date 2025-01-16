@@ -8,9 +8,10 @@ public interface GeoNamesAPI {
 
     @GET("searchJSON")
     Call<GeoNamesResponse> searchCity(
-            @Query("q") String cityName,
+            @Query("q") String query,
             @Query("maxRows") int maxRows,
             @Query("username") String username
     );
 }
+
 

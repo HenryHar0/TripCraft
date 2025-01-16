@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -16,6 +17,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private EditText editTextEmailLogin, editTextPasswordLogin;
     private Button buttonLogin;
+    private TextView textViewSignUp;
     private FirebaseAuth mAuth;
 
     @Override
@@ -23,25 +25,21 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        // Initialize FirebaseAuth
         mAuth = FirebaseAuth.getInstance();
-
-        // Check if the user is already logged in
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
-            // User is already logged in, skip login screen and go to MainActivity
             startActivity(new Intent(LoginActivity.this, MainActivity.class));
-            finish();  // Close LoginActivity so user cannot go back to it
-            return;  // Skip further execution of onCreate
+            finish();
+            return;
         }
 
-        // Initialize UI elements
         editTextEmailLogin = findViewById(R.id.editTextEmailLogin);
         editTextPasswordLogin = findViewById(R.id.editTextPasswordLogin);
         buttonLogin = findViewById(R.id.buttonLogin);
+        textViewSignUp = findViewById(R.id.textViewSignUp);
 
-        // Set the login button click listener
         buttonLogin.setOnClickListener(v -> loginUser());
+        textViewSignUp.setOnClickListener(v -> goToSignUp());
     }
 
     private void loginUser() {
@@ -63,5 +61,10 @@ public class LoginActivity extends AppCompatActivity {
                         Toast.makeText(LoginActivity.this, "Authentication failed", Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+
+    private void goToSignUp() {
+        Intent intent = new Intent(LoginActivity.this, SignUpActivity.class);
+        startActivity(intent);
     }
 }

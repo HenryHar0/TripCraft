@@ -9,19 +9,18 @@
     android:background="#F5F5F5"
     tools:context=".MainActivity">
 
-    <!-- Profile Button -->
-    <View
+    <ImageView
         android:id="@+id/profileButton"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginStart="16dp"
-        android:background="@android:color/black"
+        android:layout_width="75dp"
+        android:layout_height="75dp"
+        android:src="@drawable/ic_default_pfp"
         android:contentDescription="Profile Picture"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp" />
 
-    <!-- Header -->
+
     <TextView
         android:id="@+id/titleLabel"
         android:layout_width="wrap_content"
@@ -35,7 +34,6 @@
         app:layout_constraintTop_toTopOf="parent"
         android:textColor="#008080" />
 
-    <!-- Generate New Plan Button -->
     <Button
         android:id="@+id/generateNewPlanButton"
         android:layout_width="wrap_content"
@@ -47,7 +45,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/titleLabel" />
 
-    <!-- Saved Plans Label -->
     <TextView
         android:id="@+id/savedPlansLabel"
         android:layout_width="wrap_content"
@@ -60,7 +57,6 @@
         app:layout_constraintTop_toBottomOf="@id/generateNewPlanButton"
         android:textColor="#008080" />
 
-    <!-- List of Saved Plans -->
     <ListView
         android:id="@+id/savedPlansList"
         android:layout_width="0dp"
@@ -70,7 +66,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/savedPlansLabel" />
 
-    <!-- Footer -->
     <TextView
         android:id="@+id/footerText"
         android:layout_width="wrap_content"

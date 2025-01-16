@@ -25,7 +25,7 @@ public class SignUpActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
         FirebaseUser currentUser = mAuth.getCurrentUser();
 
-        if (currentUser != null) {
+        if (currentUser != null && currentUser.isEmailVerified()) {
             Intent intent = new Intent(SignUpActivity.this, MainActivity.class);
             startActivity(intent);
             finish();
@@ -58,9 +58,20 @@ public class SignUpActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
-                        updateUserName(user, name);
-                    } else {
-                        Toast.makeText(SignUpActivity.this, "Sign-up failed.", Toast.LENGTH_SHORT).show();
+                        if (user != null) {
+                            user.sendEmailVerification().addOnCompleteListener(emailTask -> {
+                                if (emailTask.isSuccessful()) {
+                                    Toast.makeText(SignUpActivity.this,
+                                            "Verification email sent to " + user.getEmail(),
+                                            Toast.LENGTH_SHORT).show();
+                                    updateUserName(user, name);
+                                } else {
+                                    Toast.makeText(SignUpActivity.this,
+                                            "Failed to send verification email.",
+                                            Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
                     }
                 });
     }
@@ -78,9 +89,13 @@ public class SignUpActivity extends AppCompatActivity {
             if (task.isSuccessful()) {
                 Toast.makeText(SignUpActivity.this, "User profile updated.", Toast.LENGTH_SHORT).show();
 
-                Intent intent = new Intent(SignUpActivity.this, MainActivity.class);
-                startActivity(intent);
-                finish();
+                if (user.isEmailVerified()) {
+                    Intent intent = new Intent(SignUpActivity.this, MainActivity.class);
+                    startActivity(intent);
+                    finish();
+                } else {
+                    Toast.makeText(SignUpActivity.this, "Please verify your email first.", Toast.LENGTH_LONG).show();
+                }
             }
         });
     }

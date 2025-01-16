@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="#F5F5F5">
 
-    <!-- Title -->
     <TextView
         android:id="@+id/profileTitle"
         android:layout_width="wrap_content"
@@ -20,20 +19,42 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="32dp" />
 
-    <!-- Placeholder for profile information -->
-    <TextView
-        android:id="@+id/profileInfo"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="User Information will appear here."
-        android:textSize="16sp"
-        android:textColor="#000000"
+    <ImageView
+        android:id="@+id/profileImage"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:src="@drawable/ic_default_pfp"
+        android:contentDescription="Profile Picture"
         app:layout_constraintTop_toBottomOf="@id/profileTitle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="16dp" />
 
-    <!-- Back Button -->
+
+    <TextView
+        android:id="@+id/nicknameText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Nickname: "
+        android:textSize="16sp"
+        android:textColor="#000000"
+        app:layout_constraintTop_toBottomOf="@id/profileImage"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="16dp" />
+
+    <TextView
+        android:id="@+id/emailText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Email: "
+        android:textSize="16sp"
+        android:textColor="#000000"
+        app:layout_constraintTop_toBottomOf="@id/nicknameText"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="16dp" />
+
     <Button
         android:id="@+id/backButton"
         android:layout_width="wrap_content"
@@ -43,5 +64,4 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginBottom="32dp" />
-
 </androidx.constraintlayout.widget.ConstraintLayout>

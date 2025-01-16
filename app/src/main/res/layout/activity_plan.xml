@@ -6,7 +6,6 @@
     android:background="#F5F5F5"
     android:padding="16dp">
 
-    <!-- Plan Title -->
     <TextView
         android:id="@+id/planTitle"
         android:layout_width="wrap_content"
@@ -20,7 +19,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="16dp" />
 
-    <!-- Destination -->
     <TextView
         android:id="@+id/destinationLabel"
         android:layout_width="wrap_content"
@@ -45,7 +43,6 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="16dp" />
 
-    <!-- Duration -->
     <TextView
         android:id="@+id/durationLabel"
         android:layout_width="wrap_content"
@@ -70,7 +67,6 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="16dp" />
 
-    <!-- Weather Information -->
     <TextView
         android:id="@+id/weatherInfo"
         android:layout_width="0dp"
@@ -83,7 +79,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="16dp" />
 
-    <!-- Planned Activities -->
     <TextView
         android:id="@+id/activitiesLabel"
         android:layout_width="wrap_content"
@@ -108,7 +103,6 @@
         android:layout_marginTop="8dp"
         android:layout_marginBottom="16dp" />
 
-    <!-- Buttons Layout -->
     <LinearLayout
         android:id="@+id/buttonLayout"
         android:layout_width="0dp"

@@ -19,6 +19,7 @@ public class CalendarActivity extends AppCompatActivity {
 
     private String startDate;
     private String city;
+    private int geonameId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,6 +33,7 @@ public class CalendarActivity extends AppCompatActivity {
 
         Intent intent = getIntent();
         city = intent.getStringExtra("city");
+        geonameId = intent.getIntExtra("geonameId", -1);
 
         java.util.Calendar calendar = java.util.Calendar.getInstance();
         int todayYear = calendar.get(java.util.Calendar.YEAR);
@@ -41,7 +43,6 @@ public class CalendarActivity extends AppCompatActivity {
         datePicker.updateDate(todayYear, todayMonth, todayDay);
 
         datePrompt.setText("Select Start Date");
-
         errorMessage.setVisibility(TextView.GONE);
 
         nextButton.setOnClickListener(v -> {
@@ -63,6 +64,7 @@ public class CalendarActivity extends AppCompatActivity {
                     planIntent.putExtra("start_date", startDate);
                     planIntent.putExtra("end_date", endDate);
                     planIntent.putExtra("city", city);
+                    planIntent.putExtra("geonameId", geonameId);
                     startActivity(planIntent);
                 }
             }

@@ -4,7 +4,6 @@
     android:layout_height="match_parent"
     android:background="#E0F7FA">
 
-    <!-- Heading TextView -->
     <TextView
         android:id="@+id/city_prompt"
         android:layout_width="wrap_content"
@@ -22,7 +21,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- AutoCompleteTextView for Search -->
     <androidx.appcompat.widget.AppCompatAutoCompleteTextView
         android:id="@+id/search_city"
         android:layout_width="0dp"
@@ -40,8 +38,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-
-    <!-- Next Button -->
     <Button
         android:id="@+id/next_button"
         android:layout_width="wrap_content"

@@ -29,12 +29,9 @@ public class CityActivity extends AppCompatActivity {
 
         searchCity = findViewById(R.id.search_city);
         nextButton = findViewById(R.id.next_button);
-
-        // Set up AutoComplete for city input
         cityAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line);
         searchCity.setAdapter(cityAdapter);
 
-        // Listen for text changes in the searchCity EditText
         searchCity.addTextChangedListener(new android.text.TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int start, int count, int after) {}
@@ -51,18 +48,15 @@ public class CityActivity extends AppCompatActivity {
             public void afterTextChanged(android.text.Editable editable) {}
         });
 
-        // Handle item selection from the dropdown
         searchCity.setOnItemClickListener((parent, view, position, id) -> {
             String selectedCity = cityAdapter.getItem(position);
             if (selectedCity != null) {
-                searchCity.setText(selectedCity); // Set the selected city in the input
+                searchCity.setText(selectedCity);
             }
         });
 
-        // Handle "Next" button click
         nextButton.setOnClickListener(v -> {
             String city = searchCity.getText().toString().trim();
-
             if (city.isEmpty()) {
                 Toast.makeText(CityActivity.this, "Please enter a city.", Toast.LENGTH_SHORT).show();
             } else {
@@ -87,7 +81,6 @@ public class CityActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     GeoNamesResponse geoNamesResponse = response.body();
                     if (geoNamesResponse.geonames.size() > 0) {
-                        // Prepare suggestions list
                         cityAdapter.clear();
                         for (GeoNamesResponse.City city : geoNamesResponse.geonames) {
                             String cityWithCountry = city.name + ", " + city.countryName;
@@ -110,7 +103,6 @@ public class CityActivity extends AppCompatActivity {
     }
 
     private void fetchCityDetails(String cityWithCountry) {
-        // Extract city name from "City, Country"
         String city = cityWithCountry.split(",")[0].trim();
 
         Retrofit retrofit = new Retrofit.Builder()
@@ -129,12 +121,12 @@ public class CityActivity extends AppCompatActivity {
                     GeoNamesResponse geoNamesResponse = response.body();
                     if (geoNamesResponse.geonames.size() > 0) {
                         GeoNamesResponse.City selectedCity = geoNamesResponse.geonames.get(0);
-
                         Intent intent = new Intent(CityActivity.this, CalendarActivity.class);
                         intent.putExtra("city", selectedCity.name);
                         intent.putExtra("country", selectedCity.countryName);
                         intent.putExtra("lat", selectedCity.lat);
                         intent.putExtra("lng", selectedCity.lng);
+                        intent.putExtra("geonameId", selectedCity.geonameId);
                         startActivity(intent);
                     } else {
                         Toast.makeText(CityActivity.this, "City not found.", Toast.LENGTH_SHORT).show();
