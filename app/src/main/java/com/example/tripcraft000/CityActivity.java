@@ -128,8 +128,6 @@ public class CityActivity extends AppCompatActivity {
                         intent.putExtra("lng", selectedCity.lng);
                         intent.putExtra("geonameId", selectedCity.geonameId);
                         startActivity(intent);
-                    } else {
-                        Toast.makeText(CityActivity.this, "City not found.", Toast.LENGTH_SHORT).show();
                     }
                 } else {
                     Toast.makeText(CityActivity.this, "Failed to fetch city data.", Toast.LENGTH_SHORT).show();
