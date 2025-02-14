@@ -36,7 +36,7 @@
         android:id="@+id/sloganText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Craft your trip in a few simple steps."
+        android:text="Craft your perfect trip."
         android:textSize="14sp"
         android:layout_marginTop="16dp"
         app:layout_constraintStart_toStartOf="parent"

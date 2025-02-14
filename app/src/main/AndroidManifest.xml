@@ -4,6 +4,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
 
     <application
         android:networkSecurityConfig="@xml/network_security_config"
@@ -16,6 +19,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Tripcraft000"
         tools:targetApi="31">
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyCYnYiiqrHO0uwKoxNQLA_mKEIuX1aRyL4" />
 
         <activity
             android:name=".SignUpActivity"

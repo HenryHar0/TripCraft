@@ -1,13 +1,22 @@
 package com.example.tripcraft000;
 
-import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextWatcher;
+import android.text.Editable;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -15,12 +24,14 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-public class CityActivity extends AppCompatActivity {
+public class CityActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private AutoCompleteTextView searchCity;
     private Button nextButton;
+    private GoogleMap mMap;
     private String geoNamesUsername = "henryhar";
     private ArrayAdapter<String> cityAdapter;
+    private boolean isMapReady = false; // Flag to track if the map is ready
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,7 +43,14 @@ public class CityActivity extends AppCompatActivity {
         cityAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line);
         searchCity.setAdapter(cityAdapter);
 
-        searchCity.addTextChangedListener(new android.text.TextWatcher() {
+        // Setup map fragment and load the map asynchronously
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
+        if (mapFragment != null) {
+            mapFragment.getMapAsync(this);
+        }
+
+        // Add listener for city search
+        searchCity.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int start, int count, int after) {}
 
@@ -45,16 +63,10 @@ public class CityActivity extends AppCompatActivity {
             }
 
             @Override
-            public void afterTextChanged(android.text.Editable editable) {}
+            public void afterTextChanged(Editable editable) {}
         });
 
-        searchCity.setOnItemClickListener((parent, view, position, id) -> {
-            String selectedCity = cityAdapter.getItem(position);
-            if (selectedCity != null) {
-                searchCity.setText(selectedCity);
-            }
-        });
-
+        // Button click listener for city selection
         nextButton.setOnClickListener(v -> {
             String city = searchCity.getText().toString().trim();
             if (city.isEmpty()) {
@@ -65,6 +77,15 @@ public class CityActivity extends AppCompatActivity {
         });
     }
 
+    // Callback when the map is ready to be used
+    @Override
+    public void onMapReady(@NonNull GoogleMap googleMap) {
+        mMap = googleMap;
+        mMap.getUiSettings().setZoomControlsEnabled(true);
+        isMapReady = true; // Set flag to true when the map is ready
+    }
+
+    // Fetch city suggestions based on user input
     private void fetchCitySuggestions(String city) {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://secure.geonames.org/")
@@ -72,26 +93,17 @@ public class CityActivity extends AppCompatActivity {
                 .build();
 
         GeoNamesAPI geoNamesAPI = retrofit.create(GeoNamesAPI.class);
-
         Call<GeoNamesResponse> call = geoNamesAPI.searchCity(city, 10, geoNamesUsername);
 
         call.enqueue(new Callback<GeoNamesResponse>() {
             @Override
             public void onResponse(Call<GeoNamesResponse> call, Response<GeoNamesResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    GeoNamesResponse geoNamesResponse = response.body();
-                    if (geoNamesResponse.geonames.size() > 0) {
-                        cityAdapter.clear();
-                        for (GeoNamesResponse.City city : geoNamesResponse.geonames) {
-                            String cityWithCountry = city.name + ", " + city.countryName;
-                            cityAdapter.add(cityWithCountry);
-                        }
-                        cityAdapter.notifyDataSetChanged();
-                    } else {
-                        Toast.makeText(CityActivity.this, "No cities found.", Toast.LENGTH_SHORT).show();
+                    cityAdapter.clear();
+                    for (GeoNamesResponse.City city : response.body().geonames) {
+                        cityAdapter.add(city.name + ", " + city.countryName);
                     }
-                } else {
-                    Toast.makeText(CityActivity.this, "Failed to fetch city data.", Toast.LENGTH_SHORT).show();
+                    cityAdapter.notifyDataSetChanged();
                 }
             }
 
@@ -102,7 +114,13 @@ public class CityActivity extends AppCompatActivity {
         });
     }
 
+    // Fetch city details (latitude, longitude) when a city is selected
     private void fetchCityDetails(String cityWithCountry) {
+        if (!isMapReady) {
+            Toast.makeText(CityActivity.this, "Map is not ready yet. Please try again later.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         String city = cityWithCountry.split(",")[0].trim();
 
         Retrofit retrofit = new Retrofit.Builder()
@@ -111,26 +129,19 @@ public class CityActivity extends AppCompatActivity {
                 .build();
 
         GeoNamesAPI geoNamesAPI = retrofit.create(GeoNamesAPI.class);
-
         Call<GeoNamesResponse> call = geoNamesAPI.searchCity(city, 1, geoNamesUsername);
 
         call.enqueue(new Callback<GeoNamesResponse>() {
             @Override
             public void onResponse(Call<GeoNamesResponse> call, Response<GeoNamesResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    GeoNamesResponse geoNamesResponse = response.body();
-                    if (geoNamesResponse.geonames.size() > 0) {
-                        GeoNamesResponse.City selectedCity = geoNamesResponse.geonames.get(0);
-                        Intent intent = new Intent(CityActivity.this, CalendarActivity.class);
-                        intent.putExtra("city", selectedCity.name);
-                        intent.putExtra("country", selectedCity.countryName);
-                        intent.putExtra("lat", selectedCity.lat);
-                        intent.putExtra("lng", selectedCity.lng);
-                        intent.putExtra("geonameId", selectedCity.geonameId);
-                        startActivity(intent);
-                    }
-                } else {
-                    Toast.makeText(CityActivity.this, "Failed to fetch city data.", Toast.LENGTH_SHORT).show();
+                if (response.isSuccessful() && response.body() != null && !response.body().geonames.isEmpty()) {
+                    GeoNamesResponse.City selectedCity = response.body().geonames.get(0);
+                    LatLng cityLocation = new LatLng(Double.parseDouble(String.valueOf(selectedCity.lat)), Double.parseDouble(String.valueOf(selectedCity.lng)));
+
+                    // Safely manipulate map after ensuring it's ready
+                    mMap.clear();
+                    mMap.addMarker(new MarkerOptions().position(cityLocation).title(selectedCity.name));
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(cityLocation, 10));
                 }
             }
 

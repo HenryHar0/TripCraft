@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <Button
+        android:id="@+id/activityButton1"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_marginTop="16dp"
+        android:text="Airport (2)"
+        android:textColor="#000000"
+        android:textSize="14sp"
+        android:background="@drawable/button_background"
+        app:layout_constraintEnd_toStartOf="@id/activityButton2"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/activityButton3"/>
+
+    <Button
+        android:id="@+id/activityButton2"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_marginTop="16dp"
+        android:text="Restaurant (3)"
+        android:textColor="#000000"
+        android:textSize="14sp"
+        android:background="@drawable/button_background"
+        app:layout_constraintStart_toEndOf="@id/activityButton1"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/activityButton4"/>
+
+    <Button
+        android:id="@+id/activityButton3"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_marginTop="8dp"
+        android:text="Gym (5)"
+        android:textColor="#000000"
+        android:textSize="14sp"
+        android:background="@drawable/button_background"
+        app:layout_constraintEnd_toStartOf="@id/activityButton4"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/activityButton1"
+        app:layout_constraintBottom_toTopOf="@id/activityButton5"/>
+
+    <Button
+        android:id="@+id/activityButton4"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_marginTop="8dp"
+        android:text="Zoo (4)"
+        android:textColor="#000000"
+        android:textSize="14sp"
+        android:background="@drawable/button_background"
+        app:layout_constraintStart_toEndOf="@id/activityButton3"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/activityButton2"
+        app:layout_constraintBottom_toTopOf="@id/activityButton6"/>
+
+    <Button
+        android:id="@+id/activityButton5"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_marginTop="8dp"
+        android:text="Movie Theater (6)"
+        android:textColor="#000000"
+        android:textSize="14sp"
+        android:background="@drawable/button_background"
+        app:layout_constraintEnd_toStartOf="@id/activityButton6"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/activityButton3"
+        app:layout_constraintBottom_toTopOf="@id/nextButton"/>
+
+    <Button
+        android:id="@+id/activityButton6"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_marginTop="8dp"
+        android:text="Movie Theater (6)"
+        android:textColor="#000000"
+        android:textSize="14sp"
+        android:background="@drawable/button_background"
+        app:layout_constraintStart_toEndOf="@id/activityButton5"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/activityButton4"
+        app:layout_constraintBottom_toTopOf="@id/nextButton"/>
+
+    <Button
+        android:id="@+id/nextButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Next"
+        android:textColor="#000000"
+        android:textSize="14sp"
+        android:background="@drawable/button_background"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/activityButton5"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
