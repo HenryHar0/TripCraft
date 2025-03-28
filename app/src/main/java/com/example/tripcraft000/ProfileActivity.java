@@ -17,7 +17,6 @@ import com.google.firebase.auth.FirebaseUser;
 public class ProfileActivity extends AppCompatActivity {
 
     private ImageView profileImage;
-    private SeekBar redSeekBar, greenSeekBar, blueSeekBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

@@ -74,11 +74,19 @@ public class MainActivity extends AppCompatActivity {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
             String username = currentUser.getDisplayName();
-            if (username != null) {
+            if (username != null && !username.isEmpty()) {
                 usernameText.setText(username);
             } else {
-                usernameText.setText("Guest");
+                String email = currentUser.getEmail();
+                if (email != null && !email.isEmpty()) {
+                    usernameText.setText(email.split("@")[0]);
+                } else {
+                    usernameText.setText("Guest");
+                }
             }
+
+            // For debugging
+            System.out.println("Current display name: " + username);
         } else {
             usernameText.setText("Guest");
         }

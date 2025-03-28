@@ -3,4 +3,27 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="teal_700">#00796B</color>
+
+    <!-- Base colors -->
+    <color name="primary_color">#3F51B5</color>
+    <color name="primary_dark_color">#303F9F</color>
+    <color name="accent_color">#FF4081</color>
+
+    <!-- Text colors -->
+    <color name="primary_text">#212121</color>
+    <color name="secondary_text">#757575</color>
+
+    <!-- Background colors -->
+    <color name="background_color">#F5F5F5</color>
+    <color name="card_background">#FFFFFF</color>
+
+    <!-- Button and interaction colors -->
+    <color name="ripple_color">#33000000</color>
+
+    <!-- Card color variations for categories -->
+    <color name="card_cultural">#E1F5FE</color>
+    <color name="card_entertainment">#F3E5F5</color>
+    <color name="card_food">#FFF3E0</color>
+    <color name="card_shopping">#E8F5E9</color>
+    <color name="card_outdoor">#E0F2F1</color>
 </resources>

@@ -4,34 +4,28 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.EditText;
-import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.common.SignInButton;
+import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.auth.GoogleAuthProvider;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.AuthCredential;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.auth.GoogleAuthProvider;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
-import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class SignUpActivity extends AppCompatActivity {
 
-    private EditText editTextName, editTextEmail, editTextPassword;
-    private Button buttonSignUp, buttonLogIn;
-
-    private SignInButton buttonGoogleSignUp;
+    private EditText editTextName, editTextEmail, editTextPassword, editTextConfirmPassword;
+    private MaterialButton buttonSignUp, buttonGoogleSignUp;
+    private TextView textViewLoginTopRight;
 
     private FirebaseAuth mAuth;
     private GoogleSignInClient mGoogleSignInClient;
@@ -55,12 +49,13 @@ public class SignUpActivity extends AppCompatActivity {
         editTextName = findViewById(R.id.editTextName);
         editTextEmail = findViewById(R.id.editTextEmail);
         editTextPassword = findViewById(R.id.editTextPassword);
+        editTextConfirmPassword = findViewById(R.id.editTextConfirmPassword);
         buttonSignUp = findViewById(R.id.buttonSignUp);
-        buttonLogIn = findViewById(R.id.buttonLogin);
+        textViewLoginTopRight = findViewById(R.id.textViewLoginTopRight);
         buttonGoogleSignUp = findViewById(R.id.buttonGoogleSignUp);
 
         buttonSignUp.setOnClickListener(v -> signUp());
-        buttonLogIn.setOnClickListener(v -> login());
+        textViewLoginTopRight.setOnClickListener(v -> login());
         buttonGoogleSignUp.setOnClickListener(v -> googleSignUp());
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -75,9 +70,16 @@ public class SignUpActivity extends AppCompatActivity {
         String name = editTextName.getText().toString().trim();
         String email = editTextEmail.getText().toString().trim();
         String password = editTextPassword.getText().toString().trim();
+        String confirmPassword = editTextConfirmPassword.getText().toString().trim();
 
-        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(email) || TextUtils.isEmpty(password)) {
+        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(email) ||
+                TextUtils.isEmpty(password) || TextUtils.isEmpty(confirmPassword)) {
             Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!password.equals(confirmPassword)) {
+            Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -86,21 +88,36 @@ public class SignUpActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
                         if (user != null) {
-                            user.sendEmailVerification().addOnCompleteListener(emailTask -> {
-                                if (emailTask.isSuccessful()) {
-                                    Toast.makeText(SignUpActivity.this,
-                                            "Verification email sent to " + user.getEmail(),
-                                            Toast.LENGTH_SHORT).show();
+                            // Set the display name for the user
+                            UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                                    .setDisplayName(name)
+                                    .build();
 
-                                    Intent intent = new Intent(SignUpActivity.this, VerifyEmailActivity.class);
-                                    startActivity(intent);
-                                    finish();
-                                } else {
-                                    Toast.makeText(SignUpActivity.this,
-                                            "Failed to send verification email.",
-                                            Toast.LENGTH_SHORT).show();
-                                }
-                            });
+                            user.updateProfile(profileUpdates)
+                                    .addOnCompleteListener(profileTask -> {
+                                        if (profileTask.isSuccessful()) {
+                                            // Now send the verification email after the profile has been updated
+                                            user.sendEmailVerification().addOnCompleteListener(emailTask -> {
+                                                if (emailTask.isSuccessful()) {
+                                                    Toast.makeText(SignUpActivity.this,
+                                                            "Verification email sent to " + user.getEmail(),
+                                                            Toast.LENGTH_SHORT).show();
+
+                                                    Intent intent = new Intent(SignUpActivity.this, VerifyEmailActivity.class);
+                                                    startActivity(intent);
+                                                    finish();
+                                                } else {
+                                                    Toast.makeText(SignUpActivity.this,
+                                                            "Failed to send verification email.",
+                                                            Toast.LENGTH_SHORT).show();
+                                                }
+                                            });
+                                        } else {
+                                            Toast.makeText(SignUpActivity.this,
+                                                    "Failed to save username.",
+                                                    Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
                         }
                     } else {
                         Toast.makeText(SignUpActivity.this,

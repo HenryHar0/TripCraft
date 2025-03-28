@@ -2,88 +2,151 @@ package com.example.tripcraft000;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
+import com.google.android.material.button.MaterialButton;
+import androidx.cardview.widget.CardView;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 
 public class CalendarActivity extends AppCompatActivity {
 
     private DatePicker datePicker;
-    private Button nextButton;
-    private TextView datePrompt, errorMessage;
+    private MaterialButton nextButton;
+    private TextView datePrompt, errorMessage, selectedDatesText;
+    private CardView dateCard;
 
     private String startDate;
     private String city;
     private int geonameId;
+    private SimpleDateFormat displayFormat;
+    private SimpleDateFormat storageFormat;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_calendar);
 
+        displayFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
+        storageFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+
         datePicker = findViewById(R.id.date_picker);
         nextButton = findViewById(R.id.next_button);
         datePrompt = findViewById(R.id.date_prompt);
         errorMessage = findViewById(R.id.error_message);
+        selectedDatesText = findViewById(R.id.selected_dates_text);
+        dateCard = findViewById(R.id.date_card);
 
         Intent intent = getIntent();
         city = intent.getStringExtra("city");
         geonameId = intent.getIntExtra("geonameId", -1);
 
-        java.util.Calendar calendar = java.util.Calendar.getInstance();
-        int todayYear = calendar.get(java.util.Calendar.YEAR);
-        int todayMonth = calendar.get(java.util.Calendar.MONTH);
-        int todayDay = calendar.get(java.util.Calendar.DAY_OF_MONTH);
+        Calendar calendar = Calendar.getInstance();
+        int todayYear = calendar.get(Calendar.YEAR);
+        int todayMonth = calendar.get(Calendar.MONTH);
+        int todayDay = calendar.get(Calendar.DAY_OF_MONTH);
 
+        datePicker.setMinDate(calendar.getTimeInMillis());
         datePicker.updateDate(todayYear, todayMonth, todayDay);
 
-        datePrompt.setText("Select Start Date");
-        errorMessage.setVisibility(TextView.GONE);
+        datePrompt.setText("Choose your travel start date");
+        selectedDatesText.setText("Selected period: Not selected yet");
+        errorMessage.setVisibility(View.GONE);
 
         nextButton.setOnClickListener(v -> {
             if (startDate == null) {
-                startDate = getSelectedDate();
-                datePrompt.setText("Select End Date");
-                nextButton.setText("Finish");
-            } else {
-                String endDate = getSelectedDate();
+                startDate = getSelectedDate(true);
+                String formattedStartDate = formatDateForDisplay(startDate);
+
+                datePrompt.setText("Choose your travel end date");
+                selectedDatesText.setText("Selected period: " + formattedStartDate + " to ...");
+                nextButton.setText("Continue");
+
+                try {
+                    Date start = storageFormat.parse(startDate);
+                    if (start != null) {
+                        Calendar minEndDate = Calendar.getInstance();
+                        minEndDate.setTime(start);
+                        datePicker.setMinDate(minEndDate.getTimeInMillis());
+                    }
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+            }  else {
+                String endDate = getSelectedDate(true);
 
                 if (isEndDateEarlierThanStartDate(startDate, endDate)) {
-                    errorMessage.setVisibility(TextView.VISIBLE);
-                    errorMessage.setText("End date cannot be earlier than start date.");
-                    errorMessage.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
+                    errorMessage.setVisibility(View.VISIBLE);
+                    errorMessage.setText("End date cannot be earlier than start date");
                 } else {
-                    errorMessage.setVisibility(TextView.GONE);
+                    errorMessage.setVisibility(View.GONE);
 
-                    Intent planIntent = new Intent(CalendarActivity.this, PlanActivity.class);
-                    planIntent.putExtra("start_date", startDate);
-                    planIntent.putExtra("end_date", endDate);
-                    planIntent.putExtra("city", city);
-                    planIntent.putExtra("geonameId", geonameId);
-                    startActivity(planIntent);
+                    int durationDays = calculateDurationInDays(startDate, endDate);
+
+                    Intent interestsIntent = new Intent(CalendarActivity.this, InterestsActivity.class);
+                    interestsIntent.putExtra("start_date", startDate);
+                    interestsIntent.putExtra("end_date", endDate);
+                    interestsIntent.putExtra("duration_days", durationDays);
+                    interestsIntent.putExtra("city", city);
+                    interestsIntent.putExtra("geonameId", geonameId);
+                    startActivity(interestsIntent);
                 }
             }
         });
     }
 
-    private String getSelectedDate() {
+    private int calculateDurationInDays(String startDate, String endDate) {
+        try {
+            Date start = storageFormat.parse(startDate);
+            Date end = storageFormat.parse(endDate);
+
+            if (start != null && end != null) {
+                long diffInMillis = Math.abs(end.getTime() - start.getTime());
+                return (int) (diffInMillis / (1000 * 60 * 60 * 24)) + 1;
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    private String getSelectedDate(boolean forStorage) {
         int year = datePicker.getYear();
         int month = datePicker.getMonth() + 1;
         int day = datePicker.getDayOfMonth();
-        return year + "-" + month + "-" + day;
+
+        if (forStorage) {
+            return String.format(Locale.US, "%d-%02d-%02d", year, month, day);
+        } else {
+            Calendar calendar = Calendar.getInstance();
+            calendar.set(year, month - 1, day);
+            return displayFormat.format(calendar.getTime());
+        }
+    }
+
+    private String formatDateForDisplay(String storageFormatDate) {
+        try {
+            Date date = storageFormat.parse(storageFormatDate);
+            if (date != null) {
+                return displayFormat.format(date);
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return storageFormatDate;
     }
 
     private boolean isEndDateEarlierThanStartDate(String startDate, String endDate) {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-
         try {
-            Date start = dateFormat.parse(startDate);
-            Date end = dateFormat.parse(endDate);
+            Date start = storageFormat.parse(startDate);
+            Date end = storageFormat.parse(endDate);
 
             return end != null && start != null && end.before(start);
         } catch (ParseException e) {

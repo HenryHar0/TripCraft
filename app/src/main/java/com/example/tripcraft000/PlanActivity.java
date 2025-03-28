@@ -3,14 +3,15 @@ package com.example.tripcraft000;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.widget.ArrayAdapter;
+import android.text.TextUtils;
 import android.widget.Button;
-import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -21,51 +22,73 @@ import java.util.Random;
 
 public class PlanActivity extends AppCompatActivity {
 
-    private TextView planTitle, destinationLabel, destinationValue, durationLabel, durationValue, activitiesLabel;
-    private ListView activitiesList;
+    private TextView planTitle, weatherInfo;
+    private TextView destinationValue, durationValue;
+    private RecyclerView activitiesList, chosenActivitiesRecycler;
     private Button savePlanButton, editPlanButton, backToMainButton;
 
     private static final String PREFS_NAME = "TripPlanPrefs";
 
     private String startDate, endDate, city;
-    private ArrayAdapter<String> activitiesAdapter;
     private ArrayList<String> activitiesListData;
+    private ActivityAdapter activitiesAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_plan);
 
+        // Initialize views
         planTitle = findViewById(R.id.planTitle);
-        destinationLabel = findViewById(R.id.destinationLabel);
         destinationValue = findViewById(R.id.destinationValue);
-        durationLabel = findViewById(R.id.durationLabel);
         durationValue = findViewById(R.id.durationValue);
-        activitiesLabel = findViewById(R.id.activitiesLabel);
+        weatherInfo = findViewById(R.id.weatherInfo);
         activitiesList = findViewById(R.id.activitiesList);
+        chosenActivitiesRecycler = findViewById(R.id.chosenActivitiesRecycler);
 
         savePlanButton = findViewById(R.id.savePlanButton);
         editPlanButton = findViewById(R.id.editPlanButton);
         backToMainButton = findViewById(R.id.backToMainButton);
 
+
         Intent intent = getIntent();
         startDate = intent.getStringExtra("start_date");
         endDate = intent.getStringExtra("end_date");
-        city = intent.getStringExtra("city");
+        city = intent.getStringExtra("selected_city");
+        ArrayList<String> selectedCategories = getIntent().getStringArrayListExtra("selected_categories");
 
+        // Set up chosen activities
+        if (selectedCategories != null && !selectedCategories.isEmpty()) {
+            setupChosenActivities(selectedCategories);
+        }
+
+        // Set destination
         if (city != null) {
             destinationValue.setText(city);
         }
 
+        // Calculate duration
         if (startDate != null && endDate != null) {
             calculateDuration();
         }
 
+        // Generate random activities
         generateRandomActivities();
 
+        // Set button click listeners
         savePlanButton.setOnClickListener(v -> saveTripPlan());
         editPlanButton.setOnClickListener(v -> editTripPlan());
         backToMainButton.setOnClickListener(v -> goBackToMainMenu());
+    }
+
+    private void setupChosenActivities(ArrayList<String> categories) {
+        // Set up horizontal RecyclerView for chosen activities
+        chosenActivitiesRecycler.setLayoutManager(
+                new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+
+        // Create and set adapter for chosen activities
+        ActivityCategoryAdapter categoryAdapter = new ActivityCategoryAdapter(categories);
+        chosenActivitiesRecycler.setAdapter(categoryAdapter);
     }
 
     private void calculateDuration() {
@@ -107,14 +130,16 @@ public class PlanActivity extends AppCompatActivity {
             activitiesListData.add(activityPool[index]);
         }
 
-        activitiesAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, activitiesListData);
+        // Create and set adapter for the activities RecyclerView
+        activitiesAdapter = new ActivityAdapter(activitiesListData);
+        activitiesList.setLayoutManager(new LinearLayoutManager(this));
         activitiesList.setAdapter(activitiesAdapter);
     }
 
     private void saveTripPlan() {
         String destination = destinationValue.getText().toString();
         String duration = durationValue.getText().toString();
-        String activities = String.join(", ", activitiesListData);
+        String activities = TextUtils.join(", ", activitiesListData);
 
         SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
@@ -166,5 +191,75 @@ public class PlanActivity extends AppCompatActivity {
         Intent intent = new Intent(PlanActivity.this, MainActivity.class);
         startActivity(intent);
         finish();
+    }
+
+    // Adapter for displaying chosen activity categories
+    private class ActivityCategoryAdapter extends RecyclerView.Adapter<ActivityCategoryAdapter.ViewHolder> {
+        private ArrayList<String> categories;
+
+        public ActivityCategoryAdapter(ArrayList<String> categories) {
+            this.categories = categories;
+        }
+
+        @Override
+        public ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
+            android.view.View view = getLayoutInflater().inflate(
+                    android.R.layout.simple_list_item_1, parent, false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(ViewHolder holder, int position) {
+            holder.textView.setText(categories.get(position));
+        }
+
+        @Override
+        public int getItemCount() {
+            return categories.size();
+        }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            TextView textView;
+
+            ViewHolder(android.view.View itemView) {
+                super(itemView);
+                textView = itemView.findViewById(android.R.id.text1);
+            }
+        }
+    }
+
+    // Adapter for displaying activities
+    private class ActivityAdapter extends RecyclerView.Adapter<ActivityAdapter.ViewHolder> {
+        private ArrayList<String> activities;
+
+        public ActivityAdapter(ArrayList<String> activities) {
+            this.activities = activities;
+        }
+
+        @Override
+        public ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
+            android.view.View view = getLayoutInflater().inflate(
+                    android.R.layout.simple_list_item_1, parent, false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(ViewHolder holder, int position) {
+            holder.textView.setText(activities.get(position));
+        }
+
+        @Override
+        public int getItemCount() {
+            return activities.size();
+        }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            TextView textView;
+
+            ViewHolder(android.view.View itemView) {
+                super(itemView);
+                textView = itemView.findViewById(android.R.id.text1);
+            }
+        }
     }
 }
