@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -13,12 +14,21 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.json.JSONObject;
+
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class PlanActivity extends AppCompatActivity {
 
@@ -28,15 +38,25 @@ public class PlanActivity extends AppCompatActivity {
     private Button savePlanButton, editPlanButton, backToMainButton;
 
     private static final String PREFS_NAME = "TripPlanPrefs";
+    private static final String TAG = "PlanActivity";
+    private static final String NOAA_POINTS_BASE_URL = "https://api.weather.gov/points/";
+    private static final String NOAA_FORECAST_BASE_URL = "https://api.weather.gov/gridpoints/";
 
     private String startDate, endDate, city;
+    private double latitude, longitude;
     private ArrayList<String> activitiesListData;
     private ActivityAdapter activitiesAdapter;
+    private ExecutorService executorService;
+    private OkHttpClient httpClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_plan);
+
+        // Initialize services
+        executorService = Executors.newSingleThreadExecutor();
+        httpClient = new OkHttpClient();
 
         // Initialize views
         planTitle = findViewById(R.id.planTitle);
@@ -50,12 +70,14 @@ public class PlanActivity extends AppCompatActivity {
         editPlanButton = findViewById(R.id.editPlanButton);
         backToMainButton = findViewById(R.id.backToMainButton);
 
-
+        // Retrieve intent extras
         Intent intent = getIntent();
         startDate = intent.getStringExtra("start_date");
         endDate = intent.getStringExtra("end_date");
         city = intent.getStringExtra("selected_city");
-        ArrayList<String> selectedCategories = getIntent().getStringArrayListExtra("selected_categories");
+        latitude = intent.getDoubleExtra("latitude", 0.0);
+        longitude = intent.getDoubleExtra("longitude", 0.0);
+        ArrayList<String> selectedCategories = intent.getStringArrayListExtra("selected_categories");
 
         // Set up chosen activities
         if (selectedCategories != null && !selectedCategories.isEmpty()) {
@@ -72,6 +94,11 @@ public class PlanActivity extends AppCompatActivity {
             calculateDuration();
         }
 
+        // Fetch weather information
+        if (latitude != 0.0 && longitude != 0.0) {
+            fetchWeatherInfo();
+        }
+
         // Generate random activities
         generateRandomActivities();
 
@@ -79,6 +106,59 @@ public class PlanActivity extends AppCompatActivity {
         savePlanButton.setOnClickListener(v -> saveTripPlan());
         editPlanButton.setOnClickListener(v -> editTripPlan());
         backToMainButton.setOnClickListener(v -> goBackToMainMenu());
+    }
+
+    private void fetchWeatherInfo() {
+        executorService.execute(() -> {
+            try {
+                // Step 1: Get Grid Points
+                String pointsUrl = NOAA_POINTS_BASE_URL + latitude + "," + longitude;
+                String gridResponse = makeHttpRequest(pointsUrl);
+                JSONObject gridPointsJson = new JSONObject(gridResponse);
+
+                String gridId = gridPointsJson.getJSONObject("properties").getString("gridId");
+                int gridX = gridPointsJson.getJSONObject("properties").getInt("gridX");
+                int gridY = gridPointsJson.getJSONObject("properties").getInt("gridY");
+
+                // Step 2: Get Forecast
+                String forecastUrl = NOAA_FORECAST_BASE_URL + gridId + "/" + gridX + "," + gridY + "/forecast";
+                String forecastResponse = makeHttpRequest(forecastUrl);
+                JSONObject forecastJson = new JSONObject(forecastResponse);
+
+                JSONObject period = forecastJson.getJSONObject("properties")
+                        .getJSONArray("periods")
+                        .getJSONObject(0);
+
+                final String temperature = period.getString("temperature") + "°" +
+                        period.getString("temperatureUnit");
+                final String forecast = period.getString("shortForecast");
+
+                runOnUiThread(() -> {
+                    weatherInfo.setText(String.format("Temperature: %s\nForecast: %s",
+                            temperature, forecast));
+                });
+
+            } catch (Exception e) {
+                Log.e(TAG, "Error fetching weather", e);
+                runOnUiThread(() -> {
+                    weatherInfo.setText("Unable to fetch weather information");
+                });
+            }
+        });
+    }
+
+    private String makeHttpRequest(String url) throws IOException {
+        Request request = new Request.Builder()
+                .url(url)
+                .addHeader("User-Agent", "(tripcraft, harutyunyanhenry5@gmail.com)")
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new IOException("Unexpected code " + response);
+            }
+            return response.body().string();
+        }
     }
 
     private void setupChosenActivities(ArrayList<String> categories) {
@@ -140,6 +220,7 @@ public class PlanActivity extends AppCompatActivity {
         String destination = destinationValue.getText().toString();
         String duration = durationValue.getText().toString();
         String activities = TextUtils.join(", ", activitiesListData);
+        String weather = weatherInfo.getText().toString();
 
         SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
@@ -155,28 +236,31 @@ public class PlanActivity extends AppCompatActivity {
         builder.setItems(slots, (dialog, which) -> {
             String selectedSlotKey = "PlanSlot_" + which;
             if (sharedPreferences.contains(selectedSlotKey)) {
-                confirmOverwrite(which, destination, duration, activities);
+                confirmOverwrite(which, destination, duration, activities, weather);
             } else {
-                savePlanToSlot(which, destination, duration, activities);
+                savePlanToSlot(which, destination, duration, activities, weather);
             }
         });
 
         builder.show();
     }
 
-    private void confirmOverwrite(int slot, String destination, String duration, String activities) {
+    private void confirmOverwrite(int slot, String destination, String duration, String activities, String weather) {
         new AlertDialog.Builder(this)
                 .setTitle("Overwrite Slot")
                 .setMessage("Do you want to overwrite this slot?")
-                .setPositiveButton("Yes", (dialog, which) -> savePlanToSlot(slot, destination, duration, activities))
+                .setPositiveButton("Yes", (dialog, which) -> savePlanToSlot(slot, destination, duration, activities, weather))
                 .setNegativeButton("No", null)
                 .show();
     }
 
-    private void savePlanToSlot(int slot, String destination, String duration, String activities) {
+    private void savePlanToSlot(int slot, String destination, String duration, String activities, String weather) {
         SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
-        String planDetails = "Destination: " + destination + "\nDuration: " + duration + "\nActivities: " + activities;
+        String planDetails = "Destination: " + destination +
+                "\nDuration: " + duration +
+                "\nActivities: " + activities +
+                "\nWeather: " + weather;
         editor.putString("PlanSlot_" + slot, planDetails);
         editor.apply();
 
@@ -260,6 +344,14 @@ public class PlanActivity extends AppCompatActivity {
                 super(itemView);
                 textView = itemView.findViewById(android.R.id.text1);
             }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (executorService != null) {
+            executorService.shutdown();
         }
     }
 }

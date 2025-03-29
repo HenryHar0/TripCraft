@@ -42,8 +42,7 @@
         <activity android:name=".PlanActivity" android:exported="false" />
         <activity android:name=".VerifyEmailActivity" android:exported="false" />
         <activity android:name=".SavedPlansActivity" android:exported="false" />
-
-        <!-- Add InterestsActivity here -->
+        <activity android:name=".MapPlacesActivity" android:exported="false" />
         <activity android:name=".InterestsActivity" android:exported="false" />
     </application>
 

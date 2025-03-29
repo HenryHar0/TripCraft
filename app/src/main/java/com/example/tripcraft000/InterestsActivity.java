@@ -165,7 +165,7 @@ public class InterestsActivity extends AppCompatActivity {
         Log.d("InterestsActivity", "Fetching nearby places with pagination for: " + selectedCityName);
 
         String location = selectedCityCoordinates.latitude + "," + selectedCityCoordinates.longitude;
-        int radius = 5000;
+        int radius = 30000;
 
         String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
                 "?location=" + location +
@@ -623,9 +623,13 @@ public class InterestsActivity extends AppCompatActivity {
         viewButton.setLayoutParams(buttonParams);
 
         viewButton.setOnClickListener(v -> {
-            Toast.makeText(InterestsActivity.this,
-                    "Showing " + count + " " + category + " places",
-                    Toast.LENGTH_SHORT).show();
+            // Launch the MapPlacesActivity when the button is clicked
+            Intent intent = new Intent(InterestsActivity.this, MapPlacesActivity.class);
+            intent.putExtra("city_name", selectedCityName);
+            intent.putExtra("city_lat", selectedCityCoordinates.latitude);
+            intent.putExtra("city_lng", selectedCityCoordinates.longitude);
+            intent.putExtra("category_name", category);
+            startActivity(intent);
         });
 
         cardLayout.addView(categoryText);

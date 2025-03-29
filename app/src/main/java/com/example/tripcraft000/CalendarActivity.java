@@ -3,7 +3,6 @@ package com.example.tripcraft000;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
@@ -26,6 +25,8 @@ public class CalendarActivity extends AppCompatActivity {
     private String startDate;
     private String city;
     private int geonameId;
+    private double latitude;
+    private double longitude;
     private SimpleDateFormat displayFormat;
     private SimpleDateFormat storageFormat;
 
@@ -47,6 +48,10 @@ public class CalendarActivity extends AppCompatActivity {
         Intent intent = getIntent();
         city = intent.getStringExtra("city");
         geonameId = intent.getIntExtra("geonameId", -1);
+
+        // Add coordinate retrieval
+        latitude = intent.getDoubleExtra("latitude", 0.0);
+        longitude = intent.getDoubleExtra("longitude", 0.0);
 
         Calendar calendar = Calendar.getInstance();
         int todayYear = calendar.get(Calendar.YEAR);
@@ -96,6 +101,11 @@ public class CalendarActivity extends AppCompatActivity {
                     interestsIntent.putExtra("duration_days", durationDays);
                     interestsIntent.putExtra("city", city);
                     interestsIntent.putExtra("geonameId", geonameId);
+
+                    // Pass coordinates to next activity
+                    interestsIntent.putExtra("latitude", latitude);
+                    interestsIntent.putExtra("longitude", longitude);
+
                     startActivity(interestsIntent);
                 }
             }

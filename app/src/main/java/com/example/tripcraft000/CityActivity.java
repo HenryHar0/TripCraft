@@ -39,7 +39,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
     private String geoNamesUsername = "henryhar";
     private ArrayAdapter<String> cityAdapter;
     private boolean isMapReady = false;
-    private final HashMap<String, LatLng> cityCoordinates = new HashMap<>(); // Store city coordinates
+    private final HashMap<String, LatLng> cityCoordinates = new HashMap<>();
     private Timer searchDebounceTimer = new Timer();
     private String selectedCityName = "";
 
@@ -48,23 +48,19 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_city);
 
-        // Initialize views based on the new layout
         searchCity = findViewById(R.id.search_city);
         nextButton = findViewById(R.id.next_button);
         myLocationButton = findViewById(R.id.my_location_button);
 
-        // Setup adapter for city autocomplete
         cityAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line);
         searchCity.setAdapter(cityAdapter);
         nextButton.setEnabled(false);
 
-        // Initialize map fragment
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         }
 
-        // Setup text change listener with debounce for API calls
         searchCity.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int start, int count, int after) {}
@@ -78,14 +74,13 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                     public void run() {
                         runOnUiThread(() -> fetchCitySuggestions(charSequence.toString().trim()));
                     }
-                }, 500); // Debounce API calls (500ms delay)
+                }, 500);
             }
 
             @Override
             public void afterTextChanged(Editable editable) {}
         });
 
-        // Handle selection from dropdown
         searchCity.setOnItemClickListener((parent, view, position, id) -> {
             selectedCityName = (String) parent.getItemAtPosition(position);
             if (cityCoordinates.containsKey(selectedCityName)) {
@@ -94,11 +89,8 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-        // Set up my location button
         myLocationButton.setOnClickListener(v -> {
             if (isMapReady) {
-                // This would typically request location permissions and center the map
-                // on the user's current location, but for simplicity we'll just show a toast
                 Toast.makeText(this, "Location functionality would center map on your position",
                         Toast.LENGTH_SHORT).show();
             }
@@ -110,7 +102,8 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 Intent intent = new Intent(CityActivity.this, CalendarActivity.class);
                 intent.putExtra("city", selectedCityName);
-                intent.putExtra("selected_city_coordinates", cityLatLng);
+                intent.putExtra("latitude", cityLatLng.latitude);
+                intent.putExtra("longitude", cityLatLng.longitude);
                 startActivity(intent);
             } else {
                 Toast.makeText(this, "Please select a city before proceeding.", Toast.LENGTH_SHORT).show();
@@ -134,7 +127,12 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .build();
 
         GeoNamesAPI geoNamesAPI = retrofit.create(GeoNamesAPI.class);
-        Call<GeoNamesResponse> call = geoNamesAPI.searchCity(query, 10, geoNamesUsername);
+        Call<GeoNamesResponse> call = geoNamesAPI.searchCity(
+                query,
+                "PPLC,PPLA,PPLA2,PPL",
+                10,
+                geoNamesUsername
+        );
 
         call.enqueue(new Callback<GeoNamesResponse>() {
             @Override
@@ -145,7 +143,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                     for (GeoNamesResponse.City city : response.body().geonames) {
                         String cityName = city.name + ", " + city.countryName;
                         cityAdapter.add(cityName);
-                        cityCoordinates.put(cityName, new LatLng(city.lat, city.lng));
+                        cityCoordinates.put(cityName, new LatLng(Double.parseDouble(String.valueOf(city.lat)), Double.parseDouble(String.valueOf(city.lng))));
                     }
                     cityAdapter.notifyDataSetChanged();
                 }
