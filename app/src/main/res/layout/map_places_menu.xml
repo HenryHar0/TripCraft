@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_send_to_interests"
+        android:title="Send to Interests"
+        android:icon="@drawable/ic_interests"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_send_to_plans"
+        android:title="Send to Plans"
+        android:icon="@drawable/ic_plans"
+        app:showAsAction="ifRoom" />
+
+</menu>

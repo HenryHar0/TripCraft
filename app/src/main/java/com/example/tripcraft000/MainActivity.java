@@ -1,6 +1,7 @@
 package com.example.tripcraft000;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -73,10 +74,22 @@ public class MainActivity extends AppCompatActivity {
     private void setUsername() {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
-            String username = currentUser.getDisplayName();
-            if (username != null && !username.isEmpty()) {
-                usernameText.setText(username);
+            // Try SharedPreferences first
+            SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+            String savedName = prefs.getString("displayName", null);
+
+            System.out.println("USERNAME DEBUG: SharedPrefs name: " + savedName);
+            System.out.println("USERNAME DEBUG: Firebase name: " + currentUser.getDisplayName());
+
+            if (savedName != null && !savedName.isEmpty()) {
+                usernameText.setText(savedName);
+            } else if (currentUser.getDisplayName() != null &&
+                    !currentUser.getDisplayName().isEmpty() &&
+                    !currentUser.getDisplayName().equals("User Name")) {
+                // Use Firebase name if it's not the default "User Name"
+                usernameText.setText(currentUser.getDisplayName());
             } else {
+                // Fall back to email username
                 String email = currentUser.getEmail();
                 if (email != null && !email.isEmpty()) {
                     usernameText.setText(email.split("@")[0]);
@@ -84,11 +97,23 @@ public class MainActivity extends AppCompatActivity {
                     usernameText.setText("Guest");
                 }
             }
-
-            // For debugging
-            System.out.println("Current display name: " + username);
         } else {
             usernameText.setText("Guest");
+        }
+    }
+
+    // Helper method to handle username with current data
+    private void handleUsernameWithCurrentData(FirebaseUser user) {
+        String username = user.getDisplayName();
+        if (username != null && !username.isEmpty()) {
+            usernameText.setText(username);
+        } else {
+            String email = user.getEmail();
+            if (email != null && !email.isEmpty()) {
+                usernameText.setText(email.split("@")[0]);
+            } else {
+                usernameText.setText("Guest");
+            }
         }
     }
 }

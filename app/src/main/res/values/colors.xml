@@ -8,6 +8,7 @@
     <color name="primary_color">#3F51B5</color>
     <color name="primary_dark_color">#303F9F</color>
     <color name="accent_color">#FF4081</color>
+    <color name="colorAccent">#29B6F6</color>
 
     <!-- Text colors -->
     <color name="primary_text">#212121</color>

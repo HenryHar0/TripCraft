@@ -63,6 +63,8 @@ public class InterestsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_interests);
 
+
+
         // Initialize UI components
         interestsLayout = findViewById(R.id.interestsLayout);
         progressBar = findViewById(R.id.progressBar);

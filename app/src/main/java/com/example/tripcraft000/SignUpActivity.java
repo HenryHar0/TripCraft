@@ -67,64 +67,102 @@ public class SignUpActivity extends AppCompatActivity {
     }
 
     private void signUp() {
-        String name = editTextName.getText().toString().trim();
+        final String[] name = {editTextName.getText().toString().trim()};
         String email = editTextEmail.getText().toString().trim();
         String password = editTextPassword.getText().toString().trim();
         String confirmPassword = editTextConfirmPassword.getText().toString().trim();
 
-        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(email) ||
-                TextUtils.isEmpty(password) || TextUtils.isEmpty(confirmPassword)) {
-            Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        // Basic validation...
 
-        if (!password.equals(confirmPassword)) {
-            Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        // Show loading state if needed
 
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
                         if (user != null) {
-                            // Set the display name for the user
+                            System.out.println("SIGNUP DEBUG: User created successfully with email: " + email);
+                            System.out.println("SIGNUP DEBUG: Attempting to set display name to: " + name[0]);
+
+                            // IMPORTANT: Make sure name is not empty or null
+                            if (name[0] == null || name[0].isEmpty()) {
+                                System.out.println("SIGNUP DEBUG: WARNING! Name is empty or null!");
+                                // Use a fallback name if necessary
+                                name[0] = email.split("@")[0]; // Use part of email as name
+                            }
+
+                            // Store final name for use in lambda
+                            final String finalName = name[0];
+
+                            // Create profile update request
                             UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
-                                    .setDisplayName(name)
+                                    .setDisplayName(finalName)
                                     .build();
 
+                            // Update the profile
                             user.updateProfile(profileUpdates)
                                     .addOnCompleteListener(profileTask -> {
                                         if (profileTask.isSuccessful()) {
-                                            // Now send the verification email after the profile has been updated
-                                            user.sendEmailVerification().addOnCompleteListener(emailTask -> {
-                                                if (emailTask.isSuccessful()) {
-                                                    Toast.makeText(SignUpActivity.this,
-                                                            "Verification email sent to " + user.getEmail(),
-                                                            Toast.LENGTH_SHORT).show();
+                                            System.out.println("SIGNUP DEBUG: Profile update task completed successfully");
 
-                                                    Intent intent = new Intent(SignUpActivity.this, VerifyEmailActivity.class);
-                                                    startActivity(intent);
-                                                    finish();
-                                                } else {
-                                                    Toast.makeText(SignUpActivity.this,
-                                                            "Failed to send verification email.",
-                                                            Toast.LENGTH_SHORT).show();
+                                            // Add a short delay before checking
+                                            new android.os.Handler().postDelayed(() -> {
+                                                // Get a fresh instance of the user
+                                                FirebaseUser updatedUser = FirebaseAuth.getInstance().getCurrentUser();
+                                                if (updatedUser != null) {
+                                                    System.out.println("SIGNUP DEBUG: After delay, display name is: " + updatedUser.getDisplayName());
+
+                                                    // Also save to SharedPreferences as a backup
+                                                    getSharedPreferences("UserPrefs", MODE_PRIVATE)
+                                                            .edit()
+                                                            .putString("displayName", finalName)
+                                                            .apply();
+
+                                                    // Now continue with email verification
+                                                    sendVerificationEmail(updatedUser);
                                                 }
-                                            });
+                                            }, 2000); // 2 second delay
                                         } else {
-                                            Toast.makeText(SignUpActivity.this,
-                                                    "Failed to save username.",
-                                                    Toast.LENGTH_SHORT).show();
+                                            System.out.println("SIGNUP DEBUG: Profile update FAILED: " +
+                                                    (profileTask.getException() != null ?
+                                                            profileTask.getException().getMessage() : "No error message"));
+
+                                            // Save to SharedPreferences anyway as fallback
+                                            getSharedPreferences("UserPrefs", MODE_PRIVATE)
+                                                    .edit()
+                                                    .putString("displayName", finalName)
+                                                    .apply();
+
+                                            // Continue with email verification despite profile update failure
+                                            sendVerificationEmail(user);
                                         }
                                     });
                         }
                     } else {
-                        Toast.makeText(SignUpActivity.this,
-                                "Sign up failed. Please try again.",
-                                Toast.LENGTH_SHORT).show();
+                        // Handle account creation failure...
                     }
                 });
+    }
+
+    private void sendVerificationEmail(FirebaseUser user) {
+        user.sendEmailVerification().addOnCompleteListener(emailTask -> {
+            // Hide progress indicator
+            // progressBar.setVisibility(View.GONE);
+
+            if (emailTask.isSuccessful()) {
+                Toast.makeText(SignUpActivity.this,
+                        "Verification email sent to " + user.getEmail(),
+                        Toast.LENGTH_SHORT).show();
+
+                Intent intent = new Intent(SignUpActivity.this, VerifyEmailActivity.class);
+                startActivity(intent);
+                finish();
+            } else {
+                Toast.makeText(SignUpActivity.this,
+                        "Failed to send verification email: " + emailTask.getException().getMessage(),
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void login() {

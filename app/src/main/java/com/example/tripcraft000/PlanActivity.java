@@ -1,7 +1,13 @@
 package com.example.tripcraft000;
 
+import android.app.AlarmManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -9,8 +15,12 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -20,6 +30,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Random;
@@ -38,9 +49,14 @@ public class PlanActivity extends AppCompatActivity {
     private Button savePlanButton, editPlanButton, backToMainButton;
 
     private static final String PREFS_NAME = "TripPlanPrefs";
+    private static final String NOTIFICATION_PREF = "NotificationsEnabled";
+    private static final String FIRST_TIME_KEY = "FirstTimeUser";
     private static final String TAG = "PlanActivity";
     private static final String NOAA_POINTS_BASE_URL = "https://api.weather.gov/points/";
     private static final String NOAA_FORECAST_BASE_URL = "https://api.weather.gov/gridpoints/";
+    private static final String CHANNEL_ID = "trip_reminder_channel";
+    private static final int ONE_WEEK_NOTIFICATION_ID = 1;
+    private static final int ONE_DAY_NOTIFICATION_ID = 2;
 
     private String startDate, endDate, city;
     private double latitude, longitude;
@@ -48,6 +64,7 @@ public class PlanActivity extends AppCompatActivity {
     private ActivityAdapter activitiesAdapter;
     private ExecutorService executorService;
     private OkHttpClient httpClient;
+    private ActivityResultLauncher<String> requestPermissionLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,6 +86,36 @@ public class PlanActivity extends AppCompatActivity {
         savePlanButton = findViewById(R.id.savePlanButton);
         editPlanButton = findViewById(R.id.editPlanButton);
         backToMainButton = findViewById(R.id.backToMainButton);
+
+        // Setup notification permission launcher
+        requestPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                isGranted -> {
+                    if (isGranted) {
+                        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                        SharedPreferences.Editor editor = sharedPreferences.edit();
+                        editor.putBoolean(NOTIFICATION_PREF, true);
+                        editor.apply();
+
+                        // Schedule notifications if start date is available
+                        if (startDate != null && !startDate.isEmpty()) {
+                            scheduleNotifications(startDate);
+                        }
+
+                        Toast.makeText(this, "Trip reminders will be sent before your journey!", Toast.LENGTH_SHORT).show();
+                    } else {
+                        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                        SharedPreferences.Editor editor = sharedPreferences.edit();
+                        editor.putBoolean(NOTIFICATION_PREF, false);
+                        editor.apply();
+
+                        Toast.makeText(this, "Notifications disabled. You can enable them later in settings.", Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
+
+        // Create notification channel
+        createNotificationChannel();
 
         // Retrieve intent extras
         Intent intent = getIntent();
@@ -106,6 +153,153 @@ public class PlanActivity extends AppCompatActivity {
         savePlanButton.setOnClickListener(v -> saveTripPlan());
         editPlanButton.setOnClickListener(v -> editTripPlan());
         backToMainButton.setOnClickListener(v -> goBackToMainMenu());
+
+        // Check if first time user
+        checkFirstTimeUser();
+    }
+
+    private void checkFirstTimeUser() {
+        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        boolean isFirstTime = sharedPreferences.getBoolean(FIRST_TIME_KEY, true);
+
+        if (isFirstTime) {
+            showNotificationExplanationDialog();
+
+            // Mark as not first time anymore
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putBoolean(FIRST_TIME_KEY, false);
+            editor.apply();
+        }
+    }
+
+    private void showNotificationExplanationDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Trip Reminders");
+
+        // Blue-styled explanation text
+        TextView messageView = new TextView(this);
+        messageView.setText("TripCraft can send you helpful reminders about your upcoming trips!\n\n" +
+                "• Get notified one week before your trip to start packing\n" +
+                "• Receive a final reminder the day before departure\n\n" +
+                "Would you like to enable trip reminders?");
+        messageView.setPadding(30, 30, 30, 30);
+        messageView.setTextColor(getResources().getColor(android.R.color.holo_blue_dark));
+        messageView.setTextSize(16);
+
+        builder.setView(messageView);
+
+        builder.setPositiveButton("Enable", (dialog, which) -> {
+            requestNotificationPermission();
+        });
+
+        builder.setNegativeButton("Not Now", (dialog, which) -> {
+            Toast.makeText(this, "You can enable notifications later in settings", Toast.LENGTH_SHORT).show();
+        });
+
+        builder.setCancelable(false);
+        builder.show();
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS);
+        } else {
+            // For older versions, no runtime permission needed
+            SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putBoolean(NOTIFICATION_PREF, true);
+            editor.apply();
+
+            if (startDate != null && !startDate.isEmpty()) {
+                scheduleNotifications(startDate);
+            }
+
+            Toast.makeText(this, "Trip reminders enabled!", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "Trip Reminders";
+            String description = "Notifications for upcoming trips";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    private void scheduleNotifications(String tripDate) {
+        try {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+            Date tripStartDate = dateFormat.parse(tripDate);
+
+            if (tripStartDate != null) {
+                // Schedule one week notification
+                scheduleNotification(tripStartDate, 7, ONE_WEEK_NOTIFICATION_ID,
+                        "Trip to " + city + " is in one week!",
+                        "Time to start planning and packing for your adventure.");
+
+                // Schedule one day notification
+                scheduleNotification(tripStartDate, 1, ONE_DAY_NOTIFICATION_ID,
+                        "Your trip to " + city + " is tomorrow!",
+                        "Final preparations for your journey to " + city + ".");
+            }
+        } catch (ParseException e) {
+            Log.e(TAG, "Error scheduling notifications", e);
+        }
+    }
+
+    private void scheduleNotification(Date tripDate, int daysBefore, int notificationId, String title, String message) {
+        Intent intent = new Intent(this, NotificationReceiver.class);
+        intent.putExtra("notification_id", notificationId);
+        intent.putExtra("title", title);
+        intent.putExtra("message", message);
+
+        // Create PendingIntent with unique requestCode
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                this,
+                notificationId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        // Calculate notification time
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(tripDate);
+        calendar.add(Calendar.DAY_OF_YEAR, -daysBefore);
+        // Set time to 9:00 AM
+        calendar.set(Calendar.HOUR_OF_DAY, 9);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+
+        if (alarmManager != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            calendar.getTimeInMillis(),
+                            pendingIntent
+                    );
+                } else {
+                    alarmManager.set(
+                            AlarmManager.RTC_WAKEUP,
+                            calendar.getTimeInMillis(),
+                            pendingIntent
+                    );
+                }
+            } else {
+                alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        calendar.getTimeInMillis(),
+                        pendingIntent
+                );
+            }
+        }
     }
 
     private void fetchWeatherInfo() {
@@ -264,6 +458,12 @@ public class PlanActivity extends AppCompatActivity {
         editor.putString("PlanSlot_" + slot, planDetails);
         editor.apply();
 
+        // Check if notifications are enabled and schedule them
+        boolean notificationsEnabled = sharedPreferences.getBoolean(NOTIFICATION_PREF, false);
+        if (notificationsEnabled && startDate != null && !startDate.isEmpty()) {
+            scheduleNotifications(startDate);
+        }
+
         Toast.makeText(this, "Plan saved to Slot " + (slot + 1), Toast.LENGTH_SHORT).show();
     }
 
@@ -288,7 +488,7 @@ public class PlanActivity extends AppCompatActivity {
         @Override
         public ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
             android.view.View view = getLayoutInflater().inflate(
-                    android.R.layout.simple_list_item_1, parent, false);
+                    R.layout.item_activity_category, parent, false);
             return new ViewHolder(view);
         }
 

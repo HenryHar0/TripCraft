@@ -159,7 +159,7 @@
 
             <TextView
                 android:id="@+id/chosenActivitiesLabel"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:text="Chosen Activities"
                 android:textSize="18sp"
@@ -168,17 +168,34 @@
                 android:fontFamily="sans-serif-medium"
                 app:layout_constraintTop_toBottomOf="@id/infoCard"
                 app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/scrollHint"
                 android:layout_marginTop="24dp" />
+
+            <TextView
+                android:id="@+id/scrollHint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="← Scroll to see more →"
+                android:textSize="12sp"
+                android:textColor="#757575"
+                android:textStyle="italic"
+                app:layout_constraintTop_toBottomOf="@id/chosenActivitiesLabel"
+                app:layout_constraintEnd_toEndOf="parent" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/chosenActivitiesRecycler"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                app:layout_constraintTop_toBottomOf="@id/chosenActivitiesLabel"
+                android:clipToPadding="false"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:background="#F5F5F5"
+                android:minHeight="60dp"
+                app:layout_constraintTop_toBottomOf="@id/scrollHint"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                android:layout_marginTop="8dp"/>
+                android:layout_marginTop="4dp"/>
 
             <TextView
                 android:id="@+id/activitiesLabel"
