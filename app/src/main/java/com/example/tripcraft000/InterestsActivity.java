@@ -57,13 +57,14 @@ public class InterestsActivity extends AppCompatActivity {
     private Set<String> selectedCategories = new HashSet<>();
     private List<Map.Entry<String, Integer>> allCategories = new ArrayList<>();
     private Button nextButton;
+    private final List<String> pendingPageTokens = new ArrayList<>();
+    private static final int PAGINATION_DELAY = 2000;
+    private final Set<String> processedPlaceIds = new HashSet<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_interests);
-
-
 
         // Initialize UI components
         interestsLayout = findViewById(R.id.interestsLayout);
@@ -155,12 +156,15 @@ public class InterestsActivity extends AppCompatActivity {
         statusText.setText("Loading places for " + selectedCityName + "...");
 
         typeCountMap.clear();
+        processedPlaceIds.clear(); // Clear processed place IDs
+        pendingPageTokens.clear(); // Clear pending page tokens
         interestsLayout.removeAllViews();
 
         fetchNearbyPlaces();
         fetchPlacesByTypes();
         fetchMultipleAreas();
         performTextSearch();
+        fetchSpecificCategories(); // Add this new method call
     }
 
     private void fetchNearbyPlaces() {
@@ -175,10 +179,10 @@ public class InterestsActivity extends AppCompatActivity {
                 "&key=" + API_KEY;
 
         pendingRequests.incrementAndGet();
-        fetchPlacesPage(url, null);
+        fetchPlacesPage(url, null, "nearby");
     }
 
-    private void fetchPlacesPage(final String baseUrl, final String pageToken) {
+    private void fetchPlacesPage(final String baseUrl, final String pageToken, final String searchType) {
         final String finalUrl = pageToken == null ? baseUrl : baseUrl + "&pagetoken=" + pageToken;
 
         new Thread(() -> {
@@ -186,6 +190,8 @@ public class InterestsActivity extends AppCompatActivity {
                 URL requestUrl = new URL(finalUrl);
                 HttpURLConnection connection = (HttpURLConnection) requestUrl.openConnection();
                 connection.setRequestMethod("GET");
+                connection.setConnectTimeout(15000);
+                connection.setReadTimeout(15000);
 
                 InputStreamReader reader = new InputStreamReader(connection.getInputStream());
                 BufferedReader bufferedReader = new BufferedReader(reader);
@@ -199,27 +205,95 @@ public class InterestsActivity extends AppCompatActivity {
                 bufferedReader.close();
 
                 final JSONObject jsonResponse = new JSONObject(response.toString());
-                parsePlaceResults(jsonResponse);
+                String status = jsonResponse.getString("status");
 
-                if (jsonResponse.has("next_page_token")) {
-                    final String nextPageToken = jsonResponse.getString("next_page_token");
-                    Thread.sleep(2000);
-                    fetchPlacesPage(baseUrl, nextPageToken);
-                } else {
-                    int remaining = pendingRequests.decrementAndGet();
-                    if (remaining == 0) {
-                        updateUI();
+                if ("OK".equals(status)) {
+                    parsePlaceResults(jsonResponse);
+
+                    if (jsonResponse.has("next_page_token")) {
+                        final String nextPageToken = jsonResponse.getString("next_page_token");
+                        // Save the token for later processing
+                        synchronized (pendingPageTokens) {
+                            pendingPageTokens.add(nextPageToken + ":" + searchType);
+                        }
+
+                        // Process next page after delay (required by Places API)
+                        new Thread(() -> {
+                            try {
+                                Thread.sleep(PAGINATION_DELAY);
+                                String tokenInfo;
+                                synchronized (pendingPageTokens) {
+                                    if (pendingPageTokens.isEmpty()) return;
+                                    tokenInfo = pendingPageTokens.remove(0);
+                                }
+
+                                String[] parts = tokenInfo.split(":");
+                                String token = parts[0];
+                                String type = parts[1];
+
+                                if ("nearby".equals(type)) {
+                                    fetchPlacesPage(baseUrl, token, type);
+                                } else if ("text".equals(type)) {
+                                    fetchPlacesPage(baseUrl, token, type);
+                                }
+                            } catch (Exception e) {
+                                Log.e("PlacesAPI", "Error processing page token", e);
+                            }
+                        }).start();
                     }
+                } else {
+                    Log.e("PlacesAPI", "Error status: " + status);
+                    // If nearby search fails, try text search
+                    if ("nearby".equals(searchType) && pageToken == null) {
+                        fallbackToTextSearch();
+                    }
+                }
+
+                int remaining = pendingRequests.decrementAndGet();
+                if (remaining == 0) {
+                    updateUI();
                 }
 
             } catch (Exception e) {
                 Log.e("PlacesAPI", "Error fetching places", e);
+
+                // Implement fallback strategy
+                if ("nearby".equals(searchType) && pageToken == null) {
+                    fallbackToTextSearch();
+                }
+
                 int remaining = pendingRequests.decrementAndGet();
                 if (remaining == 0) {
                     updateUI();
                 }
             }
         }).start();
+    }
+
+    private void fallbackToTextSearch() {
+        Log.d("InterestsActivity", "Falling back to text search for categories");
+
+        try {
+            for (Map.Entry<String, Integer> entry : typeCountMap.entrySet()) {
+                String category = entry.getKey();
+
+                // Remove emoji if present
+                String queryText = category;
+                if (queryText.contains(" ")) {
+                    queryText = queryText.substring(queryText.indexOf(" ") + 1);
+                }
+
+                String query = URLEncoder.encode(queryText + " in " + selectedCityName, "UTF-8");
+                String url = "https://maps.googleapis.com/maps/api/place/textsearch/json" +
+                        "?query=" + query +
+                        "&key=" + API_KEY;
+
+                pendingRequests.incrementAndGet();
+                fetchPlacesPage(url, null, "text");
+            }
+        } catch (Exception e) {
+            Log.e("PlacesAPI", "Error encoding text search URL", e);
+        }
     }
 
     private void fetchPlacesByTypes() {
@@ -369,7 +443,12 @@ public class InterestsActivity extends AppCompatActivity {
                     "must visit in " + selectedCityName,
                     "things to do in " + selectedCityName,
                     "best restaurants in " + selectedCityName,
-                    "entertainment in " + selectedCityName
+                    "entertainment in " + selectedCityName,
+                    // Add more queries for better coverage
+                    "cultural sites in " + selectedCityName,
+                    "historical sites in " + selectedCityName,
+                    "popular in " + selectedCityName,
+                    "landmarks in " + selectedCityName
             };
 
             for (final String query : queries) {
@@ -379,7 +458,7 @@ public class InterestsActivity extends AppCompatActivity {
                         "?query=" + encodedQuery +
                         "&key=" + API_KEY;
 
-                executeTextSearch(url);
+                fetchPlacesPage(url, null, "text");
             }
         } catch (Exception e) {
             Log.e("PlacesAPI", "Error encoding query", e);
@@ -434,8 +513,10 @@ public class InterestsActivity extends AppCompatActivity {
 
             for (int i = 0; i < results.length(); i++) {
                 JSONObject place = results.getJSONObject(i);
+                String placeId = place.getString("place_id");
 
-                if (place.has("types")) {
+                // Store place IDs to avoid duplicates
+                if (processedPlaceIds.add(placeId) && place.has("types")) {
                     JSONArray types = place.getJSONArray("types");
 
                     for (int j = 0; j < types.length(); j++) {
@@ -450,6 +531,32 @@ public class InterestsActivity extends AppCompatActivity {
             }
         } catch (JSONException e) {
             Log.e("PlacesAPI", "Error parsing place results", e);
+        }
+    }
+
+    private void fetchSpecificCategories() {
+        Log.d("InterestsActivity", "Fetching specific categories for: " + selectedCityName);
+
+        // Important categories that users are likely interested in
+        String[] importantCategories = {
+                "museum", "art_gallery", "tourist_attraction", "restaurant", "park",
+                "shopping_mall", "historic", "landmark", "attraction"
+        };
+
+        for (String category : importantCategories) {
+            pendingRequests.incrementAndGet();
+
+            try {
+                String query = URLEncoder.encode(category + " in " + selectedCityName, "UTF-8");
+                String url = "https://maps.googleapis.com/maps/api/place/textsearch/json" +
+                        "?query=" + query +
+                        "&key=" + API_KEY;
+
+                fetchPlacesPage(url, null, "text");
+            } catch (Exception e) {
+                Log.e("PlacesAPI", "Error encoding specific category", e);
+                pendingRequests.decrementAndGet();
+            }
         }
     }
 
@@ -507,11 +614,8 @@ public class InterestsActivity extends AppCompatActivity {
                 checkBox.setText(entry.getKey());
                 checkBox.setTag(entry.getKey());
 
-                boolean isTopCategory = i < 6;
-                checkBox.setChecked(isTopCategory);
-                if (isTopCategory) {
-                    selectedCategories.add(entry.getKey());
-                }
+                // MODIFIED: Set all checkboxes to unchecked initially
+                checkBox.setChecked(false);
 
                 checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
                     String category = (String) buttonView.getTag();
@@ -532,6 +636,9 @@ public class InterestsActivity extends AppCompatActivity {
                     currentRow.addView(checkBox);
                 }
             }
+
+            // Clear selected categories since all checkboxes are unchecked
+            selectedCategories.clear();
 
             displaySelectedCategories();
 

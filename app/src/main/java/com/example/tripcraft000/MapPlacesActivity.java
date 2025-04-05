@@ -64,6 +64,11 @@ public class MapPlacesActivity extends AppCompatActivity implements OnMapReadyCa
     private ExtendedFloatingActionButton listFab;
     private boolean isShowingMap = true;
 
+    // For pagination handling
+    private List<PlaceMarker> allPlacesList = new ArrayList<>();
+    private boolean isLoadingMorePlaces = false;
+    private static final int PAGINATION_DELAY = 2000; // 2 seconds delay between pagination requests
+
     private Map<String, Marker> markersMap = new HashMap<>();
     private ExecutorService executor;
 
@@ -237,6 +242,10 @@ public class MapPlacesActivity extends AppCompatActivity implements OnMapReadyCa
         mMap.getUiSettings().setCompassEnabled(true);
         mMap.getUiSettings().setMapToolbarEnabled(true);
 
+        // Clear lists before fetching
+        allPlacesList.clear();
+        placesList.clear();
+
         fetchPlacesByCategory();
     }
 
@@ -251,7 +260,7 @@ public class MapPlacesActivity extends AppCompatActivity implements OnMapReadyCa
         if (placeType != null) {
             String nearbyUrl = buildNearbySearchUrl(placeType);
             Log.d(TAG, "Making nearby search request: " + nearbyUrl);
-            fetchPlacesFromUrl(nearbyUrl, true);
+            fetchPlacesFromUrl(nearbyUrl, true, null);
         } else {
             // If we can't determine the place type, go straight to text search
             Log.d(TAG, "Cannot determine place type, using text search");
@@ -285,6 +294,12 @@ public class MapPlacesActivity extends AppCompatActivity implements OnMapReadyCa
                 "&key=" + API_KEY;
     }
 
+    private String buildNearbySearchUrlWithToken(String nextPageToken) {
+        return "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
+                "?pagetoken=" + nextPageToken +
+                "&key=" + API_KEY;
+    }
+
     private void fallbackToTextSearch() {
         Log.d(TAG, "Falling back to text search for: " + categoryName);
         statusText.setText("Trying alternative search method...");
@@ -302,7 +317,7 @@ public class MapPlacesActivity extends AppCompatActivity implements OnMapReadyCa
                     "&key=" + API_KEY;
 
             Log.d(TAG, "Making text search request: " + url);
-            fetchPlacesFromUrl(url, false);
+            fetchPlacesFromUrl(url, false, null);
         } catch (Exception e) {
             Log.e(TAG, "Error encoding URL", e);
             runOnUiThread(() -> {
@@ -312,7 +327,13 @@ public class MapPlacesActivity extends AppCompatActivity implements OnMapReadyCa
         }
     }
 
-    private void fetchPlacesFromUrl(final String url, final boolean canFallback) {
+    private String buildTextSearchUrlWithToken(String nextPageToken) {
+        return "https://maps.googleapis.com/maps/api/place/textsearch/json" +
+                "?pagetoken=" + nextPageToken +
+                "&key=" + API_KEY;
+    }
+
+    private void fetchPlacesFromUrl(final String url, final boolean canFallback, final String searchType) {
         executor.execute(() -> {
             HttpURLConnection connection = null;
             StringBuilder response = new StringBuilder();
@@ -356,38 +377,110 @@ public class MapPlacesActivity extends AppCompatActivity implements OnMapReadyCa
 
                 if ("OK".equals(status)) {
                     final List<PlaceMarker> places = parsePlacesResponse(jsonResponse);
-                    Log.d(TAG, "Places found: " + places.size());
+                    Log.d(TAG, "Places found in this batch: " + places.size());
 
-                    if (places.isEmpty() && canFallback) {
+                    // Check for next page token
+                    final String nextPageToken = jsonResponse.has("next_page_token") ?
+                            jsonResponse.getString("next_page_token") : null;
+                    Log.d(TAG, "Next page token: " + (nextPageToken != null ? "exists" : "none"));
+
+                    // Add current batch to all places list
+                    allPlacesList.addAll(places);
+
+                    if (places.isEmpty() && canFallback && allPlacesList.isEmpty()) {
                         Log.d(TAG, "No places found, falling back to text search");
                         fallbackToTextSearch();
                     } else {
                         runOnUiThread(() -> {
-                            addMarkersToMap(places);
-                            updatePlacesList(places);
+                            // Update UI with all places collected so far
+                            updatePlacesList(allPlacesList);
+                            addMarkersToMap(allPlacesList);
+
+                            // If there's a next page, fetch it after a delay (API requires delay between pagination requests)
+                            if (nextPageToken != null && !nextPageToken.isEmpty()) {
+                                statusText.setText("Loading more " + rawCategoryName + "...");
+
+                                // Determine whether we're doing a nearby search or text search
+                                final String currentSearchType = searchType != null ? searchType :
+                                        (url.contains("nearbysearch") ? "nearby" : "text");
+
+                                // Delay before making the next request (required by Places API)
+                                isLoadingMorePlaces = true;
+                                new Thread(() -> {
+                                    try {
+                                        Thread.sleep(PAGINATION_DELAY);
+
+                                        // Build URL for next page
+                                        String nextPageUrl;
+                                        if ("nearby".equals(currentSearchType)) {
+                                            nextPageUrl = buildNearbySearchUrlWithToken(nextPageToken);
+                                        } else {
+                                            nextPageUrl = buildTextSearchUrlWithToken(nextPageToken);
+                                        }
+
+                                        // Fetch next page (not fallback-able)
+                                        fetchPlacesFromUrl(nextPageUrl, false, currentSearchType);
+                                    } catch (InterruptedException e) {
+                                        Log.e(TAG, "Pagination delay interrupted", e);
+                                    } finally {
+                                        isLoadingMorePlaces = false;
+                                    }
+                                }).start();
+                            } else {
+                                // No more pages, show final count
+                                runOnUiThread(() -> {
+                                    String finalMessage = "Found " + allPlacesList.size() + " " + rawCategoryName;
+                                    statusText.setText(finalMessage);
+
+                                    // Hide status card after delay
+                                    if (!isLoadingMorePlaces) {
+                                        statusCard.postDelayed(() -> {
+                                            statusCard.animate()
+                                                    .alpha(0f)
+                                                    .setDuration(500)
+                                                    .withEndAction(() -> statusCard.setVisibility(View.GONE))
+                                                    .start();
+                                        }, 3000);
+                                    }
+                                });
+                            }
                         });
                     }
-                } else if (canFallback) {
+                } else if (canFallback && allPlacesList.isEmpty()) {
                     Log.w(TAG, "API returned status: " + status + ", falling back to text search");
                     fallbackToTextSearch();
                 } else {
                     Log.e(TAG, "API returned error status: " + status);
                     runOnUiThread(() -> {
-                        Toast.makeText(MapPlacesActivity.this,
-                                "Error: " + status, Toast.LENGTH_SHORT).show();
-                        statusText.setText("Error: " + status);
+                        // If we already have some places, show them despite the error
+                        if (!allPlacesList.isEmpty()) {
+                            updatePlacesList(allPlacesList);
+                            addMarkersToMap(allPlacesList);
+                            statusText.setText("Found " + allPlacesList.size() + " " + rawCategoryName + " (could not load more)");
+                        } else {
+                            Toast.makeText(MapPlacesActivity.this,
+                                    "Error: " + status, Toast.LENGTH_SHORT).show();
+                            statusText.setText("Error: " + status);
+                        }
                     });
                 }
 
             } catch (Exception e) {
                 Log.e(TAG, "Error fetching places: " + e.getMessage(), e);
-                if (canFallback) {
+                if (canFallback && allPlacesList.isEmpty()) {
                     fallbackToTextSearch();
                 } else {
                     runOnUiThread(() -> {
-                        Toast.makeText(MapPlacesActivity.this,
-                                "Error loading places: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                        statusText.setText("Error loading places");
+                        // If we already have some places, show them despite the error
+                        if (!allPlacesList.isEmpty()) {
+                            updatePlacesList(allPlacesList);
+                            addMarkersToMap(allPlacesList);
+                            statusText.setText("Found " + allPlacesList.size() + " " + rawCategoryName + " (could not load more)");
+                        } else {
+                            Toast.makeText(MapPlacesActivity.this,
+                                    "Error loading places: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            statusText.setText("Error loading places");
+                        }
                     });
                 }
             } finally {
@@ -445,18 +538,31 @@ public class MapPlacesActivity extends AppCompatActivity implements OnMapReadyCa
                     }
                 }
 
-                PlaceMarker placeMarker = new PlaceMarker(
-                        placeId,
-                        name,
-                        vicinity,
-                        lat,
-                        lng,
-                        rating,
-                        photoUrls
-                );
+                // Skip duplicates (based on placeId)
+                boolean isDuplicate = false;
+                for (PlaceMarker existingPlace : allPlacesList) {
+                    if (existingPlace.getPlaceId().equals(placeId)) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
 
-                Log.d(TAG, "Added place: " + name + " at " + lat + "," + lng);
-                placesList.add(placeMarker);
+                if (!isDuplicate) {
+                    PlaceMarker placeMarker = new PlaceMarker(
+                            placeId,
+                            name,
+                            vicinity,
+                            lat,
+                            lng,
+                            rating,
+                            photoUrls
+                    );
+
+                    Log.d(TAG, "Added place: " + name + " at " + lat + "," + lng);
+                    placesList.add(placeMarker);
+                } else {
+                    Log.d(TAG, "Skipped duplicate place: " + name + " (ID: " + placeId + ")");
+                }
             }
 
         } catch (JSONException e) {
@@ -519,14 +625,16 @@ public class MapPlacesActivity extends AppCompatActivity implements OnMapReadyCa
             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(cityCoordinates, 13));
         }
 
-        // Hide status card after delay
-        statusCard.postDelayed(() -> {
-            statusCard.animate()
-                    .alpha(0f)
-                    .setDuration(500)
-                    .withEndAction(() -> statusCard.setVisibility(View.GONE))
-                    .start();
-        }, 3000);
+        // Only hide status card when not loading more places
+        if (!isLoadingMorePlaces) {
+            statusCard.postDelayed(() -> {
+                statusCard.animate()
+                        .alpha(0f)
+                        .setDuration(500)
+                        .withEndAction(() -> statusCard.setVisibility(View.GONE))
+                        .start();
+            }, 3000);
+        }
     }
 
     public class PlaceMarker implements Serializable {
