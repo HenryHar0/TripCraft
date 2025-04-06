@@ -2,23 +2,68 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
-    android:padding="16dp"
+    android:padding="24dp"
+    android:background="@color/white"
     android:gravity="center">
+
+    <ImageView
+        android:id="@+id/imageViewEmail"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:src="@drawable/ic_email"
+        android:layout_marginBottom="24dp"
+        android:contentDescription="Email verification icon"
+        app:tint="@color/primary_color" />
+
+    <TextView
+        android:id="@+id/textViewTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Email Verification"
+        android:textSize="24sp"
+        android:textColor="@color/primary_color"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp"/>
 
     <TextView
         android:id="@+id/textViewVerify"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Please verify your email and click 'Proceed'."
-        android:textSize="18sp"
-        android:paddingBottom="24dp"/>
+        android:text="We've sent a verification link to your email address. Please check your inbox and click the link to verify your account."
+        android:textSize="16sp"
+        android:textColor="@color/primary_text"
+        android:gravity="center"
+        android:paddingBottom="32dp"/>
 
-    <Button
-        android:id="@+id/buttonProceed"
+    <TextView
+        android:id="@+id/textViewWaiting"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Proceed"
-        android:layout_gravity="center" />
+        android:text="Waiting for verification..."
+        android:textSize="14sp"
+        android:textColor="@color/secondary_text"
+        android:layout_marginBottom="24dp"/>
 
+    <Button
+        android:id="@+id/buttonOpenEmail"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Open Email App"
+        android:textColor="@color/white"
+        app:backgroundTint="@color/primary_color"
+        android:padding="14dp"
+        android:textAllCaps="false"
+        android:textSize="16sp"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/textViewResend"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Resend verification email"
+        android:textColor="@color/primary_color"
+        android:textSize="14sp"
+        android:padding="16dp"/>
 </LinearLayout>

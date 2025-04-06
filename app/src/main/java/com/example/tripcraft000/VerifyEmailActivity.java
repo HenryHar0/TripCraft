@@ -3,6 +3,7 @@ package com.example.tripcraft000;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -13,7 +14,8 @@ import com.google.firebase.auth.UserProfileChangeRequest;
 
 public class VerifyEmailActivity extends AppCompatActivity {
 
-    private Button buttonProceed;
+    private Button buttonOpenEmail;
+    private TextView textViewResend;
     private FirebaseAuth mAuth;
 
     @Override
@@ -24,9 +26,50 @@ public class VerifyEmailActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_verify_email);
 
-        buttonProceed = findViewById(R.id.buttonProceed);
+        buttonOpenEmail = findViewById(R.id.buttonOpenEmail);
+        textViewResend = findViewById(R.id.textViewResend);
 
-        buttonProceed.setOnClickListener(v -> checkEmailVerification());
+        // Open email app when button is clicked
+        buttonOpenEmail.setOnClickListener(v -> openEmailApp());
+
+        // Set up resend verification email functionality
+        textViewResend.setOnClickListener(v -> resendVerificationEmail());
+
+        // Check if email verification has been completed
+        checkEmailVerification();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Check verification status when the app resumes
+        checkEmailVerification();
+    }
+
+    private void openEmailApp() {
+        // Intent to open the email app
+        Intent intent = new Intent(Intent.ACTION_MAIN);
+        intent.addCategory(Intent.CATEGORY_APP_EMAIL);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(intent);
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(this, "No email app found. Please check your email manually.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void resendVerificationEmail() {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user != null) {
+            user.sendEmailVerification()
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            Toast.makeText(VerifyEmailActivity.this, "Verification email sent again!", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(VerifyEmailActivity.this, "Failed to send verification email.", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+        }
     }
 
     private void checkEmailVerification() {
@@ -37,12 +80,9 @@ public class VerifyEmailActivity extends AppCompatActivity {
                 if (task.isSuccessful()) {
                     if (user.isEmailVerified()) {
                         String name = "User Name";
-
                         updateUserProfile(user, name);
-                    } else {
-                        // If email is not verified, show a message and stay on the page
-                        Toast.makeText(VerifyEmailActivity.this, "Please verify your email first.", Toast.LENGTH_LONG).show();
                     }
+                    // If not verified, stay on the page and wait
                 } else {
                     Toast.makeText(VerifyEmailActivity.this, "Failed to reload user information.", Toast.LENGTH_SHORT).show();
                 }
@@ -67,6 +107,3 @@ public class VerifyEmailActivity extends AppCompatActivity {
         });
     }
 }
-
-
-
