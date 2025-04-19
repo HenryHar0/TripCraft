@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/background"
     tools:context=".LoginActivity">
 
     <TextView
@@ -12,7 +12,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Sign Up"
-        android:textColor="@color/primary_color"
+        android:textColor="@color/primary"
         android:textSize="16sp"
         android:textStyle="bold"
         android:padding="18dp"
@@ -43,14 +43,15 @@
                 android:contentDescription="App Logo"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintTop_toTopOf="parent"
+                app:tint="@color/primary" />
 
             <TextView
                 android:id="@+id/textViewTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Welcome Back"
-                android:textColor="@color/primary_color"
+                android:textColor="@color/primary"
                 android:textSize="24sp"
                 android:textStyle="bold"
                 android:layout_marginTop="8dp"
@@ -67,8 +68,8 @@
                 android:layout_marginEnd="24dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/card_background"
-                app:strokeColor="@color/primary_color"
+                app:cardBackgroundColor="@color/surface"
+                app:strokeColor="@color/secondary"
                 app:strokeWidth="1dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -85,8 +86,10 @@
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="12dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                        app:boxStrokeColor="@color/primary_color"
-                        app:hintTextColor="@color/primary_color">
+                        app:boxStrokeColor="@color/primary"
+                        app:hintTextColor="@color/primary"
+                        app:boxStrokeErrorColor="@color/error"
+                        app:errorTextColor="@color/error">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/editTextEmail"
@@ -97,8 +100,8 @@
                             android:padding="14dp"
                             android:drawableStart="@drawable/ic_email"
                             android:drawablePadding="12dp"
-                            android:drawableTint="@color/primary_color"
-                            android:textColor="@color/primary_text" />
+                            android:drawableTint="@color/primary"
+                            android:textColor="@color/on_surface" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -106,10 +109,12 @@
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                        app:boxStrokeColor="@color/primary_color"
-                        app:hintTextColor="@color/primary_color"
+                        app:boxStrokeColor="@color/primary"
+                        app:hintTextColor="@color/primary"
                         app:passwordToggleEnabled="true"
-                        app:passwordToggleTint="@color/primary_color">
+                        app:passwordToggleTint="@color/primary"
+                        app:boxStrokeErrorColor="@color/error"
+                        app:errorTextColor="@color/error">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/editTextPassword"
@@ -120,8 +125,8 @@
                             android:padding="14dp"
                             android:drawableStart="@drawable/ic_lock"
                             android:drawablePadding="12dp"
-                            android:drawableTint="@color/primary_color"
-                            android:textColor="@color/primary_text" />
+                            android:drawableTint="@color/primary"
+                            android:textColor="@color/on_surface" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <TextView
@@ -129,7 +134,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Forgot Password?"
-                        android:textColor="@color/primary_color"
+                        android:textColor="@color/secondary"
                         android:textSize="14sp"
                         android:layout_gravity="end"
                         android:layout_marginBottom="16dp"
@@ -146,7 +151,9 @@
                         android:textAllCaps="false"
                         android:textSize="16sp"
                         app:cornerRadius="10dp"
-                        android:backgroundTint="@color/primary_color" />
+                        android:textColor="@color/on_primary"
+                        app:rippleColor="@color/ripple_light"
+                        app:backgroundTint="@color/primary" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -160,7 +167,7 @@
                             android:layout_width="0dp"
                             android:layout_height="1dp"
                             android:layout_weight="1"
-                            android:background="@color/secondary_text"
+                            android:background="@color/secondary"
                             android:alpha="0.3" />
 
                         <TextView
@@ -171,13 +178,13 @@
                             android:textSize="14sp"
                             android:paddingStart="16dp"
                             android:paddingEnd="16dp"
-                            android:textColor="@color/secondary_text" />
+                            android:textColor="@color/secondary" />
 
                         <View
                             android:layout_width="0dp"
                             android:layout_height="1dp"
                             android:layout_weight="1"
-                            android:background="@color/secondary_text"
+                            android:background="@color/secondary"
                             android:alpha="0.3" />
                     </LinearLayout>
 
@@ -201,8 +208,9 @@
                             android:insetBottom="0dp"
                             app:cornerRadius="10dp"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            app:strokeColor="@color/primary_color"
-                            app:strokeWidth="1dp" />
+                            app:strokeColor="@color/secondary"
+                            app:strokeWidth="1dp"
+                            app:iconTint="@color/on_surface" />
                     </LinearLayout>
 
                 </LinearLayout>

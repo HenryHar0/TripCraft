@@ -2,8 +2,11 @@ package com.example.tripcraft000;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Toast;
@@ -11,18 +14,22 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.tripcraft000.models.GeoNamesResponse;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.text.NumberFormat;
 import java.util.HashMap;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -34,32 +41,99 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private AutoCompleteTextView searchCity;
     private MaterialButton nextButton;
-    private FloatingActionButton myLocationButton;
+    private View loadingIndicator;
     private GoogleMap mMap;
     private String geoNamesUsername = "henryhar";
     private ArrayAdapter<String> cityAdapter;
     private boolean isMapReady = false;
     private final HashMap<String, LatLng> cityCoordinates = new HashMap<>();
-    private Timer searchDebounceTimer = new Timer();
     private String selectedCityName = "";
+
+    // Minimum population threshold
+    private static final int MIN_POPULATION = 1000;
+
+    // Debounce delay for search (milliseconds)
+    private static final long SEARCH_DEBOUNCE_DELAY = 300;
+
+    // Cache for previous search results to improve responsiveness
+    private final HashMap<String, HashMap<String, LatLng>> searchCache = new HashMap<>();
+
+    // Global set to track all city keys across queries to prevent duplicates
+    private final HashSet<String> allCityKeys = new HashSet<>();
+
+    // Global set to track all display names to prevent duplicates in the adapter
+    private final HashSet<String> allDisplayNames = new HashSet<>();
+
+    // Use an executor for background tasks
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+    // Keep track of the latest search query
+    private String latestQuery = "";
+
+    // Handler for debouncing search input
+    private final Handler searchHandler = new Handler(Looper.getMainLooper());
+    private Runnable searchRunnable;
+
+    // Track if a map update is pending
+    private boolean pendingMapUpdate = false;
+    private LatLng pendingMapLocation = null;
+    private String pendingCityName = "";
+
+    // Track the currently running API call
+    private Call<GeoNamesResponse> currentApiCall;
+
+    // Retrofit client for API calls
+    private GeoNamesAPI geoNamesAPI;
+
+    // NumberFormat for formatting population numbers
+    private NumberFormat numberFormat;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_city);
 
+        // Initialize the number formatter for population display
+        numberFormat = NumberFormat.getNumberInstance(Locale.getDefault());
+
         searchCity = findViewById(R.id.search_city);
         nextButton = findViewById(R.id.next_button);
-        myLocationButton = findViewById(R.id.my_location_button);
+        loadingIndicator = findViewById(R.id.loading_indicator);
 
-        cityAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line);
+        if (loadingIndicator != null) {
+            loadingIndicator.setVisibility(View.GONE);
+        }
+
+        // Initialize Retrofit early
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://secure.geonames.org/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        geoNamesAPI = retrofit.create(GeoNamesAPI.class);
+
+        // Set up a custom adapter with better styling
+        cityAdapter = new CityAdapter(this, android.R.layout.simple_dropdown_item_1line);
         searchCity.setAdapter(cityAdapter);
+        searchCity.setThreshold(2);  // Show dropdown after 2 characters
         nextButton.setEnabled(false);
 
+        // Initialize map eagerly
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         }
+
+        // Apply animations to the search field
+        searchCity.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                searchCity.setHint("Type city name...");
+                if (!latestQuery.isEmpty() && cityAdapter.getCount() > 0) {
+                    searchCity.showDropDown();
+                }
+            } else {
+                searchCity.setHint("Where are you going?");
+            }
+        });
 
         searchCity.addTextChangedListener(new TextWatcher() {
             @Override
@@ -67,14 +141,54 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             @Override
             public void onTextChanged(CharSequence charSequence, int start, int before, int count) {
-                searchDebounceTimer.cancel();
-                searchDebounceTimer = new Timer();
-                searchDebounceTimer.schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        runOnUiThread(() -> fetchCitySuggestions(charSequence.toString().trim()));
+                final String query = charSequence.toString().trim();
+                latestQuery = query;
+
+                // Reset the selected city when typing
+                if (!query.equals(selectedCityName)) {
+                    selectedCityName = "";
+                    nextButton.setEnabled(false);
+                }
+
+                // Cancel any pending search operation
+                if (searchRunnable != null) {
+                    searchHandler.removeCallbacks(searchRunnable);
+                }
+
+                // Cancel any ongoing API call
+                if (currentApiCall != null) {
+                    currentApiCall.cancel();
+                }
+
+                // Check cache and show immediate results
+                if (query.length() >= 2) {
+                    checkAndShowFromCache(query);
+
+                    // Show loading indicator
+                    if (loadingIndicator != null) {
+                        loadingIndicator.setVisibility(View.VISIBLE);
                     }
-                }, 500);
+
+                    // Debounce the search to avoid too many API calls
+                    searchRunnable = () -> {
+                        // First check if we already have exact match in cache
+                        if (!searchCache.containsKey(query)) {
+                            executorService.execute(() -> fetchCitySuggestions(query));
+                        } else {
+                            // Just hide loading indicator if we're only using cache
+                            runOnUiThread(() -> {
+                                if (loadingIndicator != null) {
+                                    loadingIndicator.setVisibility(View.GONE);
+                                }
+                            });
+                        }
+                    };
+
+                    // Delay the search execution
+                    searchHandler.postDelayed(searchRunnable, SEARCH_DEBOUNCE_DELAY);
+                } else if (loadingIndicator != null) {
+                    loadingIndicator.setVisibility(View.GONE);
+                }
             }
 
             @Override
@@ -86,83 +200,281 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (cityCoordinates.containsKey(selectedCityName)) {
                 updateMap(cityCoordinates.get(selectedCityName), selectedCityName);
                 nextButton.setEnabled(true);
-            }
-        });
 
-        myLocationButton.setOnClickListener(v -> {
-            if (isMapReady) {
-                Toast.makeText(this, "Location functionality would center map on your position",
-                        Toast.LENGTH_SHORT).show();
+                // Hide keyboard after selection
+                searchCity.clearFocus();
             }
         });
 
         nextButton.setOnClickListener(v -> {
             if (!selectedCityName.isEmpty() && cityCoordinates.containsKey(selectedCityName)) {
+                // Add a subtle feedback animation
+                v.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100)
+                        .withEndAction(() -> v.animate().scaleX(1f).scaleY(1f).setDuration(100).start())
+                        .start();
+
                 LatLng cityLatLng = cityCoordinates.get(selectedCityName);
 
+                // Extract the basic city and country name from the formatted display string
+                String cityCountryOnly = extractCityCountryName(selectedCityName);
+
                 Intent intent = new Intent(CityActivity.this, CalendarActivity.class);
-                intent.putExtra("city", selectedCityName);
+                intent.putExtra("city", cityCountryOnly);
                 intent.putExtra("latitude", cityLatLng.latitude);
                 intent.putExtra("longitude", cityLatLng.longitude);
                 startActivity(intent);
+                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
             } else {
                 Toast.makeText(this, "Please select a city before proceeding.", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
+    /**
+     * Check several cache variants to find potential matches
+     */
+    private void checkAndShowFromCache(String query) {
+        // Early return for very short queries
+        if (query.length() < 2) {
+            return;
+        }
+
+        // Check for precise cache hits
+        if (searchCache.containsKey(query)) {
+            updateAdapterFromCache(query, searchCache.get(query));
+            return;
+        }
+
+        // Check for prefix-based cache hits (e.g., "Rom" would match "Rome" entries)
+        for (String cacheKey : searchCache.keySet()) {
+            if (cacheKey.toLowerCase().startsWith(query.toLowerCase()) ||
+                    query.toLowerCase().startsWith(cacheKey.toLowerCase())) {
+                // Found a prefix match in cache
+                HashMap<String, LatLng> cachedData = searchCache.get(cacheKey);
+                updateAdapterFromCache(query, cachedData);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Extracts the city and country name from the formatted display string with population
+     * Input format: "City, Country (Population: X,XXX,XXX)"
+     * Output format: "City, Country"
+     */
+    private String extractCityCountryName(String formattedCityName) {
+        int populationIndex = formattedCityName.indexOf(" (Population:");
+        if (populationIndex > 0) {
+            return formattedCityName.substring(0, populationIndex);
+        }
+        return formattedCityName;
+    }
+
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap;
         mMap.getUiSettings().setZoomControlsEnabled(true);
+
+        // Apply custom map style for a more modern look
+        try {
+            boolean success = mMap.setMapStyle(
+                    MapStyleOptions.loadRawResourceStyle(this, R.raw.map_style));
+            if (!success) {
+                // Fallback to default style
+            }
+        } catch (Exception e) {
+            // Error loading style
+        }
+
         isMapReady = true;
+
+        // Check if we have a pending map update
+        if (pendingMapUpdate) {
+            updateMap(pendingMapLocation, pendingCityName);
+            pendingMapUpdate = false;
+        }
+    }
+
+    private void updateAdapterFromCache(String query, HashMap<String, LatLng> cachedData) {
+        if (cachedData == null || cachedData.isEmpty()) {
+            return;
+        }
+
+        runOnUiThread(() -> {
+            // Only update if this is still the latest query or related to it
+            if (latestQuery.equals(query) || latestQuery.toLowerCase().contains(query.toLowerCase()) ||
+                    query.toLowerCase().contains(latestQuery.toLowerCase())) {
+
+                // Preserve the city coordinates
+                cityCoordinates.putAll(cachedData);
+
+                // Initialize the adapter if this is the first time
+                if (cityAdapter.getCount() == 0) {
+                    for (String cityName : cachedData.keySet()) {
+                        // Add only if we haven't already added this display name
+                        if (!allDisplayNames.contains(cityName)) {
+                            allDisplayNames.add(cityName);
+                            cityAdapter.add(cityName);
+                        }
+                    }
+                } else {
+                    // Don't add cities that are already in the adapter
+                    boolean addedNewItems = false;
+                    for (String cityName : cachedData.keySet()) {
+                        if (!allDisplayNames.contains(cityName)) {
+                            allDisplayNames.add(cityName);
+                            cityAdapter.add(cityName);
+                            addedNewItems = true;
+                        }
+                    }
+
+                    // Only notify if we added anything new
+                    if (addedNewItems) {
+                        cityAdapter.notifyDataSetChanged();
+                    }
+                }
+
+                // Force the dropdown to show
+                if (searchCity.hasFocus() && cachedData.size() > 0) {
+                    searchCity.showDropDown();
+                }
+
+                // Hide loading indicator
+                if (loadingIndicator != null) {
+                    loadingIndicator.setVisibility(View.GONE);
+                }
+            }
+        });
     }
 
     private void fetchCitySuggestions(String query) {
         if (query.isEmpty()) return;
 
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://secure.geonames.org/")
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
+        // Store the query we're processing
+        final String currentQuery = query;
 
-        GeoNamesAPI geoNamesAPI = retrofit.create(GeoNamesAPI.class);
-        Call<GeoNamesResponse> call = geoNamesAPI.searchCity(
+        // Only search for cities and towns (exclude airports, villages, etc.)
+        currentApiCall = geoNamesAPI.searchCity(
                 query,
-                "PPLC,PPLA,PPLA2,PPL",
-                10,
+                "PPLC,PPLA,PPLA2,PPLA3,PPLA4", // Major cities and admin divisions
+                20, // Fetch more to have options after filtering
                 geoNamesUsername
         );
 
-        call.enqueue(new Callback<GeoNamesResponse>() {
+        currentApiCall.enqueue(new Callback<GeoNamesResponse>() {
             @Override
             public void onResponse(Call<GeoNamesResponse> call, Response<GeoNamesResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    cityAdapter.clear();
-                    cityCoordinates.clear();
-                    for (GeoNamesResponse.City city : response.body().geonames) {
-                        String cityName = city.name + ", " + city.countryName;
-                        cityAdapter.add(cityName);
-                        cityCoordinates.put(cityName, new LatLng(Double.parseDouble(String.valueOf(city.lat)), Double.parseDouble(String.valueOf(city.lng))));
-                    }
-                    cityAdapter.notifyDataSetChanged();
+                if (response.isSuccessful() && response.body() != null && !call.isCanceled()) {
+                    // Process on a background thread
+                    executorService.execute(() -> {
+                        HashMap<String, LatLng> newCityData = new HashMap<>();
+
+                        if (response.body().geonames != null) {
+                            for (GeoNamesResponse.City city : response.body().geonames) {
+                                // Skip if essential data is missing or population is below threshold
+                                if (city.name == null
+                                        || city.lat == 0
+                                        || city.lng == 0
+                                        || city.population < MIN_POPULATION) {
+                                    continue;
+                                }
+
+                                String country = city.countryName != null ? city.countryName : "";
+
+                                // Create a truly unique key that combines all city attributes
+                                String cityKey = city.name + "," + country + "," + city.lat + "," + city.lng;
+
+                                // Format the display name
+                                String formattedPopulation = city.population > 0
+                                        ? " (Population: " + numberFormat.format(city.population) + ")"
+                                        : "";
+                                String cityName = city.name + ", " + country + formattedPopulation;
+
+                                // Only add if we haven't seen this exact city before
+                                if (!allCityKeys.contains(cityKey)) {
+                                    allCityKeys.add(cityKey);
+
+                                    // Check if we already have this display name
+                                    if (!allDisplayNames.contains(cityName)) {
+                                        newCityData.put(cityName, new LatLng(city.lat, city.lng));
+                                    }
+                                }
+                            }
+                        }
+
+                        // Cache the results (only if we got some)
+                        if (!newCityData.isEmpty()) {
+                            searchCache.put(currentQuery, newCityData);
+                            // also cache lowercase for improved matching
+                            if (!currentQuery.equals(currentQuery.toLowerCase())) {
+                                searchCache.put(currentQuery.toLowerCase(), newCityData);
+                            }
+                        }
+
+                        // Only update UI if this is still relevant to latest query
+                        if (latestQuery.equals(currentQuery)
+                                || latestQuery.toLowerCase().startsWith(currentQuery.toLowerCase())
+                                || currentQuery.toLowerCase().startsWith(latestQuery.toLowerCase())) {
+                            updateAdapterFromCache(currentQuery, newCityData);
+                        }
+                    });
+                } else {
+                    runOnUiThread(() -> {
+                        if (loadingIndicator != null) {
+                            loadingIndicator.setVisibility(View.GONE);
+                        }
+                    });
                 }
             }
 
             @Override
             public void onFailure(Call<GeoNamesResponse> call, Throwable t) {
-                Toast.makeText(CityActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                if (!call.isCanceled()) {
+                    runOnUiThread(() -> {
+                        if (loadingIndicator != null) {
+                            loadingIndicator.setVisibility(View.GONE);
+                        }
+                        Toast.makeText(CityActivity.this,
+                                "Network error. Please try again.",
+                                Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
         });
     }
 
     private void updateMap(LatLng cityLocation, String cityName) {
         if (!isMapReady) {
-            Toast.makeText(this, "Map is not ready yet. Please try again later.", Toast.LENGTH_SHORT).show();
+            // Store this update for when the map is ready
+            pendingMapUpdate = true;
+            pendingMapLocation = cityLocation;
+            pendingCityName = cityName;
             return;
         }
-        mMap.clear();
-        mMap.addMarker(new MarkerOptions().position(cityLocation).title(cityName));
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(cityLocation, 10));
+
+        runOnUiThread(() -> {
+            mMap.clear();
+
+            // Extract basic city name without population for the marker
+            String markerTitle = extractCityCountryName(cityName);
+
+            mMap.addMarker(new MarkerOptions().position(cityLocation).title(markerTitle));
+            // Use animate camera for smoother transitions
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(cityLocation, 10));
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Cancel any pending operations
+        if (searchRunnable != null) {
+            searchHandler.removeCallbacks(searchRunnable);
+        }
+        if (currentApiCall != null) {
+            currentApiCall.cancel();
+        }
+        // Shutdown the executor service
+        executorService.shutdownNow();
     }
 }

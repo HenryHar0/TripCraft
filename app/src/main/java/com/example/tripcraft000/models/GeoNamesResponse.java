@@ -1,4 +1,4 @@
-package com.example.tripcraft000;
+package com.example.tripcraft000.models;
 
 import java.util.List;
 
@@ -12,6 +12,7 @@ public class GeoNamesResponse {
         public double lat;
         public double lng;
         public int geonameId;
+        public int population;
     }
 }
 

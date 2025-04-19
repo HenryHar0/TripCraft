@@ -27,7 +27,7 @@
                 android:layout_weight="1"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="@color/primary_color" />
+                android:textColor="@color/primary" />
 
             <TextView
                 android:id="@+id/mandatoryTag"
@@ -60,7 +60,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:isIndicator="true"
-            android:progressTint="@color/colorAccent" />
+            android:progressTint="@color/secondary_variant" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/placeImagesRecyclerView"

@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_color"
+    android:background="@color/background"
     tools:context=".InterestsActivity">
 
     <LinearLayout
@@ -14,7 +14,6 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Title Section -->
         <TextView
             android:id="@+id/titleText"
             android:layout_width="match_parent"
@@ -23,11 +22,10 @@
             android:fontFamily="sans-serif-medium"
             android:text="Explore City"
             android:textAlignment="center"
-            android:textColor="@color/primary_text"
+            android:textColor="@color/on_background"
             android:textSize="24sp"
             android:textStyle="bold" />
 
-        <!-- Progress Indicators -->
         <ProgressBar
             android:id="@+id/progressBar"
             style="?android:attr/progressBarStyleHorizontal"
@@ -45,16 +43,15 @@
             android:fontFamily="sans-serif"
             android:text="Loading places..."
             android:textAlignment="center"
-            android:textColor="@color/secondary_text"
+            android:textColor="@color/on_background"
             android:textSize="16sp"
             android:visibility="gone" />
 
-        <!-- Filter Categories Section -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardBackgroundColor="@color/card_background"
+            app:cardBackgroundColor="@color/surface"
             app:cardCornerRadius="12dp"
             app:cardElevation="4dp">
 
@@ -70,7 +67,7 @@
                     android:layout_marginBottom="8dp"
                     android:fontFamily="sans-serif-medium"
                     android:text="Select Categories"
-                    android:textColor="@color/primary_text"
+                    android:textColor="@color/on_surface"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
@@ -86,36 +83,35 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:background="@drawable/button_background"
+                    android:backgroundTint="@color/primary"
                     android:fontFamily="sans-serif-medium"
                     android:paddingTop="12dp"
                     android:paddingBottom="12dp"
                     android:text="Apply Changes"
                     android:textAllCaps="false"
-                    android:textColor="@android:color/white"
+                    android:textColor="@color/on_primary"
                     android:textSize="16sp" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Interests Results Section -->
         <LinearLayout
             android:id="@+id/interestsLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical" />
+
         <Button
             android:id="@+id/nextButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:background="@drawable/button_background"
+            android:backgroundTint="@color/primary"
             android:fontFamily="sans-serif-medium"
             android:paddingTop="12dp"
             android:paddingBottom="12dp"
             android:text="Next"
             android:textAllCaps="false"
-            android:textColor="@android:color/white"
+            android:textColor="@color/on_primary"
             android:textSize="16sp" />
-
     </LinearLayout>
 </ScrollView>

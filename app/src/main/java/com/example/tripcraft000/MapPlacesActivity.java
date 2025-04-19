@@ -1,15 +1,19 @@
 package com.example.tripcraft000;
 
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.ImageButton;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.cardview.widget.CardView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -17,21 +21,19 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -39,464 +41,360 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-public class MapPlacesActivity extends AppCompatActivity implements OnMapReadyCallback,
+public class MapPlacesActivity extends AppCompatActivity implements
+        OnMapReadyCallback,
+        PlacesAdapter.OnPlaceClickListener,
         PlacesAdapter.OnPlaceSelectionChangedListener {
 
-    private static final String TAG = "MapPlacesActivity";
-    private GoogleMap mMap;
-    private LatLng cityCoordinates;
-    private String cityName;
-    private String categoryName;
-    private String rawCategoryName;
-    private final String API_KEY = "AIzaSyCYnYiiqrHO0uwKoxNQLA_mKEIuX1aRyL4";
-    private TextView mapTitleText;
-    private TextView statusText;
-    private CardView statusCard;
-    private static final Map<String, String> CATEGORY_TO_TYPE_MAP = new HashMap<>();
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
+    private static final String API_KEY = "AIzaSyCYnYiiqrHO0uwKoxNQLA_mKEIuX1aRyL4";
 
-    private View mapContainer;
-    private RecyclerView placesRecyclerView;
+    private GoogleMap googleMap;
+    private RecyclerView recyclerView;
     private PlacesAdapter placesAdapter;
-    private List<PlaceMarker> placesList = new ArrayList<>();
-    private ExtendedFloatingActionButton listFab;
-    private boolean isShowingMap = true;
+    private TextView selectedCountText;
+    private Button doneButton;
 
-    // For pagination handling
-    private List<PlaceMarker> allPlacesList = new ArrayList<>();
-    private boolean isLoadingMorePlaces = false;
-    private static final int PAGINATION_DELAY = 2000; // 2 seconds delay between pagination requests
-
-    private Map<String, Marker> markersMap = new HashMap<>();
-    private ExecutorService executor;
-
-    static {
-        CATEGORY_TO_TYPE_MAP.put("🏛 Museum", "museum");
-        CATEGORY_TO_TYPE_MAP.put("🖼 Art Gallery", "art_gallery");
-        CATEGORY_TO_TYPE_MAP.put("📸 Tourist Attraction", "tourist_attraction");
-        CATEGORY_TO_TYPE_MAP.put("🏛 Landmark", "tourist_attraction");
-        CATEGORY_TO_TYPE_MAP.put("🏺 Historical Landmark", "tourist_attraction");
-        CATEGORY_TO_TYPE_MAP.put("🏰 Historical Site", "tourist_attraction");
-        CATEGORY_TO_TYPE_MAP.put("📚 Library", "library");
-        CATEGORY_TO_TYPE_MAP.put("🌳 Park", "park");
-        CATEGORY_TO_TYPE_MAP.put("🦁 Zoo", "zoo");
-        CATEGORY_TO_TYPE_MAP.put("🎢 Amusement Park", "amusement_park");
-        CATEGORY_TO_TYPE_MAP.put("🐠 Aquarium", "aquarium");
-        CATEGORY_TO_TYPE_MAP.put("🏟 Stadium", "stadium");
-        CATEGORY_TO_TYPE_MAP.put("🎬 Movie Theater", "movie_theater");
-        CATEGORY_TO_TYPE_MAP.put("🎭 Theater", "movie_theater");
-        CATEGORY_TO_TYPE_MAP.put("🎰 Casino", "casino");
-        CATEGORY_TO_TYPE_MAP.put("🎶 Night Club", "night_club");
-        CATEGORY_TO_TYPE_MAP.put("🏖 Beach", "natural_feature");
-        CATEGORY_TO_TYPE_MAP.put("⛪ Church", "church");
-        CATEGORY_TO_TYPE_MAP.put("🛕 Temple", "hindu_temple");
-        CATEGORY_TO_TYPE_MAP.put("🕌 Mosque", "mosque");
-        CATEGORY_TO_TYPE_MAP.put("🕍 Synagogue", "synagogue");
-        CATEGORY_TO_TYPE_MAP.put("🙏 Place of Worship", "place_of_worship");
-        CATEGORY_TO_TYPE_MAP.put("🍽 Restaurant", "restaurant");
-        CATEGORY_TO_TYPE_MAP.put("☕ Cafe", "cafe");
-        CATEGORY_TO_TYPE_MAP.put("🍹 Bar", "bar");
-        CATEGORY_TO_TYPE_MAP.put("🥐 Bakery", "bakery");
-        CATEGORY_TO_TYPE_MAP.put("🍲 Food", "restaurant");
-        CATEGORY_TO_TYPE_MAP.put("🛍 Shopping Mall", "shopping_mall");
-        CATEGORY_TO_TYPE_MAP.put("🏪 Store", "store");
-        CATEGORY_TO_TYPE_MAP.put("📚 Book Store", "book_store");
-        CATEGORY_TO_TYPE_MAP.put("👚 Clothing Store", "clothing_store");
-        CATEGORY_TO_TYPE_MAP.put("🏬 Department Store", "department_store");
-        CATEGORY_TO_TYPE_MAP.put("🏨 Hotel", "lodging");
-        CATEGORY_TO_TYPE_MAP.put("🚂 Train Station", "train_station");
-        CATEGORY_TO_TYPE_MAP.put("🚇 Metro Station", "subway_station");
-        CATEGORY_TO_TYPE_MAP.put("🚌 Bus Station", "bus_station");
-        CATEGORY_TO_TYPE_MAP.put("✈️ Airport", "airport");
-        CATEGORY_TO_TYPE_MAP.put("💆 Spa", "spa");
-        CATEGORY_TO_TYPE_MAP.put("🏞 Natural Feature", "natural_feature");
-        CATEGORY_TO_TYPE_MAP.put("🏕 Campground", "campground");
-        CATEGORY_TO_TYPE_MAP.put("💰 ATM", "atm");
-        CATEGORY_TO_TYPE_MAP.put("💊 Pharmacy", "pharmacy");
-        CATEGORY_TO_TYPE_MAP.put("🧳 Travel Agency", "travel_agency");
-        CATEGORY_TO_TYPE_MAP.put("📮 Post Office", "post_office");
-        CATEGORY_TO_TYPE_MAP.put("📍 Point of Interest", "point_of_interest");
-    }
+    private String selectedCityName;
+    private LatLng selectedCityCoordinates;
+    private String selectedCategoryName;
+    private List<PlaceMarker> allPlaces;
+    private Map<String, Marker> placeMarkers = new HashMap<>();
+    private LatLngBounds cityBounds;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map_places);
 
-        executor = Executors.newSingleThreadExecutor();
+        // Set up the back button
+        findViewById(R.id.backButton).setOnClickListener(v -> onBackPressed());
 
-        cityName = getIntent().getStringExtra("city_name");
-        categoryName = getIntent().getStringExtra("category_name");
-        rawCategoryName = categoryName;
-        double lat = getIntent().getDoubleExtra("city_lat", 0);
-        double lng = getIntent().getDoubleExtra("city_lng", 0);
-        cityCoordinates = new LatLng(lat, lng);
+        // Set up the list toggle button
+        findViewById(R.id.listFab).setOnClickListener(v -> toggleListView());
 
-        Log.d(TAG, "City: " + cityName + ", Category: " + categoryName + ", Coords: " + lat + "," + lng);
+        // Set up the list container
+        findViewById(R.id.listContainer).setVisibility(View.GONE);
 
-        setupUI();
+        // Get city information from intent
+        selectedCityName = getIntent().getStringExtra("city_name");
+        double cityLat = getIntent().getDoubleExtra("city_lat", 0);
+        double cityLng = getIntent().getDoubleExtra("city_lng", 0);
+        selectedCityCoordinates = new LatLng(cityLat, cityLng);
+        selectedCategoryName = getIntent().getStringExtra("category_name");
 
+        // Initialize UI components
+        recyclerView = findViewById(R.id.placesRecyclerView);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+        selectedCountText = findViewById(R.id.selectedCountText);
+        doneButton = findViewById(R.id.doneButton);
+        doneButton.setOnClickListener(v -> finishWithSelectedPlaces());
+
+        // Set title based on category
+        TextView titleText = findViewById(R.id.titleText);
+        if (titleText != null && selectedCategoryName != null) {
+            titleText.setText(selectedCategoryName + " in " + selectedCityName);
+        }
+
+        // Initialize map
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         }
 
-        setupRecyclerView();
-    }
+        // Fetch city boundaries
+        fetchCityBoundaries(selectedCityName, bounds -> {
+            if (bounds != null) {
+                cityBounds = bounds; // Store as a class field
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        executor.shutdown();
-    }
-
-    private void setupUI() {
-        Toolbar toolbar = findViewById(R.id.mapToolbar);
-        setSupportActionBar(toolbar);
-        getSupportActionBar().setDisplayShowTitleEnabled(false);
-
-        mapTitleText = findViewById(R.id.mapTitleText);
-        statusText = findViewById(R.id.statusText);
-        statusCard = findViewById(R.id.statusCard);
-        ImageButton backButton = findViewById(R.id.backButton);
-        listFab = findViewById(R.id.listFab);
-        mapContainer = findViewById(R.id.mapContainer);
-        placesRecyclerView = findViewById(R.id.placesRecyclerView);
-
-        mapTitleText.setText(categoryName + " in " + cityName);
-        statusText.setText("Loading " + categoryName + "...");
-        statusCard.setVisibility(View.VISIBLE);
-
-        placesRecyclerView.setVisibility(View.GONE);
-        mapContainer.setVisibility(View.VISIBLE);
-        listFab.setText("Show List");
-        listFab.setIconResource(R.drawable.ic_list);
-        listFab.setEnabled(false);
-
-        backButton.setOnClickListener(v -> finish());
-        listFab.setOnClickListener(v -> toggleView());
-    }
-
-    private void setupRecyclerView() {
-        placesAdapter = new PlacesAdapter(placesList, this::onPlaceItemClick, this);
-        placesRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        placesRecyclerView.setAdapter(placesAdapter);
-    }
-
-    private void toggleView() {
-        isShowingMap = !isShowingMap;
-
-        if (isShowingMap) {
-            mapContainer.setVisibility(View.VISIBLE);
-            placesRecyclerView.setVisibility(View.GONE);
-            listFab.setText("Show List");
-            listFab.setIconResource(R.drawable.ic_list);
-        } else {
-            mapContainer.setVisibility(View.GONE);
-            placesRecyclerView.setVisibility(View.VISIBLE);
-            listFab.setText("Show Map");
-            listFab.setIconResource(R.drawable.ic_map);
-        }
-    }
-
-    public void onPlaceSelectionChanged(PlaceMarker place, boolean isSelected, boolean isMandatory) {
-        // Handle selection change here
-        // For now, we can just log it or do nothing
-        Log.d(TAG, "Place selection changed: " + place.getName() +
-                " - Selected: " + isSelected +
-                " - Mandatory: " + isMandatory);
-    }
-
-    private void onPlaceItemClick(PlaceMarker place) {
-        if (!isShowingMap) {
-            toggleView();
-        }
-
-        if (mMap != null) {
-            LatLng location = new LatLng(place.getLatitude(), place.getLongitude());
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(location, 16));
-
-            String markerId = place.getPlaceId();
-            Marker marker = markersMap.get(markerId);
-            if (marker != null) {
-                marker.showInfoWindow();
-            }
-        }
-    }
-
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
-
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(cityCoordinates, 13));
-
-        try {
-            mMap.setMyLocationEnabled(true);
-        } catch (SecurityException e) {
-            Log.e(TAG, "Location permission not granted", e);
-        }
-        mMap.getUiSettings().setZoomControlsEnabled(true);
-        mMap.getUiSettings().setCompassEnabled(true);
-        mMap.getUiSettings().setMapToolbarEnabled(true);
-
-        // Clear lists before fetching
-        allPlacesList.clear();
-        placesList.clear();
-
-        fetchPlacesByCategory();
-    }
-
-    private void fetchPlacesByCategory() {
-        Log.d(TAG, "Fetching places for category: " + categoryName);
-        statusText.setText("Searching for " + categoryName + " in " + cityName + "...");
-
-        // First try with nearby search
-        String placeType = getPlaceTypeFromCategory();
-        Log.d(TAG, "Converted to place type: " + placeType);
-
-        if (placeType != null) {
-            String nearbyUrl = buildNearbySearchUrl(placeType);
-            Log.d(TAG, "Making nearby search request: " + nearbyUrl);
-            fetchPlacesFromUrl(nearbyUrl, true, null);
-        } else {
-            // If we can't determine the place type, go straight to text search
-            Log.d(TAG, "Cannot determine place type, using text search");
-            fallbackToTextSearch();
-        }
-    }
-
-    private String getPlaceTypeFromCategory() {
-        // Try the direct mapping first
-        String placeType = CATEGORY_TO_TYPE_MAP.get(categoryName);
-
-        // If not found and category has emoji prefix, try removing emoji
-        if (placeType == null && categoryName.contains(" ")) {
-            String categoryWithoutEmoji = categoryName.substring(categoryName.indexOf(" ") + 1);
-            placeType = CATEGORY_TO_TYPE_MAP.get(categoryWithoutEmoji);
-
-            // If still not found, use the category name without emoji as the type
-            if (placeType == null) {
-                placeType = categoryWithoutEmoji.toLowerCase().replace(" ", "_");
-            }
-        }
-
-        return placeType;
-    }
-
-    private String buildNearbySearchUrl(String placeType) {
-        return "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
-                "?location=" + cityCoordinates.latitude + "," + cityCoordinates.longitude +
-                "&radius=10000" + // Increased radius from 5000 to 10000
-                "&type=" + placeType +
-                "&key=" + API_KEY;
-    }
-
-    private String buildNearbySearchUrlWithToken(String nextPageToken) {
-        return "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
-                "?pagetoken=" + nextPageToken +
-                "&key=" + API_KEY;
-    }
-
-    private void fallbackToTextSearch() {
-        Log.d(TAG, "Falling back to text search for: " + categoryName);
-        statusText.setText("Trying alternative search method...");
-
-        try {
-            String queryText = categoryName;
-            // Remove emoji if present
-            if (queryText.contains(" ")) {
-                queryText = queryText.substring(queryText.indexOf(" ") + 1);
-            }
-
-            String query = URLEncoder.encode(queryText + " in " + cityName, "UTF-8");
-            String url = "https://maps.googleapis.com/maps/api/place/textsearch/json" +
-                    "?query=" + query +
-                    "&key=" + API_KEY;
-
-            Log.d(TAG, "Making text search request: " + url);
-            fetchPlacesFromUrl(url, false, null);
-        } catch (Exception e) {
-            Log.e(TAG, "Error encoding URL", e);
-            runOnUiThread(() -> {
-                Toast.makeText(this, "Error searching for places", Toast.LENGTH_SHORT).show();
-                statusText.setText("Error searching for places");
-            });
-        }
-    }
-
-    private String buildTextSearchUrlWithToken(String nextPageToken) {
-        return "https://maps.googleapis.com/maps/api/place/textsearch/json" +
-                "?pagetoken=" + nextPageToken +
-                "&key=" + API_KEY;
-    }
-
-    private void fetchPlacesFromUrl(final String url, final boolean canFallback, final String searchType) {
-        executor.execute(() -> {
-            HttpURLConnection connection = null;
-            StringBuilder response = new StringBuilder();
-
-            try {
-                // Setup connection
-                URL requestUrl = new URL(url);
-                connection = (HttpURLConnection) requestUrl.openConnection();
-                connection.setRequestMethod("GET");
-                connection.setConnectTimeout(15000);
-                connection.setReadTimeout(15000);
-
-                // Check if the connection was successful
-                int responseCode = connection.getResponseCode();
-                Log.d(TAG, "API Response code: " + responseCode);
-
-                if (responseCode != HttpURLConnection.HTTP_OK) {
-                    Log.e(TAG, "HTTP Error: " + responseCode);
-                    throw new IOException("HTTP error code: " + responseCode);
+                // If we already have places loaded, filter them now
+                if (allPlaces != null && !allPlaces.isEmpty()) {
+                    List<PlaceMarker> cityPlaces = filterPlacesToCityOnly(allPlaces, cityBounds);
+                    updatePlacesDisplay(cityPlaces);
                 }
 
-                // Read the response
-                try (InputStream inputStream = connection.getInputStream();
-                     BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
-                }
-
-                // Log a small portion of the response for debugging
-                String responsePreview = response.length() > 500 ?
-                        response.substring(0, 500) + "..." : response.toString();
-                Log.d(TAG, "API Response preview: " + responsePreview);
-
-                // Parse the response
-                JSONObject jsonResponse = new JSONObject(response.toString());
-                String status = jsonResponse.getString("status");
-                Log.d(TAG, "Response status: " + status);
-
-                if ("OK".equals(status)) {
-                    final List<PlaceMarker> places = parsePlacesResponse(jsonResponse);
-                    Log.d(TAG, "Places found in this batch: " + places.size());
-
-                    // Check for next page token
-                    final String nextPageToken = jsonResponse.has("next_page_token") ?
-                            jsonResponse.getString("next_page_token") : null;
-                    Log.d(TAG, "Next page token: " + (nextPageToken != null ? "exists" : "none"));
-
-                    // Add current batch to all places list
-                    allPlacesList.addAll(places);
-
-                    if (places.isEmpty() && canFallback && allPlacesList.isEmpty()) {
-                        Log.d(TAG, "No places found, falling back to text search");
-                        fallbackToTextSearch();
-                    } else {
-                        runOnUiThread(() -> {
-                            // Update UI with all places collected so far
-                            updatePlacesList(allPlacesList);
-                            addMarkersToMap(allPlacesList);
-
-                            // If there's a next page, fetch it after a delay (API requires delay between pagination requests)
-                            if (nextPageToken != null && !nextPageToken.isEmpty()) {
-                                statusText.setText("Loading more " + rawCategoryName + "...");
-
-                                // Determine whether we're doing a nearby search or text search
-                                final String currentSearchType = searchType != null ? searchType :
-                                        (url.contains("nearbysearch") ? "nearby" : "text");
-
-                                // Delay before making the next request (required by Places API)
-                                isLoadingMorePlaces = true;
-                                new Thread(() -> {
-                                    try {
-                                        Thread.sleep(PAGINATION_DELAY);
-
-                                        // Build URL for next page
-                                        String nextPageUrl;
-                                        if ("nearby".equals(currentSearchType)) {
-                                            nextPageUrl = buildNearbySearchUrlWithToken(nextPageToken);
-                                        } else {
-                                            nextPageUrl = buildTextSearchUrlWithToken(nextPageToken);
-                                        }
-
-                                        // Fetch next page (not fallback-able)
-                                        fetchPlacesFromUrl(nextPageUrl, false, currentSearchType);
-                                    } catch (InterruptedException e) {
-                                        Log.e(TAG, "Pagination delay interrupted", e);
-                                    } finally {
-                                        isLoadingMorePlaces = false;
-                                    }
-                                }).start();
-                            } else {
-                                // No more pages, show final count
-                                runOnUiThread(() -> {
-                                    String finalMessage = "Found " + allPlacesList.size() + " " + rawCategoryName;
-                                    statusText.setText(finalMessage);
-
-                                    // Hide status card after delay
-                                    if (!isLoadingMorePlaces) {
-                                        statusCard.postDelayed(() -> {
-                                            statusCard.animate()
-                                                    .alpha(0f)
-                                                    .setDuration(500)
-                                                    .withEndAction(() -> statusCard.setVisibility(View.GONE))
-                                                    .start();
-                                        }, 3000);
-                                    }
-                                });
-                            }
-                        });
-                    }
-                } else if (canFallback && allPlacesList.isEmpty()) {
-                    Log.w(TAG, "API returned status: " + status + ", falling back to text search");
-                    fallbackToTextSearch();
-                } else {
-                    Log.e(TAG, "API returned error status: " + status);
-                    runOnUiThread(() -> {
-                        // If we already have some places, show them despite the error
-                        if (!allPlacesList.isEmpty()) {
-                            updatePlacesList(allPlacesList);
-                            addMarkersToMap(allPlacesList);
-                            statusText.setText("Found " + allPlacesList.size() + " " + rawCategoryName + " (could not load more)");
-                        } else {
-                            Toast.makeText(MapPlacesActivity.this,
-                                    "Error: " + status, Toast.LENGTH_SHORT).show();
-                            statusText.setText("Error: " + status);
-                        }
-                    });
-                }
-
-            } catch (Exception e) {
-                Log.e(TAG, "Error fetching places: " + e.getMessage(), e);
-                if (canFallback && allPlacesList.isEmpty()) {
-                    fallbackToTextSearch();
-                } else {
-                    runOnUiThread(() -> {
-                        // If we already have some places, show them despite the error
-                        if (!allPlacesList.isEmpty()) {
-                            updatePlacesList(allPlacesList);
-                            addMarkersToMap(allPlacesList);
-                            statusText.setText("Found " + allPlacesList.size() + " " + rawCategoryName + " (could not load more)");
-                        } else {
-                            Toast.makeText(MapPlacesActivity.this,
-                                    "Error loading places: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                            statusText.setText("Error loading places");
-                        }
-                    });
-                }
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
+                // Focus map on the city boundaries
+                if (googleMap != null) {
+                    googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(cityBounds, 50));
                 }
             }
+
+            // Start fetching places
+            fetchPlacesForCategory(selectedCityName, selectedCategoryName);
         });
     }
 
-    private List<PlaceMarker> parsePlacesResponse(JSONObject response) {
-        List<PlaceMarker> placesList = new ArrayList<>();
+    private void toggleListView() {
+        androidx.constraintlayout.widget.ConstraintLayout listContainer = findViewById(R.id.listContainer);
+        com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton listFab = findViewById(R.id.listFab);
 
+        // Toggle visibility
+        boolean isListVisible = listContainer.getVisibility() == View.VISIBLE;
+
+        // Update visibility
+        listContainer.setVisibility(isListVisible ? View.GONE : View.VISIBLE);
+
+        // Update FAB text
+        listFab.setText(isListVisible ? "Show List" : "Hide List");
+        listFab.setIcon(getDrawable(isListVisible ?
+                R.drawable.ic_list :
+                R.drawable.ic_map));
+    }
+
+    @Override
+    public void onMapReady(GoogleMap map) {
+        googleMap = map;
+
+        // Set initial camera position to the city
+        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(selectedCityCoordinates, 12));
+
+        // Enable my location if permission is granted
+        if (hasLocationPermission()) {
+            enableMyLocation();
+        } else {
+            requestLocationPermission();
+        }
+
+        // Set up map click listener
+        googleMap.setOnInfoWindowClickListener(marker -> {
+            String placeId = (String) marker.getTag();
+            if (placeId != null) {
+                for (PlaceMarker place : allPlaces) {
+                    if (place.getPlaceId().equals(placeId)) {
+                        // Toggle selection
+                        place.setSelected(!place.isSelected());
+                        updateMarkerIcon(marker, place.isSelected());
+
+                        // Update the adapter
+                        placesAdapter.notifyDataSetChanged();
+                        updateSelectedCount();
+                        break;
+                    }
+                }
+            }
+        });
+
+        // If we already have city bounds, zoom to them
+        if (cityBounds != null) {
+            googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(cityBounds, 50));
+        }
+    }
+
+    private void fetchCityBoundaries(String cityName, final BoundariesCallback callback) {
+        // Format the URL for geocoding request
+        String encodedCityName;
         try {
-            JSONArray results = response.getJSONArray("results");
-            Log.d(TAG, "Parsing " + results.length() + " places");
+            encodedCityName = URLEncoder.encode(cityName, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            Log.e("MapPlacesActivity", "Error encoding city name", e);
+            callback.onBoundariesFetched(null);
+            return;
+        }
+
+        String url = "https://maps.googleapis.com/maps/api/geocode/json" +
+                "?address=" + encodedCityName +
+                "&key=" + API_KEY;
+
+        new Thread(() -> {
+            try {
+                URL requestUrl = new URL(url);
+                HttpURLConnection connection = (HttpURLConnection) requestUrl.openConnection();
+                connection.setRequestMethod("GET");
+
+                InputStreamReader reader = new InputStreamReader(connection.getInputStream());
+                BufferedReader bufferedReader = new BufferedReader(reader);
+                StringBuilder response = new StringBuilder();
+                String line;
+
+                while ((line = bufferedReader.readLine()) != null) {
+                    response.append(line);
+                }
+
+                bufferedReader.close();
+
+                JSONObject jsonResponse = new JSONObject(response.toString());
+                LatLngBounds bounds = parseBoundaries(jsonResponse);
+
+                // Return the boundaries on the main thread
+                runOnUiThread(() -> callback.onBoundariesFetched(bounds));
+
+            } catch (Exception e) {
+                Log.e("MapPlacesActivity", "Error fetching city boundaries", e);
+                runOnUiThread(() -> callback.onBoundariesFetched(null));
+            }
+        }).start();
+    }
+
+    // Parse the geocoding response to extract viewport boundaries
+    private LatLngBounds parseBoundaries(JSONObject jsonResponse) throws JSONException {
+        if (jsonResponse.getString("status").equals("OK")) {
+            JSONArray results = jsonResponse.getJSONArray("results");
+            if (results.length() > 0) {
+                JSONObject result = results.getJSONObject(0);
+
+                // Check if there's a viewport in the geometry
+                JSONObject geometry = result.getJSONObject("geometry");
+                if (geometry.has("viewport")) {
+                    JSONObject viewport = geometry.getJSONObject("viewport");
+
+                    JSONObject northeast = viewport.getJSONObject("northeast");
+                    double neLat = northeast.getDouble("lat");
+                    double neLng = northeast.getDouble("lng");
+
+                    JSONObject southwest = viewport.getJSONObject("southwest");
+                    double swLat = southwest.getDouble("lat");
+                    double swLng = southwest.getDouble("lng");
+
+                    return new LatLngBounds(
+                            new LatLng(swLat, swLng),  // Southwest corner
+                            new LatLng(neLat, neLng)   // Northeast corner
+                    );
+                }
+            }
+        }
+        return null;
+    }
+
+    // Callback interface for asynchronous boundaries fetching
+    interface BoundariesCallback {
+        void onBoundariesFetched(LatLngBounds bounds);
+    }
+
+    // Method to check if a place is within city boundaries
+    private boolean isWithinCityBoundaries(double placeLat, double placeLng, LatLngBounds cityBounds) {
+        // If we have boundaries from the API, use them
+        if (cityBounds != null) {
+            return cityBounds.contains(new LatLng(placeLat, placeLng));
+        }
+
+        // Fallback to radius-based approach if we couldn't get boundaries
+        LatLng cityCenter = selectedCityCoordinates;
+
+        double distance = calculateDistance(
+                cityCenter.latitude, cityCenter.longitude,
+                placeLat, placeLng
+        );
+
+        // Use a default radius of 7km if boundaries couldn't be fetched
+        return distance <= 7;
+    }
+
+    // Calculate distance between two points using Haversine formula
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        int radiusEarth = 6371; // Radius of the earth in km
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return radiusEarth * c;
+    }
+
+    // Update filtering method to use boundaries
+    private List<PlaceMarker> filterPlacesToCityOnly(List<PlaceMarker> allPlaces, LatLngBounds cityBounds) {
+        List<PlaceMarker> cityPlaces = new ArrayList<>();
+
+        for (PlaceMarker place : allPlaces) {
+            if (isWithinCityBoundaries(place.getLatitude(), place.getLongitude(), cityBounds)) {
+                cityPlaces.add(place);
+            }
+        }
+
+        Log.d("MapPlacesActivity", "Filtered " + allPlaces.size() +
+                " places down to " + cityPlaces.size() + " in city");
+
+        return cityPlaces;
+    }
+
+    private void fetchPlacesForCategory(String cityName, String categoryName) {
+        // Extract actual category name (remove emoji if present)
+        String category = categoryName;
+        if (category.contains(" ")) {
+            category = category.substring(category.indexOf(" ") + 1);
+        }
+
+        // Create search query
+        String query;
+        try {
+            query = URLEncoder.encode(category + " in " + cityName, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            Log.e("MapPlacesActivity", "Error encoding query", e);
+            Toast.makeText(this, "Error creating search query", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Build the URL
+        String url = "https://maps.googleapis.com/maps/api/place/textsearch/json" +
+                "?query=" + query +
+                "&key=" + API_KEY;
+
+        fetchPlacesFromUrl(url);
+    }
+
+    private void fetchPlacesFromUrl(final String url) {
+        new Thread(() -> {
+            try {
+                URL requestUrl = new URL(url);
+                HttpURLConnection connection = (HttpURLConnection) requestUrl.openConnection();
+                connection.setRequestMethod("GET");
+
+                InputStreamReader reader = new InputStreamReader(connection.getInputStream());
+                BufferedReader bufferedReader = new BufferedReader(reader);
+                StringBuilder response = new StringBuilder();
+                String line;
+
+                while ((line = bufferedReader.readLine()) != null) {
+                    response.append(line);
+                }
+
+                bufferedReader.close();
+
+                final JSONObject jsonResponse = new JSONObject(response.toString());
+
+                // Process response on UI thread
+                runOnUiThread(() -> handlePlacesApiResponse(jsonResponse));
+
+            } catch (Exception e) {
+                Log.e("MapPlacesActivity", "Error fetching places", e);
+                runOnUiThread(() -> Toast.makeText(MapPlacesActivity.this,
+                        "Error fetching places", Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
+
+    private void handlePlacesApiResponse(JSONObject response) {
+        try {
+            allPlaces = convertJsonToPlaceMarkers(response);
+
+            // Filter places to only those within city boundaries
+            List<PlaceMarker> cityPlaces = filterPlacesToCityOnly(allPlaces, cityBounds);
+
+            // Update UI with filtered places
+            updatePlacesDisplay(cityPlaces);
+
+        } catch (JSONException e) {
+            Log.e("MapPlacesActivity", "Error parsing places response", e);
+        }
+    }
+
+    private void updatePlacesDisplay(List<PlaceMarker> places) {
+        // Update RecyclerView
+        placesAdapter = new PlacesAdapter(places, this, this);
+        recyclerView.setAdapter(placesAdapter);
+
+        // Update map markers
+        updateMapMarkers(places);
+    }
+
+    private List<PlaceMarker> convertJsonToPlaceMarkers(JSONObject jsonResponse) throws JSONException {
+        List<PlaceMarker> places = new ArrayList<>();
+
+        if (jsonResponse.getString("status").equals("OK")) {
+            JSONArray results = jsonResponse.getJSONArray("results");
 
             for (int i = 0; i < results.length(); i++) {
                 JSONObject place = results.getJSONObject(i);
@@ -504,30 +402,19 @@ public class MapPlacesActivity extends AppCompatActivity implements OnMapReadyCa
                 String placeId = place.getString("place_id");
                 String name = place.getString("name");
 
-                // Handle different response formats (nearby vs text search)
-                String vicinity;
-                if (place.has("vicinity")) {
-                    vicinity = place.getString("vicinity");
-                } else if (place.has("formatted_address")) {
-                    vicinity = place.getString("formatted_address");
-                } else {
-                    vicinity = "Address not available";
-                }
+                String vicinity = place.has("vicinity") ? place.getString("vicinity") :
+                        (place.has("formatted_address") ? place.getString("formatted_address") : "");
 
-                JSONObject geometry = place.getJSONObject("geometry");
-                JSONObject location = geometry.getJSONObject("location");
+                double rating = place.has("rating") ? place.getDouble("rating") : 0;
+
+                JSONObject location = place.getJSONObject("geometry").getJSONObject("location");
                 double lat = location.getDouble("lat");
                 double lng = location.getDouble("lng");
-
-                float rating = 0;
-                if (place.has("rating")) {
-                    rating = (float) place.getDouble("rating");
-                }
 
                 List<String> photoUrls = new ArrayList<>();
                 if (place.has("photos")) {
                     JSONArray photos = place.getJSONArray("photos");
-                    for (int j = 0; j < Math.min(photos.length(), 5); j++) { // Limit to 5 photos
+                    for (int j = 0; j < Math.min(photos.length(), 5); j++) {
                         JSONObject photo = photos.getJSONObject(j);
                         String photoReference = photo.getString("photo_reference");
                         String photoUrl = "https://maps.googleapis.com/maps/api/place/photo" +
@@ -538,117 +425,183 @@ public class MapPlacesActivity extends AppCompatActivity implements OnMapReadyCa
                     }
                 }
 
-                // Skip duplicates (based on placeId)
-                boolean isDuplicate = false;
-                for (PlaceMarker existingPlace : allPlacesList) {
-                    if (existingPlace.getPlaceId().equals(placeId)) {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-
-                if (!isDuplicate) {
-                    PlaceMarker placeMarker = new PlaceMarker(
-                            placeId,
-                            name,
-                            vicinity,
-                            lat,
-                            lng,
-                            rating,
-                            photoUrls
-                    );
-
-                    Log.d(TAG, "Added place: " + name + " at " + lat + "," + lng);
-                    placesList.add(placeMarker);
-                } else {
-                    Log.d(TAG, "Skipped duplicate place: " + name + " (ID: " + placeId + ")");
-                }
+                PlaceMarker placeMarker = new PlaceMarker(placeId, name, vicinity, lat, lng, rating, photoUrls);
+                places.add(placeMarker);
             }
-
-        } catch (JSONException e) {
-            Log.e(TAG, "Error parsing places response", e);
         }
 
-        return placesList;
+        return places;
     }
 
-    private void updatePlacesList(List<PlaceMarker> places) {
-        placesList.clear();
-        placesList.addAll(places);
-        placesAdapter.notifyDataSetChanged();
+    private void updateMapMarkers(List<PlaceMarker> places) {
+        if (googleMap == null) return;
 
-        listFab.setEnabled(!places.isEmpty());
-    }
+        // Clear existing markers
+        googleMap.clear();
+        placeMarkers.clear();
 
-    private void addMarkersToMap(List<PlaceMarker> places) {
+        // If there are no places, return
         if (places.isEmpty()) {
-            Toast.makeText(this, "No places found for " + rawCategoryName, Toast.LENGTH_SHORT).show();
-            statusText.setText("No " + rawCategoryName + " found in this area");
+            Toast.makeText(this, "No places found", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        mMap.clear();
-        markersMap.clear();
-
+        // Add markers for all places and build bounds
         LatLngBounds.Builder boundsBuilder = new LatLngBounds.Builder();
 
         for (PlaceMarker place : places) {
-            String snippet = place.getRating() > 0 ?
-                    "Rating: " + place.getRating() + " ⭐\n" + place.getVicinity() :
-                    place.getVicinity();
+            LatLng position = new LatLng(place.getLatitude(), place.getLongitude());
+            boundsBuilder.include(position);
 
-            LatLng placeLocation = new LatLng(place.getLatitude(), place.getLongitude());
-            Marker marker = mMap.addMarker(new MarkerOptions()
-                    .position(placeLocation)
+            MarkerOptions markerOptions = new MarkerOptions()
+                    .position(position)
                     .title(place.getName())
-                    .snippet(snippet));
+                    .snippet(place.getVicinity());
 
-            boundsBuilder.include(placeLocation);
-            markersMap.put(place.getPlaceId(), marker);
-        }
-
-        statusText.setText("Found " + places.size() + " " + rawCategoryName);
-        mapTitleText.setText(rawCategoryName + " in " + cityName);
-
-        try {
-            if (places.size() == 1) {
-                LatLng location = new LatLng(places.get(0).getLatitude(), places.get(0).getLongitude());
-                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(location, 15));
-            } else {
-                LatLngBounds bounds = boundsBuilder.build();
-                int padding = 100;
-                mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding));
+            // Set marker color based on selection
+            if (place.isSelected()) {
+                markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
             }
-        } catch (Exception e) {
-            Log.e(TAG, "Error setting camera bounds", e);
-            // Fallback to city center
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(cityCoordinates, 13));
+
+            Marker marker = googleMap.addMarker(markerOptions);
+            if (marker != null) {
+                marker.setTag(place.getPlaceId());
+                placeMarkers.put(place.getPlaceId(), marker);
+            }
         }
 
-        // Only hide status card when not loading more places
-        if (!isLoadingMorePlaces) {
-            statusCard.postDelayed(() -> {
-                statusCard.animate()
-                        .alpha(0f)
-                        .setDuration(500)
-                        .withEndAction(() -> statusCard.setVisibility(View.GONE))
-                        .start();
-            }, 3000);
+        // Zoom to show all markers
+        try {
+            LatLngBounds bounds = boundsBuilder.build();
+            googleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100));
+        } catch (IllegalStateException e) {
+            // Handle the case where no points were added to the builder
+            Log.e("MapPlacesActivity", "No valid locations to build bounds", e);
         }
     }
 
-    public class PlaceMarker implements Serializable {
-        private String placeId;
-        private String name;
-        private String vicinity;
-        private double latitude;
-        private double longitude;
-        private float rating;
-        private List<String> photoUrls;
-        private boolean isSelected;
-        private boolean isMandatory;
+    private void updateMarkerIcon(Marker marker, boolean isSelected) {
+        if (marker != null) {
+            float hue = isSelected ? BitmapDescriptorFactory.HUE_GREEN : BitmapDescriptorFactory.HUE_RED;
+            marker.setIcon(BitmapDescriptorFactory.defaultMarker(hue));
+        }
+    }
 
-        public PlaceMarker(String placeId, String name, String vicinity, double latitude, double longitude, float rating, List<String> photoUrls) {
+    private void updateSelectedCount() {
+        List<PlaceMarker> selectedPlaces = placesAdapter.getSelectedPlaces();
+        List<PlaceMarker> mandatoryPlaces = placesAdapter.getMandatoryPlaces();
+
+        String countText = selectedPlaces.size() + " places selected";
+        if (!mandatoryPlaces.isEmpty()) {
+            countText += " (" + mandatoryPlaces.size() + " mandatory)";
+        }
+
+        selectedCountText.setText(countText);
+    }
+
+    private void finishWithSelectedPlaces() {
+        List<PlaceMarker> selectedPlaces = placesAdapter.getSelectedPlaces();
+
+        if (selectedPlaces.isEmpty()) {
+            Toast.makeText(this, "Please select at least one place", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Here you would typically pass these selected places back to the previous activity
+        // For example:
+        Intent resultIntent = new Intent();
+        ArrayList<String> selectedPlaceIds = new ArrayList<>();
+        ArrayList<String> selectedPlaceNames = new ArrayList<>();
+        ArrayList<String> mandatoryPlaceIds = new ArrayList<>();
+
+        for (PlaceMarker place : selectedPlaces) {
+            selectedPlaceIds.add(place.getPlaceId());
+            selectedPlaceNames.add(place.getName());
+
+            if (place.isMandatory()) {
+                mandatoryPlaceIds.add(place.getPlaceId());
+            }
+        }
+
+        resultIntent.putStringArrayListExtra("selected_place_ids", selectedPlaceIds);
+        resultIntent.putStringArrayListExtra("selected_place_names", selectedPlaceNames);
+        resultIntent.putStringArrayListExtra("mandatory_place_ids", mandatoryPlaceIds);
+
+        setResult(RESULT_OK, resultIntent);
+        finish();
+    }
+
+    @Override
+    public void onPlaceClick(PlaceMarker place) {
+        // When a place is clicked in the list, focus the map on it
+        if (googleMap != null) {
+            LatLng position = new LatLng(place.getLatitude(), place.getLongitude());
+            googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 15));
+
+            // Show info window for the marker
+            Marker marker = placeMarkers.get(place.getPlaceId());
+            if (marker != null) {
+                marker.showInfoWindow();
+            }
+        }
+    }
+
+    @Override
+    public void onPlaceSelectionChanged(PlaceMarker place, boolean isSelected, boolean isMandatory) {
+        // Update marker icon on the map
+        Marker marker = placeMarkers.get(place.getPlaceId());
+        updateMarkerIcon(marker, isSelected);
+
+        // Update the selected count
+        updateSelectedCount();
+    }
+
+    private boolean hasLocationPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestLocationPermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                LOCATION_PERMISSION_REQUEST_CODE);
+    }
+
+    private void enableMyLocation() {
+        if (googleMap != null && hasLocationPermission()) {
+            try {
+                googleMap.setMyLocationEnabled(true);
+            } catch (SecurityException e) {
+                Log.e("MapPlacesActivity", "Error enabling location", e);
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                enableMyLocation();
+            }
+        }
+    }
+
+    // PlaceMarker class to store place information
+    public static class PlaceMarker {
+        private final String placeId;
+        private final String name;
+        private final String vicinity;
+        private final double latitude;
+        private final double longitude;
+        private final double rating;
+        private final List<String> photoUrls;
+        private boolean selected;
+        private boolean mandatory;
+
+        public PlaceMarker(String placeId, String name, String vicinity, double latitude, double longitude,
+                           double rating, List<String> photoUrls) {
             this.placeId = placeId;
             this.name = name;
             this.vicinity = vicinity;
@@ -656,52 +609,20 @@ public class MapPlacesActivity extends AppCompatActivity implements OnMapReadyCa
             this.longitude = longitude;
             this.rating = rating;
             this.photoUrls = photoUrls;
-            this.isSelected = false;
-            this.isMandatory = false;
+            this.selected = false;
+            this.mandatory = false;
         }
 
-        public String getPlaceId() {
-            return placeId;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public String getVicinity() {
-            return vicinity;
-        }
-
-        public double getLatitude() {
-            return latitude;
-        }
-
-        public double getLongitude() {
-            return longitude;
-        }
-
-        public float getRating() {
-            return rating;
-        }
-
-        public List<String> getPhotoUrls() {
-            return photoUrls;
-        }
-
-        public boolean isSelected() {
-            return isSelected;
-        }
-
-        public void setSelected(boolean selected) {
-            isSelected = selected;
-        }
-
-        public boolean isMandatory() {
-            return isMandatory;
-        }
-
-        public void setMandatory(boolean mandatory) {
-            isMandatory = mandatory;
-        }
+        public String getPlaceId() { return placeId; }
+        public String getName() { return name; }
+        public String getVicinity() { return vicinity; }
+        public double getLatitude() { return latitude; }
+        public double getLongitude() { return longitude; }
+        public float getRating() { return (float) rating; }
+        public List<String> getPhotoUrls() { return photoUrls; }
+        public boolean isSelected() { return selected; }
+        public void setSelected(boolean selected) { this.selected = selected; }
+        public boolean isMandatory() { return mandatory; }
+        public void setMandatory(boolean mandatory) { this.mandatory = mandatory; }
     }
 }

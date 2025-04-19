@@ -1,5 +1,7 @@
 package com.example.tripcraft000;
 
+import com.example.tripcraft000.models.GeoNamesResponse;
+
 import retrofit2.Call;
 import retrofit2.http.GET;
 import retrofit2.http.Query;

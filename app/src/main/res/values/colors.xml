@@ -1,30 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="teal_700">#00796B</color>
+    <!-- Material Color System -->
+    <color name="primary">#1565C0</color>          <!-- Medium blue -->
+    <color name="primary_variant">#0D47A1</color>  <!-- Deep navy blue -->
+    <color name="secondary">#00ACC1</color>        <!-- Vivid cyan -->
+    <color name="secondary_variant">#26C6DA</color><!-- Soft aqua -->
+    <color name="background">#F5FAFF</color>       <!-- Light icy blue -->
+    <color name="surface">#FFFFFF</color>          <!-- Pure white surfaces -->
+    <color name="error">#D32F2F</color>            <!-- Standard error color -->
 
-    <!-- Base colors -->
-    <color name="primary_color">#3F51B5</color>
-    <color name="primary_dark_color">#303F9F</color>
-    <color name="accent_color">#FF4081</color>
-    <color name="colorAccent">#29B6F6</color>
+    <!-- Text & Icon Colors -->
+    <color name="on_primary">#FFFFFF</color>       <!-- White on primary -->
+    <color name="on_secondary">#102027</color>     <!-- Deep charcoal on secondary -->
+    <color name="on_background">#1C1C1E</color>    <!-- Deep gray for text -->
+    <color name="on_surface">#1C1C1E</color>       <!-- Deep gray for surface text -->
+    <color name="on_error">#FFFFFF</color>
 
-    <!-- Text colors -->
-    <color name="primary_text">#263238</color>
-    <color name="secondary_text">#607D8B</color>
+    <!-- Extended Palette -->
+    <color name="sunset_peach">#81D4FA</color>     <!-- Sky blue accent -->
+    <color name="golden_sand">#4FC3F7</color>      <!-- Light metallic blue highlight -->
+    <color name="dusty_rose">#90CAF9</color>       <!-- Soft desaturated blue -->
+    <color name="ocean_blue">#1976D2</color>       <!-- Deep water blue for contrast -->
+    <color name="dusk_purple">#5C6BC0</color>      <!-- Indigo twilight accent -->
 
-    <!-- Background colors -->
-    <color name="background_color">#F5F5F5</color>
-    <color name="card_background">#FFFFFF</color>
+    <!-- State Colors -->
+    <color name="ripple_light">#33FFFFFF</color>   <!-- Light ripple effect -->
+    <color name="ripple_dark">#1F000000</color>    <!-- Dark ripple effect -->
 
-    <!-- Button and interaction colors -->
-    <color name="ripple_color">#33000000</color>
+    <!-- Semantic Colors -->
+    <color name="success">#2E7D32</color>          <!-- Positive actions -->
+    <color name="warning">#FFB300</color>          <!-- Warning states -->
+    <color name="info">#0288D1</color>             <!-- Informational elements -->
 
-    <!-- Card color variations for categories -->
-    <color name="card_cultural">#E1F5FE</color>
-    <color name="card_entertainment">#F3E5F5</color>
-    <color name="card_food">#FFF3E0</color>
-    <color name="card_shopping">#E8F5E9</color>
-    <color name="card_outdoor">#E0F2F1</color>
+    <!-- Gradient Endpoints -->
+    <color name="gradient_start">#1565C0</color>   <!-- Rich blue -->
+    <color name="gradient_end">#00ACC1</color>     <!-- Vibrant cyan -->
+
+    <!-- Elevation Overlays -->
+    <color name="elevation_low">#0DFFFFFF</color>
+    <color name="elevation_high">#1AFFFFFF</color>
+
+    <!-- Category Cards -->
+    <color name="card_cultural">#E3F2FD</color>
+    <color name="card_adventure">#E0F7FA</color>
+    <color name="card_culinary">#E1F5FE</color>
+    <color name="card_nature">#B3E5FC</color>
+    <color name="card_relaxation">#E0F2F1</color>
+
+    <color name="divider">#E0E0E0</color>
 </resources>

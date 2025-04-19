@@ -6,7 +6,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"
+    android:background="@color/background"
     tools:context=".MainActivity">
 
     <View
@@ -14,17 +14,16 @@
         android:layout_width="match_parent"
         android:layout_height="180dp"
         android:background="@drawable/subtle_wave"
-        android:alpha="0.15"
-        app:layout_constraintTop_toTopOf="parent"/>
-
+        android:alpha="0.08"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.cardview.widget.CardView
         android:id="@+id/profileCard"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        app:cardCornerRadius="50dp"
-        app:cardElevation="0dp"
-        android:layout_marginTop="48dp"
+        android:layout_width="110dp"
+        android:layout_height="110dp"
+        app:cardCornerRadius="55dp"
+        app:cardElevation="2dp"
+        android:layout_marginTop="56dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -38,20 +37,19 @@
             android:contentDescription="Profile Picture" />
     </androidx.cardview.widget.CardView>
 
-
     <TextView
         android:id="@+id/usernameText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Username"
-        android:textSize="32sp"
+        android:textSize="28sp"
         android:textStyle="bold"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="24dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/profileCard"
-        android:textColor="#1E88E5"
-        android:fontFamily="sans-serif-light"
+        android:textColor="@color/primary"
+        android:fontFamily="sans-serif-medium"
         android:letterSpacing="0.05" />
 
     <TextView
@@ -60,24 +58,23 @@
         android:layout_height="wrap_content"
         android:text="Craft your perfect trip."
         android:textSize="16sp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="6dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/usernameText"
-        android:textColor="#78909C"
+        android:textColor="@color/on_surface"
         android:fontFamily="sans-serif-light"
         android:letterSpacing="0.05" />
 
-    <!-- Beautiful container for buttons -->
     <androidx.cardview.widget.CardView
         android:id="@+id/buttonsCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="48dp"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"
-        app:cardCornerRadius="24dp"
-        app:cardElevation="6dp"
+        android:layout_marginTop="36dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="8dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/sloganText">
@@ -86,9 +83,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:padding="24dp"
+            android:background="@color/surface">
 
-            <!-- Generate New Plan button with gradient -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/generateNewPlanButton"
                 android:layout_width="match_parent"
@@ -97,25 +94,24 @@
                 android:textSize="16sp"
                 android:textAllCaps="false"
                 app:cornerRadius="16dp"
-                android:backgroundTint="#2196F3"
-                app:rippleColor="#BBDEFB"
+                android:backgroundTint="@color/primary"
+                app:rippleColor="@color/ripple_light"
                 app:icon="@drawable/ic_magic_wand"
                 app:iconGravity="textStart"
                 app:iconSize="20dp"
                 app:iconPadding="12dp"
-                app:iconTint="#FFFFFF"
+                app:iconTint="@android:color/white"
+                android:textColor="@android:color/white"
                 android:fontFamily="sans-serif-medium"
                 android:letterSpacing="0.025" />
 
-            <!-- Subtle divider -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#E0E0E0"
+                android:background="@color/elevation_low"
                 android:layout_marginTop="20dp"
-                android:layout_marginBottom="20dp"/>
+                android:layout_marginBottom="20dp" />
 
-            <!-- Saved Plans button with outline style -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/savedPlansButton"
                 android:layout_width="match_parent"
@@ -125,21 +121,20 @@
                 android:textAllCaps="false"
                 app:cornerRadius="16dp"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:textColor="#1E88E5"
-                app:strokeColor="#1E88E5"
+                android:textColor="@color/primary"
+                app:strokeColor="@color/primary"
                 app:strokeWidth="1.5dp"
-                app:rippleColor="#BBDEFB"
+                app:rippleColor="@color/ripple_light"
                 app:icon="@drawable/ic_bookmark"
                 app:iconGravity="textStart"
                 app:iconSize="20dp"
                 app:iconPadding="12dp"
-                app:iconTint="#1E88E5"
+                app:iconTint="@color/primary"
                 android:fontFamily="sans-serif-medium"
                 android:letterSpacing="0.025" />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- Subtle bottom decoration -->
     <ImageView
         android:layout_width="wrap_content"
         android:layout_height="120dp"
@@ -149,6 +144,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:contentDescription="Decorative waves"/>
+        android:contentDescription="Decorative waves" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
