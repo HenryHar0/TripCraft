@@ -20,6 +20,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -39,6 +40,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class InterestsActivity extends AppCompatActivity {
@@ -60,6 +62,8 @@ public class InterestsActivity extends AppCompatActivity {
     private final List<String> pendingPageTokens = new ArrayList<>();
     private static final int PAGINATION_DELAY = 2000;
     private final Set<String> processedPlaceIds = new HashSet<>();
+    private LatLngBounds cityBounds;
+    private int cityRadius = 5000;  // Default radius
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,75 +127,43 @@ public class InterestsActivity extends AppCompatActivity {
             nextButton.setOnClickListener(v -> navigateToNextScreen());
         }
 
-        // Check for location permission and start fetching places
-        if (hasLocationPermission()) {
-            startFetchingPlaces();
-        } else {
-            requestLocationPermission();
+        // Fetch city boundaries first
+        fetchCityBoundaries(selectedCityName, bounds -> {
+            if (bounds != null) {
+                cityBounds = bounds;
+                // Calculate radius based on city boundaries
+                cityRadius = calculateCityRadius(bounds);
+                Log.d("InterestsActivity", "City radius calculated: " + cityRadius + " meters");
+            }
+
+            // Check for location permission and start fetching places
+            if (hasLocationPermission()) {
+                startFetchingPlaces();
+            } else {
+                requestLocationPermission();
+            }
+        });
+    }
+
+    private void fetchCityBoundaries(String cityName, final BoundariesCallback callback) {
+        String encodedCityName;
+        try {
+            encodedCityName = URLEncoder.encode(cityName, "UTF-8");
+        } catch (Exception e) {
+            Log.e("InterestsActivity", "Error encoding city name", e);
+            callback.onBoundariesFetched(null);
+            return;
         }
-    }
 
-    private void navigateToNextScreen() {
-        ArrayList<String> selectedCategoriesList = new ArrayList<>(selectedCategories);
-
-        Intent intent = new Intent(InterestsActivity.this, PlanActivity.class);
-
-        intent.putExtra("selected_city", selectedCityName);
-        intent.putExtra("selected_city_coordinates", selectedCityCoordinates);
-
-        intent.putExtra("start_date", getIntent().getStringExtra("start_date"));
-        intent.putExtra("end_date", getIntent().getStringExtra("end_date"));
-        intent.putExtra("duration_days", getIntent().getIntExtra("duration_days", 0));
-
-        intent.putExtra("geonameId", getIntent().getIntExtra("geonameId", -1));
-
-        intent.putStringArrayListExtra("selected_categories", selectedCategoriesList);
-
-        startActivity(intent);
-    }
-
-    private void startFetchingPlaces() {
-        progressBar.setVisibility(View.VISIBLE);
-        statusText.setVisibility(View.VISIBLE);
-        statusText.setText("Loading places for " + selectedCityName + "...");
-
-        typeCountMap.clear();
-        processedPlaceIds.clear(); // Clear processed place IDs
-        pendingPageTokens.clear(); // Clear pending page tokens
-        interestsLayout.removeAllViews();
-
-        fetchNearbyPlaces();
-        fetchPlacesByTypes();
-        fetchMultipleAreas();
-        performTextSearch();
-        fetchSpecificCategories(); // Add this new method call
-    }
-
-    private void fetchNearbyPlaces() {
-        Log.d("InterestsActivity", "Fetching nearby places with pagination for: " + selectedCityName);
-
-        String location = selectedCityCoordinates.latitude + "," + selectedCityCoordinates.longitude;
-        int radius = 30000;
-
-        String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
-                "?location=" + location +
-                "&radius=" + radius +
+        String url = "https://maps.googleapis.com/maps/api/geocode/json" +
+                "?address=" + encodedCityName +
                 "&key=" + API_KEY;
-
-        pendingRequests.incrementAndGet();
-        fetchPlacesPage(url, null, "nearby");
-    }
-
-    private void fetchPlacesPage(final String baseUrl, final String pageToken, final String searchType) {
-        final String finalUrl = pageToken == null ? baseUrl : baseUrl + "&pagetoken=" + pageToken;
 
         new Thread(() -> {
             try {
-                URL requestUrl = new URL(finalUrl);
+                URL requestUrl = new URL(url);
                 HttpURLConnection connection = (HttpURLConnection) requestUrl.openConnection();
                 connection.setRequestMethod("GET");
-                connection.setConnectTimeout(15000);
-                connection.setReadTimeout(15000);
 
                 InputStreamReader reader = new InputStreamReader(connection.getInputStream());
                 BufferedReader bufferedReader = new BufferedReader(reader);
@@ -204,96 +176,98 @@ public class InterestsActivity extends AppCompatActivity {
 
                 bufferedReader.close();
 
-                final JSONObject jsonResponse = new JSONObject(response.toString());
-                String status = jsonResponse.getString("status");
+                JSONObject jsonResponse = new JSONObject(response.toString());
+                LatLngBounds bounds = parseBoundaries(jsonResponse);
 
-                if ("OK".equals(status)) {
-                    parsePlaceResults(jsonResponse);
-
-                    if (jsonResponse.has("next_page_token")) {
-                        final String nextPageToken = jsonResponse.getString("next_page_token");
-                        // Save the token for later processing
-                        synchronized (pendingPageTokens) {
-                            pendingPageTokens.add(nextPageToken + ":" + searchType);
-                        }
-
-                        // Process next page after delay (required by Places API)
-                        new Thread(() -> {
-                            try {
-                                Thread.sleep(PAGINATION_DELAY);
-                                String tokenInfo;
-                                synchronized (pendingPageTokens) {
-                                    if (pendingPageTokens.isEmpty()) return;
-                                    tokenInfo = pendingPageTokens.remove(0);
-                                }
-
-                                String[] parts = tokenInfo.split(":");
-                                String token = parts[0];
-                                String type = parts[1];
-
-                                if ("nearby".equals(type)) {
-                                    fetchPlacesPage(baseUrl, token, type);
-                                } else if ("text".equals(type)) {
-                                    fetchPlacesPage(baseUrl, token, type);
-                                }
-                            } catch (Exception e) {
-                                Log.e("PlacesAPI", "Error processing page token", e);
-                            }
-                        }).start();
-                    }
-                } else {
-                    Log.e("PlacesAPI", "Error status: " + status);
-                    // If nearby search fails, try text search
-                    if ("nearby".equals(searchType) && pageToken == null) {
-                        fallbackToTextSearch();
-                    }
-                }
-
-                int remaining = pendingRequests.decrementAndGet();
-                if (remaining == 0) {
-                    updateUI();
-                }
+                runOnUiThread(() -> callback.onBoundariesFetched(bounds));
 
             } catch (Exception e) {
-                Log.e("PlacesAPI", "Error fetching places", e);
-
-                // Implement fallback strategy
-                if ("nearby".equals(searchType) && pageToken == null) {
-                    fallbackToTextSearch();
-                }
-
-                int remaining = pendingRequests.decrementAndGet();
-                if (remaining == 0) {
-                    updateUI();
-                }
+                Log.e("InterestsActivity", "Error fetching city boundaries", e);
+                runOnUiThread(() -> callback.onBoundariesFetched(null));
             }
         }).start();
     }
 
-    private void fallbackToTextSearch() {
-        Log.d("InterestsActivity", "Falling back to text search for categories");
+    private LatLngBounds parseBoundaries(JSONObject jsonResponse) throws JSONException {
+        if (jsonResponse.getString("status").equals("OK")) {
+            JSONArray results = jsonResponse.getJSONArray("results");
+            if (results.length() > 0) {
+                JSONObject result = results.getJSONObject(0);
+                JSONObject geometry = result.getJSONObject("geometry");
+                if (geometry.has("viewport")) {
+                    JSONObject viewport = geometry.getJSONObject("viewport");
 
-        try {
-            for (Map.Entry<String, Integer> entry : typeCountMap.entrySet()) {
-                String category = entry.getKey();
+                    JSONObject northeast = viewport.getJSONObject("northeast");
+                    double neLat = northeast.getDouble("lat");
+                    double neLng = northeast.getDouble("lng");
 
-                // Remove emoji if present
-                String queryText = category;
-                if (queryText.contains(" ")) {
-                    queryText = queryText.substring(queryText.indexOf(" ") + 1);
+                    JSONObject southwest = viewport.getJSONObject("southwest");
+                    double swLat = southwest.getDouble("lat");
+                    double swLng = southwest.getDouble("lng");
+
+                    return new LatLngBounds(
+                            new LatLng(swLat, swLng),
+                            new LatLng(neLat, neLng)
+                    );
                 }
-
-                String query = URLEncoder.encode(queryText + " in " + selectedCityName, "UTF-8");
-                String url = "https://maps.googleapis.com/maps/api/place/textsearch/json" +
-                        "?query=" + query +
-                        "&key=" + API_KEY;
-
-                pendingRequests.incrementAndGet();
-                fetchPlacesPage(url, null, "text");
             }
-        } catch (Exception e) {
-            Log.e("PlacesAPI", "Error encoding text search URL", e);
         }
+        return null;
+    }
+
+    private int calculateCityRadius(LatLngBounds bounds) {
+        // Calculate the diagonal of the bounding box to determine an appropriate radius
+        double distance = calculateDistance(
+                bounds.southwest.latitude, bounds.southwest.longitude,
+                bounds.northeast.latitude, bounds.northeast.longitude
+        );
+
+        // Take roughly 70% of the diagonal as radius to cover most of the city area
+        return (int) (distance * 0.7 * 1000); // Convert to meters
+    }
+
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        int radiusEarth = 6371; // Radius of the earth in km
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return radiusEarth * c;
+    }
+
+    interface BoundariesCallback {
+        void onBoundariesFetched(LatLngBounds bounds);
+    }
+
+    private void startFetchingPlaces() {
+        progressBar.setVisibility(View.VISIBLE);
+        statusText.setVisibility(View.VISIBLE);
+        statusText.setText("Loading places for " + selectedCityName + "...");
+
+        typeCountMap.clear();
+        processedPlaceIds.clear();
+        pendingPageTokens.clear();
+        interestsLayout.removeAllViews();
+
+        fetchNearbyPlaces();
+        fetchPlacesByTypes();
+        performTextSearch();
+    }
+
+    private void fetchNearbyPlaces() {
+        Log.d("InterestsActivity", "Fetching nearby places for: " + selectedCityName + " with radius: " + cityRadius);
+
+        String location = selectedCityCoordinates.latitude + "," + selectedCityCoordinates.longitude;
+
+        String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
+                "?location=" + location +
+                "&radius=" + cityRadius +  // Use calculated city radius
+                "&key=" + API_KEY;
+
+        pendingRequests.incrementAndGet();
+        fetchPlacesPage(url, null, "nearby");
     }
 
     private void fetchPlacesByTypes() {
@@ -315,7 +289,7 @@ public class InterestsActivity extends AppCompatActivity {
     private void fetchPlacesByType(final String type) {
         final String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
                 "?location=" + selectedCityCoordinates.latitude + "," + selectedCityCoordinates.longitude +
-                "&radius=5000" +
+                "&radius=" + cityRadius +  // Use calculated city radius
                 "&type=" + type +
                 "&key=" + API_KEY;
 
@@ -354,56 +328,16 @@ public class InterestsActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void fetchMultipleAreas() {
-        Log.d("InterestsActivity", "Fetching from multiple areas for: " + selectedCityName);
-
-        List<LatLng> areaCoordinates = new ArrayList<>();
-
-        areaCoordinates.add(selectedCityCoordinates);
-
-        double latOffset = 0.018;
-        double lngOffset = 0.018;
-
-        for (int i = -1; i <= 1; i++) {
-            for (int j = -1; j <= 1; j++) {
-                if (i == 0 && j == 0) continue;
-
-                LatLng offset = new LatLng(
-                        selectedCityCoordinates.latitude + (i * latOffset),
-                        selectedCityCoordinates.longitude + (j * lngOffset)
-                );
-                areaCoordinates.add(offset);
-            }
-        }
-
-        if (selectedCityName.equalsIgnoreCase("Paris")) {
-            areaCoordinates.add(new LatLng(48.8584, 2.2945));
-            areaCoordinates.add(new LatLng(48.8606, 2.3376));
-            areaCoordinates.add(new LatLng(48.8738, 2.2950));
-            areaCoordinates.add(new LatLng(48.8530, 2.3499));
-        } else if (selectedCityName.equalsIgnoreCase("London")) {
-            areaCoordinates.add(new LatLng(51.5007, -0.1246));
-            areaCoordinates.add(new LatLng(51.5074, -0.1278));
-            areaCoordinates.add(new LatLng(51.5067, -0.0762));
-        }
-
-        for (final LatLng area : areaCoordinates) {
-            pendingRequests.incrementAndGet();
-            fetchPlacesForArea(area);
-        }
-    }
-
-    private void fetchPlacesForArea(final LatLng area) {
-        final String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
-                "?location=" + area.latitude + "," + area.longitude +
-                "&radius=3000" +
-                "&key=" + API_KEY;
+    private void fetchPlacesPage(final String baseUrl, final String pageToken, final String searchType) {
+        final String finalUrl = pageToken == null ? baseUrl : baseUrl + "&pagetoken=" + pageToken;
 
         new Thread(() -> {
             try {
-                URL requestUrl = new URL(url);
+                URL requestUrl = new URL(finalUrl);
                 HttpURLConnection connection = (HttpURLConnection) requestUrl.openConnection();
                 connection.setRequestMethod("GET");
+                connection.setConnectTimeout(15000);
+                connection.setReadTimeout(15000);
 
                 InputStreamReader reader = new InputStreamReader(connection.getInputStream());
                 BufferedReader bufferedReader = new BufferedReader(reader);
@@ -416,8 +350,48 @@ public class InterestsActivity extends AppCompatActivity {
 
                 bufferedReader.close();
 
-                JSONObject jsonResponse = new JSONObject(response.toString());
-                parsePlaceResults(jsonResponse);
+                final JSONObject jsonResponse = new JSONObject(response.toString());
+                String status = jsonResponse.getString("status");
+
+                if ("OK".equals(status)) {
+                    parsePlaceResults(jsonResponse);
+
+                    if (jsonResponse.has("next_page_token")) {
+                        final String nextPageToken = jsonResponse.getString("next_page_token");
+                        synchronized (pendingPageTokens) {
+                            pendingPageTokens.add(nextPageToken + ":" + searchType);
+                        }
+
+                        // Process next page after delay (required by Places API)
+                        new Thread(() -> {
+                            try {
+                                Thread.sleep(PAGINATION_DELAY);
+                                String tokenInfo;
+                                synchronized (pendingPageTokens) {
+                                    if (pendingPageTokens.isEmpty()) return;
+                                    tokenInfo = pendingPageTokens.remove(0);
+                                }
+
+                                String[] parts = tokenInfo.split(":");
+                                String token = parts[0];
+                                String type = parts[1];
+
+                                if ("nearby".equals(type)) {
+                                    fetchPlacesPage(baseUrl, token, type);
+                                } else if ("text".equals(type)) {
+                                    fetchPlacesPage(baseUrl, token, type);
+                                }
+                            } catch (Exception e) {
+                                Log.e("PlacesAPI", "Error processing page token", e);
+                            }
+                        }).start();
+                    }
+                } else {
+                    Log.e("PlacesAPI", "Error status: " + status);
+                    if ("nearby".equals(searchType) && pageToken == null) {
+                        fallbackToTextSearch();
+                    }
+                }
 
                 int remaining = pendingRequests.decrementAndGet();
                 if (remaining == 0) {
@@ -425,13 +399,44 @@ public class InterestsActivity extends AppCompatActivity {
                 }
 
             } catch (Exception e) {
-                Log.e("PlacesAPI", "Error fetching places for area: " + area, e);
+                Log.e("PlacesAPI", "Error fetching places", e);
+
+                if ("nearby".equals(searchType) && pageToken == null) {
+                    fallbackToTextSearch();
+                }
+
                 int remaining = pendingRequests.decrementAndGet();
                 if (remaining == 0) {
                     updateUI();
                 }
             }
         }).start();
+    }
+
+    private void fallbackToTextSearch() {
+        Log.d("InterestsActivity", "Falling back to text search for categories");
+
+        try {
+            for (Map.Entry<String, Integer> entry : typeCountMap.entrySet()) {
+                String category = entry.getKey();
+
+                // Remove emoji if present
+                String queryText = category;
+                if (queryText.contains(" ")) {
+                    queryText = queryText.substring(queryText.indexOf(" ") + 1);
+                }
+
+                String query = URLEncoder.encode(queryText + " in " + selectedCityName, "UTF-8");
+                String url = "https://maps.googleapis.com/maps/api/place/textsearch/json" +
+                        "?query=" + query +
+                        "&key=" + API_KEY;
+
+                pendingRequests.incrementAndGet();
+                fetchPlacesPage(url, null, "text");
+            }
+        } catch (Exception e) {
+            Log.e("PlacesAPI", "Error encoding text search URL", e);
+        }
     }
 
     private void performTextSearch() {
@@ -444,7 +449,6 @@ public class InterestsActivity extends AppCompatActivity {
                     "things to do in " + selectedCityName,
                     "best restaurants in " + selectedCityName,
                     "entertainment in " + selectedCityName,
-                    // Add more queries for better coverage
                     "cultural sites in " + selectedCityName,
                     "historical sites in " + selectedCityName,
                     "popular in " + selectedCityName,
@@ -465,42 +469,6 @@ public class InterestsActivity extends AppCompatActivity {
         }
     }
 
-    private void executeTextSearch(final String url) {
-        new Thread(() -> {
-            try {
-                URL requestUrl = new URL(url);
-                HttpURLConnection connection = (HttpURLConnection) requestUrl.openConnection();
-                connection.setRequestMethod("GET");
-
-                InputStreamReader reader = new InputStreamReader(connection.getInputStream());
-                BufferedReader bufferedReader = new BufferedReader(reader);
-                StringBuilder response = new StringBuilder();
-                String line;
-
-                while ((line = bufferedReader.readLine()) != null) {
-                    response.append(line);
-                }
-
-                bufferedReader.close();
-
-                JSONObject jsonResponse = new JSONObject(response.toString());
-                parsePlaceResults(jsonResponse);
-
-                int remaining = pendingRequests.decrementAndGet();
-                if (remaining == 0) {
-                    updateUI();
-                }
-
-            } catch (Exception e) {
-                Log.e("PlacesAPI", "Error performing text search", e);
-                int remaining = pendingRequests.decrementAndGet();
-                if (remaining == 0) {
-                    updateUI();
-                }
-            }
-        }).start();
-    }
-
     private void parsePlaceResults(JSONObject jsonResponse) {
         try {
             if (!jsonResponse.has("results")) {
@@ -515,48 +483,25 @@ public class InterestsActivity extends AppCompatActivity {
                 JSONObject place = results.getJSONObject(i);
                 String placeId = place.getString("place_id");
 
-                // Store place IDs to avoid duplicates
+                // Only count a place once by using placeId as a unique identifier
                 if (processedPlaceIds.add(placeId) && place.has("types")) {
                     JSONArray types = place.getJSONArray("types");
+                    boolean categoryAdded = false;
 
-                    for (int j = 0; j < types.length(); j++) {
+                    for (int j = 0; j < types.length() && !categoryAdded; j++) {
                         String type = types.getString(j);
                         String formattedType = getFormattedPlaceType(type);
 
                         if (formattedType != null) {
+                            // Only count the first valid category for each place
                             typeCountMap.put(formattedType, typeCountMap.getOrDefault(formattedType, 0) + 1);
+                            categoryAdded = true;
                         }
                     }
                 }
             }
         } catch (JSONException e) {
             Log.e("PlacesAPI", "Error parsing place results", e);
-        }
-    }
-
-    private void fetchSpecificCategories() {
-        Log.d("InterestsActivity", "Fetching specific categories for: " + selectedCityName);
-
-        // Important categories that users are likely interested in
-        String[] importantCategories = {
-                "museum", "art_gallery", "tourist_attraction", "restaurant", "park",
-                "shopping_mall", "historic", "landmark", "attraction"
-        };
-
-        for (String category : importantCategories) {
-            pendingRequests.incrementAndGet();
-
-            try {
-                String query = URLEncoder.encode(category + " in " + selectedCityName, "UTF-8");
-                String url = "https://maps.googleapis.com/maps/api/place/textsearch/json" +
-                        "?query=" + query +
-                        "&key=" + API_KEY;
-
-                fetchPlacesPage(url, null, "text");
-            } catch (Exception e) {
-                Log.e("PlacesAPI", "Error encoding specific category", e);
-                pendingRequests.decrementAndGet();
-            }
         }
     }
 
@@ -586,6 +531,16 @@ public class InterestsActivity extends AppCompatActivity {
                             View checkbox = row.getChildAt(j);
                             if (checkbox instanceof CheckBox) {
                                 ((CheckBox) checkbox).setChecked(isChecked);
+
+                                // Update selected categories
+                                if (checkbox.getTag() != null) {
+                                    String category = (String) checkbox.getTag();
+                                    if (isChecked) {
+                                        selectedCategories.add(category);
+                                    } else {
+                                        selectedCategories.remove(category);
+                                    }
+                                }
                             }
                         }
                     }
@@ -611,11 +566,11 @@ public class InterestsActivity extends AppCompatActivity {
 
                 Map.Entry<String, Integer> entry = allCategories.get(i);
                 CheckBox checkBox = new CheckBox(this);
-                checkBox.setText(entry.getKey());
+                checkBox.setText(entry.getKey());  // Removed count display from checkbox text
                 checkBox.setTag(entry.getKey());
 
-                // MODIFIED: Set all checkboxes to unchecked initially
-                checkBox.setChecked(false);
+                // Check if this category was previously selected
+                checkBox.setChecked(selectedCategories.contains(entry.getKey()));
 
                 checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
                     String category = (String) buttonView.getTag();
@@ -636,9 +591,6 @@ public class InterestsActivity extends AppCompatActivity {
                     currentRow.addView(checkBox);
                 }
             }
-
-            // Clear selected categories since all checkboxes are unchecked
-            selectedCategories.clear();
 
             displaySelectedCategories();
 
@@ -715,10 +667,7 @@ public class InterestsActivity extends AppCompatActivity {
         categoryText.setTextSize(16);
         categoryText.setTextColor(ContextCompat.getColor(this, android.R.color.black));
 
-        TextView countText = new TextView(this);
-        countText.setText(count + " places");
-        countText.setTextSize(14);
-        countText.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
+        // Removed countText TextView from category card
 
         Button viewButton = new Button(this);
         viewButton.setText("View Places");
@@ -742,7 +691,7 @@ public class InterestsActivity extends AppCompatActivity {
         });
 
         cardLayout.addView(categoryText);
-        cardLayout.addView(countText);
+        // Removed cardLayout.addView(countText);  // Removed count display
         cardLayout.addView(viewButton);
 
         card.addView(cardLayout);
@@ -751,73 +700,47 @@ public class InterestsActivity extends AppCompatActivity {
 
     private String getFormattedPlaceType(String type) {
         switch (type) {
-            // Cultural and Educational
-            case "museum": return "🏛 Museum";
-            case "art_gallery": return "🖼 Art Gallery";
+            // High-value tourist categories
             case "tourist_attraction": return "📸 Tourist Attraction";
+            case "museum": return "🏛 Museum";
             case "landmark": return "🏛 Landmark";
-            case "historical_landmark": return "🏺 Historical Landmark";
+            case "historical_landmark":
             case "historical_site": return "🏰 Historical Site";
-            case "library": return "📚 Library";
 
-            // Entertainment and Recreation
-            case "park": return "🌳 Park";
-            case "zoo": return "🦁 Zoo";
-            case "amusement_park": return "🎢 Amusement Park";
-            case "aquarium": return "🐠 Aquarium";
-            case "stadium": return "🏟 Stadium";
-            case "movie_theater": return "🎬 Movie Theater";
-            case "theater": return "🎭 Theater";
-            case "casino": return "🎰 Casino";
-            case "night_club": return "🎶 Night Club";
-            case "beach": return "🏖 Beach";
-
-            // Religious and Cultural Sites
-            case "church": return "⛪ Church";
-            case "hindu_temple": return "🛕 Temple";
-            case "mosque": return "🕌 Mosque";
-            case "synagogue": return "🕍 Synagogue";
-            case "place_of_worship": return "🙏 Place of Worship";
-
-            // Food and Dining
+            // Food and drink
             case "restaurant": return "🍽 Restaurant";
             case "cafe": return "☕ Cafe";
             case "bar": return "🍹 Bar";
-            case "bakery": return "🥐 Bakery";
-            case "food": return "🍲 Food";
 
-            // Shopping
+            // Entertainment
             case "shopping_mall": return "🛍 Shopping Mall";
-            case "store": return "🏪 Store";
-            case "book_store": return "📚 Book Store";
-            case "clothing_store": return "👚 Clothing Store";
-            case "department_store": return "🏬 Department Store";
+            case "theater": return "🎭 Theater";
+            case "movie_theater": return "🎬 Cinema";
+            case "night_club": return "🎶 Night Club";
 
-            // Accommodation
-            case "lodging": return "🏨 Hotel";
+            // Nature and outdoors
+            case "park": return "🌳 Park";
+            case "beach": return "🏖 Beach";
+            case "natural_feature": return "🏞 Nature Spot";
 
-            // Transportation (relevant for tourists)
+            // Cultural sites
+            case "art_gallery": return "🖼 Art Gallery";
+            case "place_of_worship":
+            case "church":
+            case "hindu_temple":
+            case "mosque":
+            case "synagogue": return "🙏 Place of Worship";
+
+            // Family attractions
+            case "zoo": return "🦁 Zoo";
+            case "aquarium": return "🐠 Aquarium";
+            case "amusement_park": return "🎢 Amusement Park";
+
+            // Only include transportation that tourists need
             case "train_station": return "🚂 Train Station";
             case "subway_station": return "🚇 Metro Station";
-            case "bus_station": return "🚌 Bus Station";
-            case "airport": return "✈️ Airport";
 
-            // Wellness and Relaxation
-            case "spa": return "💆 Spa";
-
-            // Nature and Outdoor
-            case "natural_feature": return "🏞 Natural Feature";
-            case "campground": return "🏕 Campground";
-
-            // Common Services for Tourists
-            case "atm": return "💰 ATM";
-            case "pharmacy": return "💊 Pharmacy";
-            case "travel_agency": return "🧳 Travel Agency";
-            case "post_office": return "📮 Post Office";
-
-            case "point_of_interest": return "📍 Point of Interest";
-
-            default: return null;
+            default: return null; // Filter out other categories
         }
     }
 
@@ -830,6 +753,34 @@ public class InterestsActivity extends AppCompatActivity {
         ActivityCompat.requestPermissions(this,
                 new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
                 LOCATION_PERMISSION_REQUEST_CODE);
+    }
+
+    private void navigateToNextScreen() {
+        if (selectedCategories.isEmpty()) {
+            Toast.makeText(this, "Please select at least one category", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Create intent for PlanActivity
+        Intent intent = new Intent(InterestsActivity.this, PlanActivity.class);
+
+        // Pass along all the information received from the previous activity
+        intent.putExtra("city", selectedCityName);
+        intent.putExtra("geonameId", getIntent().getIntExtra("geonameId", -1));
+        intent.putExtra("start_date", getIntent().getStringExtra("start_date"));
+        intent.putExtra("end_date", getIntent().getStringExtra("end_date"));
+        intent.putExtra("duration_days", getIntent().getIntExtra("duration_days", 0));
+
+        // Pass city coordinates
+        intent.putExtra("city_lat", selectedCityCoordinates.latitude);
+        intent.putExtra("city_lng", selectedCityCoordinates.longitude);
+
+        // Pass selected categories
+        intent.putStringArrayListExtra("selected_categories", new ArrayList<>(selectedCategories));
+
+        // Start PlanActivity
+        startActivity(intent);
+        finish();
     }
 
     @Override

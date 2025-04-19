@@ -8,6 +8,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.Filter;
+import android.widget.Filterable;
 import android.widget.ImageView;
 import android.widget.RatingBar;
 import android.widget.TextView;
@@ -22,9 +24,10 @@ import com.bumptech.glide.request.RequestOptions;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewHolder> {
+public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewHolder> implements Filterable {
 
     private final List<MapPlacesActivity.PlaceMarker> places;
+    private final List<MapPlacesActivity.PlaceMarker> placesFull;
     private final OnPlaceClickListener listener;
     private final OnPlaceSelectionChangedListener selectionListener;
 
@@ -36,9 +39,11 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
         void onPlaceSelectionChanged(MapPlacesActivity.PlaceMarker place, boolean isSelected, boolean isMandatory);
     }
 
-    public PlacesAdapter(List<MapPlacesActivity.PlaceMarker> places, OnPlaceClickListener listener,
+    public PlacesAdapter(List<MapPlacesActivity.PlaceMarker> places,
+                         OnPlaceClickListener listener,
                          OnPlaceSelectionChangedListener selectionListener) {
-        this.places = places;
+        this.places = new ArrayList<>(places);
+        this.placesFull = new ArrayList<>(places);
         this.listener = listener;
         this.selectionListener = selectionListener;
     }
@@ -61,6 +66,50 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
     public int getItemCount() {
         return places.size();
     }
+
+    @Override
+    public Filter getFilter() {
+        return placeFilter;
+    }
+
+    private final Filter placeFilter = new Filter() {
+        @Override
+        protected FilterResults performFiltering(CharSequence constraint) {
+            List<MapPlacesActivity.PlaceMarker> filteredList = new ArrayList<>();
+
+            if (constraint == null || constraint.length() == 0) {
+                filteredList.addAll(placesFull);
+            } else {
+                String[] keywords = constraint.toString().toLowerCase().trim().split("\\s+");
+                for (MapPlacesActivity.PlaceMarker place : placesFull) {
+                    String name = place.getName().toLowerCase();
+                    String vicinity = place.getVicinity().toLowerCase();
+                    boolean matches = true;
+                    for (String kw : keywords) {
+                        if (!name.contains(kw) && !vicinity.contains(kw)) {
+                            matches = false;
+                            break;
+                        }
+                    }
+                    if (matches) {
+                        filteredList.add(place);
+                    }
+                }
+            }
+
+            FilterResults results = new FilterResults();
+            results.values = filteredList;
+            return results;
+        }
+
+        @Override
+        protected void publishResults(CharSequence constraint, FilterResults results) {
+            places.clear();
+            //noinspection unchecked
+            places.addAll((List<MapPlacesActivity.PlaceMarker>) results.values);
+            notifyDataSetChanged();
+        }
+    };
 
     // Method to get selected places
     public List<MapPlacesActivity.PlaceMarker> getSelectedPlaces() {

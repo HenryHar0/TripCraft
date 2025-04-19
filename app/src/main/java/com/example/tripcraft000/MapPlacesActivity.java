@@ -16,6 +16,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.appcompat.widget.SearchView;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -55,11 +56,12 @@ public class MapPlacesActivity extends AppCompatActivity implements
     private PlacesAdapter placesAdapter;
     private TextView selectedCountText;
     private Button doneButton;
+    private SearchView placeSearchView;
 
     private String selectedCityName;
     private LatLng selectedCityCoordinates;
     private String selectedCategoryName;
-    private List<PlaceMarker> allPlaces;
+    private List<PlaceMarker> allPlaces = new ArrayList<>();
     private Map<String, Marker> placeMarkers = new HashMap<>();
     private LatLngBounds cityBounds;
 
@@ -67,6 +69,23 @@ public class MapPlacesActivity extends AppCompatActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map_places);
+
+        placeSearchView = findViewById(R.id.placeSearchView);
+        placeSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                // no-op; we filter as-you-type
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                if (placesAdapter != null) {
+                    placesAdapter.getFilter().filter(newText);
+                }
+                return true;
+            }
+        });
 
         // Set up the back button
         findViewById(R.id.backButton).setOnClickListener(v -> onBackPressed());
@@ -332,6 +351,7 @@ public class MapPlacesActivity extends AppCompatActivity implements
                 "?query=" + query +
                 "&key=" + API_KEY;
 
+        allPlaces.clear();
         fetchPlacesFromUrl(url);
     }
 
@@ -368,13 +388,32 @@ public class MapPlacesActivity extends AppCompatActivity implements
 
     private void handlePlacesApiResponse(JSONObject response) {
         try {
-            allPlaces = convertJsonToPlaceMarkers(response);
+            List<PlaceMarker> page = convertJsonToPlaceMarkers(response);
+            allPlaces.addAll(page);
 
-            // Filter places to only those within city boundaries
             List<PlaceMarker> cityPlaces = filterPlacesToCityOnly(allPlaces, cityBounds);
-
-            // Update UI with filtered places
             updatePlacesDisplay(cityPlaces);
+
+            // Update status text with count - show actual count after filtering
+            TextView titleText = findViewById(R.id.titleText);
+            if (titleText != null && selectedCategoryName != null) {
+                titleText.setText(
+                        String.format("%s in %s (%d places)",
+                                selectedCategoryName,
+                                selectedCityName,
+                                cityPlaces.size()
+                        )
+                );
+            }
+            if (response.has("next_page_token")) {
+                final String nextPageToken = response.getString("next_page_token");
+                new android.os.Handler().postDelayed(() -> {
+                    String nextUrl = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+                            + "?pagetoken=" + nextPageToken
+                            + "&key=" + API_KEY;
+                    fetchPlacesFromUrl(nextUrl);
+                    }, 2000);
+            }
 
         } catch (JSONException e) {
             Log.e("MapPlacesActivity", "Error parsing places response", e);

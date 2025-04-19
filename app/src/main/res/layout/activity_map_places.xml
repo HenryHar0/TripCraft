@@ -138,6 +138,16 @@
                 android:text="0 places selected"
                 android:textColor="@color/on_surface"
                 android:textSize="14sp" />
+
+            <!-- Search bar -->
+            <androidx.appcompat.widget.SearchView
+                android:id="@+id/placeSearchView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:queryHint="Search places…"
+                android:iconifiedByDefault="false" />
+
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
@@ -147,10 +157,10 @@
             android:clipToPadding="false"
             android:paddingTop="8dp"
             android:paddingBottom="88dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/listHeaderContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/doneButton"
             tools:listitem="@layout/item_place" />
 
         <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton

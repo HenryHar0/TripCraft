@@ -19,8 +19,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -33,13 +31,13 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
-import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+
 
 public class PlanActivity extends AppCompatActivity {
 
@@ -65,6 +63,7 @@ public class PlanActivity extends AppCompatActivity {
     private ExecutorService executorService;
     private OkHttpClient httpClient;
     private ActivityResultLauncher<String> requestPermissionLauncher;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -146,8 +145,7 @@ public class PlanActivity extends AppCompatActivity {
             fetchWeatherInfo();
         }
 
-        // Generate random activities
-        generateRandomActivities();
+
 
         // Set button click listeners
         savePlanButton.setOnClickListener(v -> saveTripPlan());
@@ -382,33 +380,6 @@ public class PlanActivity extends AppCompatActivity {
         }
     }
 
-    private void generateRandomActivities() {
-        String[] activityPool = {
-                "Visit local museum",
-                "Go hiking",
-                "Try traditional food",
-                "Explore a local market",
-                "Relax at a park",
-                "Take a boat ride",
-                "Attend a local event",
-                "Visit a historic site",
-                "Take a guided tour",
-                "Try a cooking class"
-        };
-
-        activitiesListData = new ArrayList<>();
-        Random random = new Random();
-
-        for (int i = 0; i < 5; i++) {
-            int index = random.nextInt(activityPool.length);
-            activitiesListData.add(activityPool[index]);
-        }
-
-        // Create and set adapter for the activities RecyclerView
-        activitiesAdapter = new ActivityAdapter(activitiesListData);
-        activitiesList.setLayoutManager(new LinearLayoutManager(this));
-        activitiesList.setAdapter(activitiesAdapter);
-    }
 
     private void saveTripPlan() {
         String destination = destinationValue.getText().toString();

@@ -2,6 +2,7 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F5F9FF">
@@ -221,6 +222,7 @@
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="16dp" />
 
+
             <LinearLayout
                 android:id="@+id/buttonLayout"
                 android:layout_width="match_parent"
@@ -266,6 +268,7 @@
                     android:backgroundTint="#1A73E8"
                     app:cornerRadius="8dp"
                     style="@style/Widget.MaterialComponents.Button" />
+
             </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.cardview.widget.CardView>
