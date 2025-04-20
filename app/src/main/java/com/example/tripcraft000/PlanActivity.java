@@ -30,13 +30,34 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.model.LocationBias;
+import com.google.android.libraries.places.api.model.LocationRestriction;
+import com.google.android.libraries.places.api.model.Place;
+import com.google.android.libraries.places.api.model.PlaceLikelihood;
+import com.google.android.libraries.places.api.model.PlaceTypes;
+import com.google.android.libraries.places.api.model.RectangularBounds;
+import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest;
+import com.google.android.libraries.places.api.net.PlacesClient;
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest;
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsResponse;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 public class PlanActivity extends AppCompatActivity {
@@ -64,6 +85,12 @@ public class PlanActivity extends AppCompatActivity {
     private OkHttpClient httpClient;
     private ActivityResultLauncher<String> requestPermissionLauncher;
 
+    private PlacesClient placesClient;
+    private ArrayList<String> placesData = new ArrayList<>();
+    private ActivityAdapter placesAdapter;
+    private LatLngBounds cityBounds;
+    private RectangularBounds rectangularBounds; // Added for LocationBias
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,6 +100,11 @@ public class PlanActivity extends AppCompatActivity {
         // Initialize services
         executorService = Executors.newSingleThreadExecutor();
         httpClient = new OkHttpClient();
+
+        if (!Places.isInitialized()) {
+            Places.initialize(getApplicationContext(), "AIzaSyCYnYiiqrHO0uwKoxNQLA_mKEIuX1aRyL4");
+        }
+        placesClient = Places.createClient(this);
 
         // Initialize views
         planTitle = findViewById(R.id.planTitle);
@@ -144,8 +176,6 @@ public class PlanActivity extends AppCompatActivity {
         if (latitude != 0.0 && longitude != 0.0) {
             fetchWeatherInfo();
         }
-
-
 
         // Set button click listeners
         savePlanButton.setOnClickListener(v -> saveTripPlan());
@@ -235,12 +265,10 @@ public class PlanActivity extends AppCompatActivity {
             Date tripStartDate = dateFormat.parse(tripDate);
 
             if (tripStartDate != null) {
-                // Schedule one week notification
                 scheduleNotification(tripStartDate, 7, ONE_WEEK_NOTIFICATION_ID,
                         "Trip to " + city + " is in one week!",
                         "Time to start planning and packing for your adventure.");
 
-                // Schedule one day notification
                 scheduleNotification(tripStartDate, 1, ONE_DAY_NOTIFICATION_ID,
                         "Your trip to " + city + " is tomorrow!",
                         "Final preparations for your journey to " + city + ".");
@@ -256,7 +284,6 @@ public class PlanActivity extends AppCompatActivity {
         intent.putExtra("title", title);
         intent.putExtra("message", message);
 
-        // Create PendingIntent with unique requestCode
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 this,
                 notificationId,
@@ -264,11 +291,9 @@ public class PlanActivity extends AppCompatActivity {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        // Calculate notification time
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(tripDate);
         calendar.add(Calendar.DAY_OF_YEAR, -daysBefore);
-        // Set time to 9:00 AM
         calendar.set(Calendar.HOUR_OF_DAY, 9);
         calendar.set(Calendar.MINUTE, 0);
         calendar.set(Calendar.SECOND, 0);
@@ -361,6 +386,26 @@ public class PlanActivity extends AppCompatActivity {
         // Create and set adapter for chosen activities
         ActivityCategoryAdapter categoryAdapter = new ActivityCategoryAdapter(categories);
         chosenActivitiesRecycler.setAdapter(categoryAdapter);
+
+        // Set up activities list RecyclerView
+        activitiesList.setLayoutManager(new LinearLayoutManager(this));
+        placesData = new ArrayList<>();
+
+        // Show loading indicator
+        setupPlacesLoading();
+
+        // Fetch places for the given categories
+        fetchPlacesForCategories(categories);
+    }
+
+    private void checkForEmptyResults() {
+        runOnUiThread(() -> {
+            if (placesData.isEmpty() || (placesData.size() == 1 && placesData.get(0).contains("Loading"))) {
+                placesData.clear();
+                placesData.add("No places found in this city. Try adjusting your categories.");
+                placesAdapter.notifyDataSetChanged();
+            }
+        });
     }
 
     private void calculateDuration() {
@@ -382,10 +427,17 @@ public class PlanActivity extends AppCompatActivity {
 
 
     private void saveTripPlan() {
-        String destination = destinationValue.getText().toString();
-        String duration = durationValue.getText().toString();
-        String activities = TextUtils.join(", ", activitiesListData);
-        String weather = weatherInfo.getText().toString();
+        final String destination = destinationValue.getText().toString();
+        final String duration = durationValue.getText().toString();
+        final String activities;
+
+        if (activitiesListData != null && !activitiesListData.isEmpty()) {
+            activities = TextUtils.join(", ", activitiesListData);
+        } else {
+            activities = "No activities planned";
+        }
+
+        final String weather = weatherInfo.getText().toString();
 
         SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
@@ -429,7 +481,6 @@ public class PlanActivity extends AppCompatActivity {
         editor.putString("PlanSlot_" + slot, planDetails);
         editor.apply();
 
-        // Check if notifications are enabled and schedule them
         boolean notificationsEnabled = sharedPreferences.getBoolean(NOTIFICATION_PREF, false);
         if (notificationsEnabled && startDate != null && !startDate.isEmpty()) {
             scheduleNotifications(startDate);
@@ -494,13 +545,20 @@ public class PlanActivity extends AppCompatActivity {
         @Override
         public ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
             android.view.View view = getLayoutInflater().inflate(
-                    android.R.layout.simple_list_item_1, parent, false);
+                    R.layout.place_item, parent, false);
             return new ViewHolder(view);
         }
 
         @Override
         public void onBindViewHolder(ViewHolder holder, int position) {
-            holder.textView.setText(activities.get(position));
+            String placeInfo = activities.get(position);
+            holder.textView.setText(placeInfo);
+
+            // If it's a place with an emoji, highlight it
+            if (placeInfo.contains("📸") || placeInfo.contains("🍽") ||
+                    placeInfo.contains("🌳") || placeInfo.contains("🏛")) {
+                holder.textView.setTextColor(getResources().getColor(android.R.color.holo_blue_dark));
+            }
         }
 
         @Override
@@ -513,10 +571,229 @@ public class PlanActivity extends AppCompatActivity {
 
             ViewHolder(android.view.View itemView) {
                 super(itemView);
-                textView = itemView.findViewById(android.R.id.text1);
+                textView = itemView.findViewById(R.id.place_name);
             }
         }
     }
+
+    private void calculateCityBounds() {
+        // Approximate city boundaries based on center coordinates
+        // This is a simplified approach; a real implementation would use geocoding to get precise city bounds
+        double radius = 5000; // 5km radius around city center
+        double latRadian = Math.toRadians(latitude);
+
+        // Calculate approximate lat/lng deltas for the radius
+        double latDelta = radius / 111320.0; // 1 degree of latitude is approximately 111.32 km
+        double lngDelta = radius / (111320.0 * Math.cos(latRadian));
+
+        LatLng southwest = new LatLng(latitude - latDelta, longitude - lngDelta);
+        LatLng northeast = new LatLng(latitude + latDelta, longitude + lngDelta);
+
+        cityBounds = new LatLngBounds(southwest, northeast);
+
+        // Create RectangularBounds for LocationBias (fixing the type mismatch)
+        rectangularBounds = RectangularBounds.newInstance(
+                southwest,
+                northeast
+        );
+    }
+
+    private void setupPlacesLoading() {
+        placesData.clear();
+        placesData.add("Loading places for your trip...");
+        placesAdapter = new ActivityAdapter(placesData);
+        activitiesList.setAdapter(placesAdapter);
+    }
+
+    private void fetchPlacesForCategories(ArrayList<String> selectedCategories) {
+        placesData.clear();
+        calculateCityBounds();
+
+        // Define all place types we want to search for using PlaceTypes instead of deprecated Place.Type
+        List<String> allPlaceTypes = Arrays.asList(
+                // Tourist attractions
+                PlaceTypes.TOURIST_ATTRACTION, PlaceTypes.MUSEUM, "landmark",
+
+                // Food and drink
+                PlaceTypes.RESTAURANT, PlaceTypes.CAFE, PlaceTypes.BAR,
+
+                // Entertainment
+                PlaceTypes.SHOPPING_MALL, PlaceTypes.MOVIE_THEATER, "night_club",
+
+                // Nature and outdoors
+                PlaceTypes.PARK, "beach", "natural_feature",
+
+                // Cultural sites
+                PlaceTypes.ART_GALLERY, "place_of_worship", PlaceTypes.CHURCH,
+                "hindu_temple", "mosque", "synagogue",
+
+                // Family attractions
+                PlaceTypes.ZOO, PlaceTypes.AQUARIUM, PlaceTypes.AMUSEMENT_PARK,
+
+                // Transportation
+                PlaceTypes.TRAIN_STATION, PlaceTypes.SUBWAY_STATION
+        );
+
+        // Filter the types based on user selected categories
+        List<String> typesToSearch = new ArrayList<>();
+        for (String category : selectedCategories) {
+            switch (category.toLowerCase()) {
+                case "food":
+                    typesToSearch.add(PlaceTypes.RESTAURANT);
+                    typesToSearch.add(PlaceTypes.CAFE);
+                    typesToSearch.add(PlaceTypes.BAR);
+                    break;
+                case "attractions":
+                    typesToSearch.add(PlaceTypes.TOURIST_ATTRACTION);
+                    typesToSearch.add(PlaceTypes.MUSEUM);
+                    typesToSearch.add("landmark");
+                    typesToSearch.add("historical_landmark");
+                    break;
+                case "shopping":
+                    typesToSearch.add(PlaceTypes.SHOPPING_MALL);
+                    break;
+                case "outdoors":
+                    typesToSearch.add(PlaceTypes.PARK);
+                    typesToSearch.add("beach");
+                    typesToSearch.add("natural_feature");
+                    break;
+                case "entertainment":
+                    typesToSearch.add(PlaceTypes.MOVIE_THEATER);
+                    typesToSearch.add("theater");
+                    typesToSearch.add("night_club");
+                    typesToSearch.add(PlaceTypes.AMUSEMENT_PARK);
+                    break;
+                case "culture":
+                    typesToSearch.add(PlaceTypes.ART_GALLERY);
+                    typesToSearch.add("place_of_worship");
+                    typesToSearch.add(PlaceTypes.CHURCH);
+                    typesToSearch.add("hindu_temple");
+                    typesToSearch.add("mosque");
+                    typesToSearch.add("synagogue");
+                    break;
+                case "family":
+                    typesToSearch.add(PlaceTypes.ZOO);
+                    typesToSearch.add(PlaceTypes.AQUARIUM);
+                    typesToSearch.add(PlaceTypes.AMUSEMENT_PARK);
+                    break;
+                case "transit":
+                    typesToSearch.add(PlaceTypes.TRAIN_STATION);
+                    typesToSearch.add(PlaceTypes.SUBWAY_STATION);
+                    break;
+            }
+        }
+
+        Set<String> uniqueTypes = new HashSet<>(typesToSearch);
+
+        // Process each place type - limit to 2 results per type to avoid exceeding quota
+        for (String placeType : uniqueTypes) {
+            fetchPlacesOfType(placeType);
+        }
+
+        // Fix the scheduled execution by using ScheduledExecutorService instead
+        // If you don't already have a ScheduledExecutorService, create one
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.schedule(() -> {
+            checkForEmptyResults();
+        }, 5, TimeUnit.SECONDS);
+    }
+
+    // Add this method for formatting place types
+    private String getFormattedPlaceType(String type) {
+        switch (type) {
+            // High-value tourist categories
+            case "tourist_attraction": return "📸 Tourist Attraction";
+            case "museum": return "🏛 Museum";
+            case "landmark": return "🏛 Landmark";
+            case "historical_landmark":
+            case "historical_site": return "🏰 Historical Site";
+
+            // Food and drink
+            case "restaurant": return "🍽 Restaurant";
+            case "cafe": return "☕ Cafe";
+            case "bar": return "🍹 Bar";
+
+            // Entertainment
+            case "shopping_mall": return "🛍 Shopping Mall";
+            case "theater": return "🎭 Theater";
+            case "movie_theater": return "🎬 Cinema";
+            case "night_club": return "🎶 Night Club";
+
+            // Nature and outdoors
+            case "park": return "🌳 Park";
+            case "beach": return "🏖 Beach";
+            case "natural_feature": return "🏞 Nature Spot";
+
+            // Cultural sites
+            case "art_gallery": return "🖼 Art Gallery";
+            case "place_of_worship":
+            case "church":
+            case "hindu_temple":
+            case "mosque":
+            case "synagogue": return "🙏 Place of Worship";
+
+            // Family attractions
+            case "zoo": return "🦁 Zoo";
+            case "aquarium": return "🐠 Aquarium";
+            case "amusement_park": return "🎢 Amusement Park";
+
+            // Only include transportation that tourists need
+            case "train_station": return "🚂 Train Station";
+            case "subway_station": return "🚇 Metro Station";
+
+            default: return null; // Filter out other categories
+        }
+    }
+
+    private void fetchPlacesOfType(String placeType) {
+        // Skip place types that don't match our formatted list
+        String formattedType = getFormattedPlaceType(placeType);
+        if (formattedType == null) {
+            return;
+        }
+
+        // Fix: Use rectangularBounds (which is RectangularBounds) as LocationBias
+        FindAutocompletePredictionsRequest request = FindAutocompletePredictionsRequest.builder()
+                .setLocationBias(rectangularBounds) // Changed from cityBounds to rectangularBounds
+                .setTypesFilter(Arrays.asList(placeType))
+                .setQuery(city)
+                .build();
+
+        placesClient.findAutocompletePredictions(request)
+                .addOnSuccessListener((response) -> {
+                    // Limit to 2 results per type to manage quota
+                    int count = 0;
+                    for (com.google.android.libraries.places.api.model.AutocompletePrediction prediction : response.getAutocompletePredictions()) {
+                        if (count >= 2) break;
+
+                        String placeName = prediction.getPrimaryText(null).toString();
+
+                        // Use our formatted place type instead of raw type
+                        String placeEntry = formattedType + ": " + placeName;
+
+                        placesData.add(placeEntry);
+                        count++;
+                    }
+
+                    // Update the UI with the places we found
+                    runOnUiThread(() -> {
+                        if (placesAdapter == null) {
+                            placesAdapter = new ActivityAdapter(placesData);
+                            activitiesList.setAdapter(placesAdapter);
+                        } else {
+                            placesAdapter.notifyDataSetChanged();
+                        }
+                    });
+                })
+                .addOnFailureListener((exception) -> {
+                    if (exception instanceof ApiException) {
+                        Log.e(TAG, "Place lookup failed: " + exception.getMessage());
+                    }
+                });
+    }
+
+
+
 
     @Override
     protected void onDestroy() {

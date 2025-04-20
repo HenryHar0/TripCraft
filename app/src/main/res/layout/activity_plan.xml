@@ -162,7 +162,7 @@
                 android:id="@+id/chosenActivitiesLabel"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Chosen Activities"
+                android:text="Chosen Categories"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="#1A73E8"
