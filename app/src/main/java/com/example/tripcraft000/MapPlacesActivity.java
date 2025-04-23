@@ -48,7 +48,6 @@ public class MapPlacesActivity extends AppCompatActivity implements
         PlacesAdapter.OnPlaceClickListener,
         PlacesAdapter.OnPlaceSelectionChangedListener {
 
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
     private static final String API_KEY = "AIzaSyCYnYiiqrHO0uwKoxNQLA_mKEIuX1aRyL4";
 
     private GoogleMap googleMap;
@@ -170,13 +169,6 @@ public class MapPlacesActivity extends AppCompatActivity implements
         // Set initial camera position to the city
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(selectedCityCoordinates, 12));
 
-        // Enable my location if permission is granted
-        if (hasLocationPermission()) {
-            enableMyLocation();
-        } else {
-            requestLocationPermission();
-        }
-
         // Set up map click listener
         googleMap.setOnInfoWindowClickListener(marker -> {
             String placeId = (String) marker.getTag();
@@ -203,7 +195,6 @@ public class MapPlacesActivity extends AppCompatActivity implements
     }
 
     private void fetchCityBoundaries(String cityName, final BoundariesCallback callback) {
-        // Format the URL for geocoding request
         String encodedCityName;
         try {
             encodedCityName = URLEncoder.encode(cityName, "UTF-8");
@@ -246,8 +237,6 @@ public class MapPlacesActivity extends AppCompatActivity implements
             }
         }).start();
     }
-
-    // Parse the geocoding response to extract viewport boundaries
     private LatLngBounds parseBoundaries(JSONObject jsonResponse) throws JSONException {
         if (jsonResponse.getString("status").equals("OK")) {
             JSONArray results = jsonResponse.getJSONArray("results");
@@ -593,38 +582,6 @@ public class MapPlacesActivity extends AppCompatActivity implements
 
         // Update the selected count
         updateSelectedCount();
-    }
-
-    private boolean hasLocationPermission() {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
-                PackageManager.PERMISSION_GRANTED;
-    }
-
-    private void requestLocationPermission() {
-        ActivityCompat.requestPermissions(
-                this,
-                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                LOCATION_PERMISSION_REQUEST_CODE);
-    }
-
-    private void enableMyLocation() {
-        if (googleMap != null && hasLocationPermission()) {
-            try {
-                googleMap.setMyLocationEnabled(true);
-            } catch (SecurityException e) {
-                Log.e("MapPlacesActivity", "Error enabling location", e);
-            }
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                enableMyLocation();
-            }
-        }
     }
 
     // PlaceMarker class to store place information

@@ -7,10 +7,12 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -89,7 +91,11 @@ public class PlanActivity extends AppCompatActivity {
     private ArrayList<String> placesData = new ArrayList<>();
     private ActivityAdapter placesAdapter;
     private LatLngBounds cityBounds;
-    private RectangularBounds rectangularBounds; // Added for LocationBias
+    private RectangularBounds rectangularBounds;
+    private Button showMandatoryButton;
+    private ArrayList<String> mandatoryPlaceIds;
+    private boolean showingMandatoryPlaces = false;
+    private ArrayList<String> allPlacesData;
 
 
     @Override
@@ -117,6 +123,10 @@ public class PlanActivity extends AppCompatActivity {
         savePlanButton = findViewById(R.id.savePlanButton);
         editPlanButton = findViewById(R.id.editPlanButton);
         backToMainButton = findViewById(R.id.backToMainButton);
+        showMandatoryButton = findViewById(R.id.showMandatoryButton);
+
+        allPlacesData = new ArrayList<>();
+        showMandatoryButton.setOnClickListener(v -> toggleMandatoryPlaces());
 
         // Setup notification permission launcher
         requestPermissionLauncher = registerForActivityResult(
@@ -156,6 +166,7 @@ public class PlanActivity extends AppCompatActivity {
         latitude = intent.getDoubleExtra("latitude", 0.0);
         longitude = intent.getDoubleExtra("longitude", 0.0);
         ArrayList<String> selectedCategories = intent.getStringArrayListExtra("selected_categories");
+        mandatoryPlaceIds = intent.getStringArrayListExtra("mandatory_place_ids");
 
         // Set up chosen activities
         if (selectedCategories != null && !selectedCategories.isEmpty()) {
@@ -322,6 +333,45 @@ public class PlanActivity extends AppCompatActivity {
                         pendingIntent
                 );
             }
+        }
+    }
+
+    private void toggleMandatoryPlaces() {
+        if (showingMandatoryPlaces) {
+            // Switch back to all places
+            placesData.clear();
+            placesData.addAll(allPlacesData);
+            placesAdapter.notifyDataSetChanged();
+            showMandatoryButton.setText("Show Must Visit");
+            showingMandatoryPlaces = false;
+        } else {
+            // First time switching to mandatory, back up all places
+            if (allPlacesData.isEmpty() && !placesData.isEmpty()) {
+                allPlacesData.addAll(placesData);
+            }
+
+            // Show only mandatory places
+            ArrayList<String> mandatoryPlaces = new ArrayList<>();
+            for (String placeId : mandatoryPlaceIds) {
+                // Find the place in allPlacesData
+                for (String placeInfo : allPlacesData) {
+                    if (placeInfo.contains(placeId)) {
+                        mandatoryPlaces.add("🌟 " + placeInfo);
+                        break;
+                    }
+                }
+            }
+
+            // If no mandatory places found
+            if (mandatoryPlaces.isEmpty()) {
+                mandatoryPlaces.add("No must-visit places selected for this trip");
+            }
+
+            placesData.clear();
+            placesData.addAll(mandatoryPlaces);
+            placesAdapter.notifyDataSetChanged();
+            showMandatoryButton.setText("Show All Places");
+            showingMandatoryPlaces = true;
         }
     }
 
@@ -542,6 +592,7 @@ public class PlanActivity extends AppCompatActivity {
             this.activities = activities;
         }
 
+
         @Override
         public ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
             android.view.View view = getLayoutInflater().inflate(
@@ -554,8 +605,15 @@ public class PlanActivity extends AppCompatActivity {
             String placeInfo = activities.get(position);
             holder.textView.setText(placeInfo);
 
-            // If it's a place with an emoji, highlight it
-            if (placeInfo.contains("📸") || placeInfo.contains("🍽") ||
+            // If it's a mandatory place (has star emoji), highlight it with blue
+            if (placeInfo.contains("🌟")) {
+                holder.textView.setTextColor(getResources().getColor(android.R.color.holo_blue_light));
+                holder.textView.setTypeface(null, Typeface.BOLD);
+                holder.textView.setBackgroundResource(R.drawable.mandatory_place_background);
+                holder.textView.setPadding(16, 12, 16, 12);
+            }
+            // Your existing highlighting code
+            else if (placeInfo.contains("📸") || placeInfo.contains("🍽") ||
                     placeInfo.contains("🌳") || placeInfo.contains("🏛")) {
                 holder.textView.setTextColor(getResources().getColor(android.R.color.holo_blue_dark));
             }
@@ -683,18 +741,23 @@ public class PlanActivity extends AppCompatActivity {
             }
         }
 
+
         Set<String> uniqueTypes = new HashSet<>(typesToSearch);
 
-        // Process each place type - limit to 2 results per type to avoid exceeding quota
         for (String placeType : uniqueTypes) {
             fetchPlacesOfType(placeType);
         }
 
-        // Fix the scheduled execution by using ScheduledExecutorService instead
-        // If you don't already have a ScheduledExecutorService, create one
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         scheduler.schedule(() -> {
             checkForEmptyResults();
+
+            // Save all places data for toggling
+            runOnUiThread(() -> {
+                if (!placesData.isEmpty() && allPlacesData.isEmpty()) {
+                    allPlacesData.addAll(placesData);
+                }
+            });
         }, 5, TimeUnit.SECONDS);
     }
 

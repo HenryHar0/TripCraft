@@ -45,7 +45,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class InterestsActivity extends AppCompatActivity {
 
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
     private LinearLayout interestsLayout;
     private ProgressBar progressBar;
     private TextView statusText;
@@ -64,6 +63,9 @@ public class InterestsActivity extends AppCompatActivity {
     private final Set<String> processedPlaceIds = new HashSet<>();
     private LatLngBounds cityBounds;
     private int cityRadius = 5000;  // Default radius
+    private final Set<String> selectedPlaceIds = new HashSet<>();
+
+    private static final int REQUEST_CODE_PLACE_SELECTION = 100;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +86,7 @@ public class InterestsActivity extends AppCompatActivity {
         String startDate = getIntent().getStringExtra("start_date");
         String endDate = getIntent().getStringExtra("end_date");
         int durationDays = getIntent().getIntExtra("duration_days", 0);
+
 
         // Get coordinates from intent or use default coordinates based on city name
         double lat = getIntent().getDoubleExtra("city_lat", 0);
@@ -136,12 +139,9 @@ public class InterestsActivity extends AppCompatActivity {
                 Log.d("InterestsActivity", "City radius calculated: " + cityRadius + " meters");
             }
 
-            // Check for location permission and start fetching places
-            if (hasLocationPermission()) {
-                startFetchingPlaces();
-            } else {
-                requestLocationPermission();
-            }
+
+            startFetchingPlaces();
+
         });
     }
 
@@ -510,6 +510,9 @@ public class InterestsActivity extends AppCompatActivity {
             progressBar.setVisibility(View.GONE);
             statusText.setText("Found " + typeCountMap.size() + " categories in " + selectedCityName);
 
+            // Add this log statement to track processed place IDs every time UI updates
+            Log.d("InterestsActivity", "Current mandatory places count: " + processedPlaceIds.size() + " - Places: " + processedPlaceIds);
+
             categoriesLayout.setVisibility(View.VISIBLE);
             categoriesLayout.removeAllViews();
 
@@ -658,6 +661,8 @@ public class InterestsActivity extends AppCompatActivity {
         card.setCardElevation(4);
         card.setRadius(8);
 
+
+
         LinearLayout cardLayout = new LinearLayout(this);
         cardLayout.setOrientation(LinearLayout.VERTICAL);
         cardLayout.setPadding(16, 16, 16, 16);
@@ -687,7 +692,9 @@ public class InterestsActivity extends AppCompatActivity {
             intent.putExtra("city_lat", selectedCityCoordinates.latitude);
             intent.putExtra("city_lng", selectedCityCoordinates.longitude);
             intent.putExtra("category_name", category);
-            startActivity(intent);
+
+            // Start activity for result to get the selected places back
+            startActivityForResult(intent, REQUEST_CODE_PLACE_SELECTION);
         });
 
         cardLayout.addView(categoryText);
@@ -696,6 +703,25 @@ public class InterestsActivity extends AppCompatActivity {
 
         card.addView(cardLayout);
         interestsLayout.addView(card);
+    }
+
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_CODE_PLACE_SELECTION && resultCode == RESULT_OK && data != null) {
+            ArrayList<String> newSelectedPlaceIds = data.getStringArrayListExtra("selected_place_ids");
+
+            if (newSelectedPlaceIds != null && !newSelectedPlaceIds.isEmpty()) {
+                // Add the newly selected places to our set
+                selectedPlaceIds.addAll(newSelectedPlaceIds);
+
+                Log.d("InterestsActivity", "Added " + newSelectedPlaceIds.size() +
+                        " places. Total selected: " + selectedPlaceIds.size());
+
+                // Update the UI to show that places have been selected
+                // You could add a counter or indicator to the category card here
+            }
+        }
     }
 
     private String getFormattedPlaceType(String type) {
@@ -743,18 +769,6 @@ public class InterestsActivity extends AppCompatActivity {
             default: return null; // Filter out other categories
         }
     }
-
-    private boolean hasLocationPermission() {
-        return ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-    }
-
-    private void requestLocationPermission() {
-        ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
-                LOCATION_PERMISSION_REQUEST_CODE);
-    }
-
     private void navigateToNextScreen() {
         if (selectedCategories.isEmpty()) {
             Toast.makeText(this, "Please select at least one category", Toast.LENGTH_SHORT).show();
@@ -778,20 +792,13 @@ public class InterestsActivity extends AppCompatActivity {
         // Pass selected categories
         intent.putStringArrayListExtra("selected_categories", new ArrayList<>(selectedCategories));
 
+        // Pass only selected place IDs instead of all processed places
+        ArrayList<String> selectedPlacesList = new ArrayList<>(selectedPlaceIds);
+        Log.d("InterestsActivity", "Passing " + selectedPlacesList.size() + " selected places to PlanActivity");
+        intent.putStringArrayListExtra("mandatory_place_ids", selectedPlacesList);
+
         // Start PlanActivity
         startActivity(intent);
         finish();
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                startFetchingPlaces();
-            } else {
-                Toast.makeText(this, "Location permission is required to fetch nearby places", Toast.LENGTH_SHORT).show();
-            }
-        }
     }
 }

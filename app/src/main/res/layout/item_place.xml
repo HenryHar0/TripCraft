@@ -85,14 +85,34 @@
             </LinearLayout>
         </LinearLayout>
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/placeImagesRecyclerView"
+        <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="100dp"
-            android:layout_marginTop="8dp"
-            android:clipToPadding="false"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp" />
+            android:layout_height="wrap_content">
+
+            <!-- Your RecyclerView -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/placeImagesRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp" />
+
+            <!-- Scroll indicator -->
+            <ImageView
+                android:id="@+id/scroll_indicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/ic_chevron_right"
+                android:alpha="0.7"
+                android:visibility="gone"
+                android:contentDescription="Scroll for more images" />
+        </RelativeLayout>
 
         <Button
             android:id="@+id/viewOnMapsButton"
@@ -105,4 +125,6 @@
             android:textAllCaps="false"
             android:textColor="@color/primary" />
     </LinearLayout>
+
+
 </androidx.cardview.widget.CardView>

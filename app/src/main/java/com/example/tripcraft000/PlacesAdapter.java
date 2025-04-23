@@ -16,7 +16,9 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.PagerSnapHelper;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SnapHelper;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
@@ -141,6 +143,7 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
         private final CheckBox placeCheckbox;
         private final TextView mandatoryTag;
         private final Button viewOnMapsButton;
+        private final ImageView scrollIndicator;
 
         public PlaceViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -151,6 +154,7 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
             placeCheckbox = itemView.findViewById(R.id.placeCheckbox);
             mandatoryTag = itemView.findViewById(R.id.mandatoryTag);
             viewOnMapsButton = itemView.findViewById(R.id.viewOnMapsButton);
+            scrollIndicator = itemView.findViewById(R.id.scroll_indicator);
         }
 
         public void bind(final MapPlacesActivity.PlaceMarker place,
@@ -176,13 +180,36 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
             List<String> photoUrls = place.getPhotoUrls();
             if (photoUrls != null && !photoUrls.isEmpty()) {
                 imagesRecyclerView.setVisibility(View.VISIBLE);
+
+                // Create and set horizontal layout manager with a page-like scrolling behavior
                 LinearLayoutManager layoutManager = new LinearLayoutManager(
                         itemView.getContext(), LinearLayoutManager.HORIZONTAL, false);
                 imagesRecyclerView.setLayoutManager(layoutManager);
+
+                // Apply spacing between items
+                int spacingInPixels = itemView.getContext().getResources().getDimensionPixelSize(R.dimen.image_spacing);
+                imagesRecyclerView.addItemDecoration(new ItemSpacingDecoration(spacingInPixels));
+
+                // Add snap helper for better scrolling experience
+                SnapHelper snapHelper = new PagerSnapHelper();
+                if (imagesRecyclerView.getOnFlingListener() == null) {
+                    snapHelper.attachToRecyclerView(imagesRecyclerView);
+                }
+
                 ImageAdapter imageAdapter = new ImageAdapter(itemView.getContext(), photoUrls);
                 imagesRecyclerView.setAdapter(imageAdapter);
+
+                // Show scroll indicator if there are multiple images
+                if (photoUrls.size() > 1 && scrollIndicator != null) {
+                    scrollIndicator.setVisibility(View.VISIBLE);
+                } else if (scrollIndicator != null) {
+                    scrollIndicator.setVisibility(View.GONE);
+                }
             } else {
                 imagesRecyclerView.setVisibility(View.GONE);
+                if (scrollIndicator != null) {
+                    scrollIndicator.setVisibility(View.GONE);
+                }
             }
 
             // Set click listener for the checkbox
@@ -238,6 +265,29 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
         }
     }
 
+    // Item spacing decoration for RecyclerView
+    public static class ItemSpacingDecoration extends RecyclerView.ItemDecoration {
+        private final int spacing;
+
+        public ItemSpacingDecoration(int spacing) {
+            this.spacing = spacing;
+        }
+
+        @Override
+        public void getItemOffsets(@NonNull android.graphics.Rect outRect, @NonNull View view,
+                                   @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+            outRect.right = spacing;
+            // Add top and bottom spacing for better visual appearance
+            outRect.top = spacing / 2;
+            outRect.bottom = spacing / 2;
+
+            // Add left spacing only to the first item
+            if (parent.getChildAdapterPosition(view) == 0) {
+                outRect.left = spacing;
+            }
+        }
+    }
+
     // Nested adapter for the horizontal image gallery
     static class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHolder> {
         private final Context context;
@@ -259,6 +309,11 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
         @Override
         public void onBindViewHolder(@NonNull ImageViewHolder holder, int position) {
             String imageUrl = imageUrls.get(position);
+
+            // Show image number for better indication of multiple images
+            holder.imageCountText.setText((position + 1) + "/" + imageUrls.size());
+            holder.imageCountText.setVisibility(imageUrls.size() > 1 ? View.VISIBLE : View.GONE);
+
             Glide.with(context)
                     .load(imageUrl)
                     .apply(new RequestOptions()
@@ -282,10 +337,12 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
 
         static class ImageViewHolder extends RecyclerView.ViewHolder {
             final ImageView imageView;
+            final TextView imageCountText;
 
             ImageViewHolder(@NonNull View itemView) {
                 super(itemView);
                 imageView = itemView.findViewById(R.id.placeImageItem);
+                imageCountText = itemView.findViewById(R.id.imageCountText);
             }
         }
     }
