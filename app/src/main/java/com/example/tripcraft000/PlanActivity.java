@@ -54,6 +54,8 @@ import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest;
 import com.google.android.libraries.places.api.net.PlacesClient;
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest;
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsResponse;
+import com.google.android.libraries.places.api.net.FetchPlaceRequest;
+import com.google.android.libraries.places.api.net.FetchPlaceResponse;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import java.util.Arrays;
@@ -210,6 +212,55 @@ public class PlanActivity extends AppCompatActivity {
         }
     }
 
+    private void fetchPlaceById(String placeId) {
+        // Define the fields to return
+        List<Place.Field> placeFields = Arrays.asList(
+                Place.Field.ID,
+                Place.Field.NAME,
+                Place.Field.ADDRESS,
+                Place.Field.TYPES,
+                Place.Field.RATING
+        );
+
+        // Create a fetch request
+        FetchPlaceRequest request = FetchPlaceRequest.builder(placeId, placeFields).build();
+
+        // Execute the request
+        placesClient.fetchPlace(request)
+                .addOnSuccessListener((response) -> {
+                    Place place = response.getPlace();
+                    String placeType = "";
+
+                    // Get the first place type and format it
+                    if (place.getTypes() != null && !place.getTypes().isEmpty()) {
+                        String firstType = String.valueOf(place.getTypes().get(0));
+                        placeType = getFormattedPlaceType(firstType);
+                        if (placeType == null) {
+                            placeType = "📍 Place";  // Default if type not recognized
+                        }
+                    }
+
+                    // Format the place information
+                    String placeInfo = placeType + ": " + place.getName();
+
+                    // Add to the displayed list
+                    placesData.add("★ " + placeInfo);
+                    placesAdapter.notifyDataSetChanged();
+
+                    Log.d("PlaceDetails", "Successfully fetched: " + placeInfo);
+                })
+                .addOnFailureListener((exception) -> {
+                    if (exception instanceof ApiException) {
+                        ApiException apiException = (ApiException) exception;
+                        Log.e("PlaceDetails", "Place not found: " + apiException.getStatusCode());
+
+                        // Add a placeholder entry if the place couldn't be found
+                        placesData.add("★ Unknown Place (ID: " + placeId + ")");
+                        placesAdapter.notifyDataSetChanged();
+                    }
+                });
+    }
+
     private void showNotificationExplanationDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Trip Reminders");
@@ -337,52 +388,40 @@ public class PlanActivity extends AppCompatActivity {
 
     private void toggleSelectedPlaces() {
         if (showingSelectedPlaces) {
+            // Show all places
             placesData.clear();
             placesData.addAll(allPlacesData);
             placesAdapter.notifyDataSetChanged();
             showMandatoryButton.setText("Show Selected");
             showingSelectedPlaces = false;
         } else {
+            // Show only selected places
             if (allPlacesData.isEmpty()) {
                 allPlacesData.addAll(placesData);
                 Log.d("ToggleDebug", "Backed up placesData to allPlacesData");
             }
 
-
-            ArrayList<String> selectedPlaces = new ArrayList<>();
-            for (String placeId : selectedPlaceIds) {
-                Log.d("ToggleDebug", "Looking for placeId: " + placeId);
-
-                boolean found = false;
-                for (String placeInfo : allPlacesData) {
-                    Log.d("ToggleDebug", "Checking placeInfo: " + placeInfo);
-
-                    if (placeInfo.contains(placeId)) {
-                        Log.d("ToggleDebug", "Matched placeId: " + placeId + " in placeInfo: " + placeInfo);
-                        selectedPlaces.add("★ " + placeInfo);
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found) {
-                    Log.d("ToggleDebug", "No match found for placeId: " + placeId);
-                }
-            }
-            for (String info : allPlacesData) {
-                Log.d("ToggleDebug", "allPlacesData item: " + info);
-            }
-
-
-
-            if (selectedPlaces.isEmpty()) {
-                selectedPlaces.add("No places selected for this trip");
-                Log.d("ToggleDebug", "No selected places matched.");
-            }
-
+            // Clear the list to show only selected places
             placesData.clear();
-            placesData.addAll(selectedPlaces);
-            placesAdapter.notifyDataSetChanged();
+
+            // Check if we have any selected place IDs
+            if (selectedPlaceIds == null || selectedPlaceIds.isEmpty()) {
+                placesData.add("No places selected for this trip");
+                placesAdapter.notifyDataSetChanged();
+            } else {
+                // Show a loading message while we fetch place details
+                placesData.add("Loading selected places...");
+                placesAdapter.notifyDataSetChanged();
+
+                // Clear the list again to remove the loading message once we get real data
+                placesData.clear();
+
+                // Fetch details for each selected place ID
+                for (String placeId : selectedPlaceIds) {
+                    fetchPlaceById(placeId);
+                }
+            }
+
             showMandatoryButton.setText("Show All Places");
             showingSelectedPlaces = true;
         }

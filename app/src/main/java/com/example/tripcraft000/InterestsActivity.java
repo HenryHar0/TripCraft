@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -42,6 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
 
 public class InterestsActivity extends AppCompatActivity {
 
@@ -145,6 +147,7 @@ public class InterestsActivity extends AppCompatActivity {
 
         });
     }
+
 
     private void fetchCityBoundaries(String cityName, final BoundariesCallback callback) {
         String encodedCityName;
