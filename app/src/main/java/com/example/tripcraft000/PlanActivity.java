@@ -93,8 +93,8 @@ public class PlanActivity extends AppCompatActivity {
     private LatLngBounds cityBounds;
     private RectangularBounds rectangularBounds;
     private Button showMandatoryButton;
-    private ArrayList<String> mandatoryPlaceIds;
-    private boolean showingMandatoryPlaces = false;
+    private ArrayList<String> selectedPlaceIds;
+    private boolean showingSelectedPlaces = false;
     private ArrayList<String> allPlacesData;
 
 
@@ -119,14 +119,13 @@ public class PlanActivity extends AppCompatActivity {
         weatherInfo = findViewById(R.id.weatherInfo);
         activitiesList = findViewById(R.id.activitiesList);
         chosenActivitiesRecycler = findViewById(R.id.chosenActivitiesRecycler);
-
         savePlanButton = findViewById(R.id.savePlanButton);
         editPlanButton = findViewById(R.id.editPlanButton);
         backToMainButton = findViewById(R.id.backToMainButton);
         showMandatoryButton = findViewById(R.id.showMandatoryButton);
 
         allPlacesData = new ArrayList<>();
-        showMandatoryButton.setOnClickListener(v -> toggleMandatoryPlaces());
+        showMandatoryButton.setOnClickListener(v -> toggleSelectedPlaces());
 
         // Setup notification permission launcher
         requestPermissionLauncher = registerForActivityResult(
@@ -166,7 +165,7 @@ public class PlanActivity extends AppCompatActivity {
         latitude = intent.getDoubleExtra("latitude", 0.0);
         longitude = intent.getDoubleExtra("longitude", 0.0);
         ArrayList<String> selectedCategories = intent.getStringArrayListExtra("selected_categories");
-        mandatoryPlaceIds = intent.getStringArrayListExtra("mandatory_place_ids");
+        selectedPlaceIds = intent.getStringArrayListExtra("selected_place_ids");
 
         // Set up chosen activities
         if (selectedCategories != null && !selectedCategories.isEmpty()) {
@@ -336,44 +335,59 @@ public class PlanActivity extends AppCompatActivity {
         }
     }
 
-    private void toggleMandatoryPlaces() {
-        if (showingMandatoryPlaces) {
-            // Switch back to all places
+    private void toggleSelectedPlaces() {
+        if (showingSelectedPlaces) {
             placesData.clear();
             placesData.addAll(allPlacesData);
             placesAdapter.notifyDataSetChanged();
-            showMandatoryButton.setText("Show Must Visit");
-            showingMandatoryPlaces = false;
+            showMandatoryButton.setText("Show Selected");
+            showingSelectedPlaces = false;
         } else {
-            // First time switching to mandatory, back up all places
-            if (allPlacesData.isEmpty() && !placesData.isEmpty()) {
+            if (allPlacesData.isEmpty()) {
                 allPlacesData.addAll(placesData);
+                Log.d("ToggleDebug", "Backed up placesData to allPlacesData");
             }
 
-            // Show only mandatory places
-            ArrayList<String> mandatoryPlaces = new ArrayList<>();
-            for (String placeId : mandatoryPlaceIds) {
-                // Find the place in allPlacesData
+
+            ArrayList<String> selectedPlaces = new ArrayList<>();
+            for (String placeId : selectedPlaceIds) {
+                Log.d("ToggleDebug", "Looking for placeId: " + placeId);
+
+                boolean found = false;
                 for (String placeInfo : allPlacesData) {
+                    Log.d("ToggleDebug", "Checking placeInfo: " + placeInfo);
+
                     if (placeInfo.contains(placeId)) {
-                        mandatoryPlaces.add("🌟 " + placeInfo);
+                        Log.d("ToggleDebug", "Matched placeId: " + placeId + " in placeInfo: " + placeInfo);
+                        selectedPlaces.add("★ " + placeInfo);
+                        found = true;
                         break;
                     }
                 }
+
+                if (!found) {
+                    Log.d("ToggleDebug", "No match found for placeId: " + placeId);
+                }
+            }
+            for (String info : allPlacesData) {
+                Log.d("ToggleDebug", "allPlacesData item: " + info);
             }
 
-            // If no mandatory places found
-            if (mandatoryPlaces.isEmpty()) {
-                mandatoryPlaces.add("No must-visit places selected for this trip");
+
+
+            if (selectedPlaces.isEmpty()) {
+                selectedPlaces.add("No places selected for this trip");
+                Log.d("ToggleDebug", "No selected places matched.");
             }
 
             placesData.clear();
-            placesData.addAll(mandatoryPlaces);
+            placesData.addAll(selectedPlaces);
             placesAdapter.notifyDataSetChanged();
             showMandatoryButton.setText("Show All Places");
-            showingMandatoryPlaces = true;
+            showingSelectedPlaces = true;
         }
     }
+
 
     private void fetchWeatherInfo() {
         executorService.execute(() -> {

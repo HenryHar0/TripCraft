@@ -44,7 +44,10 @@
         <activity android:name=".SavedPlansActivity" android:exported="false" />
         <activity android:name=".MapPlacesActivity" android:exported="false" />
         <activity android:name=".InterestsActivity" android:exported="false" />
+        <activity android:name=".SettingsActivity" android:exported="false" />
+        <activity android:name=".EditProfileActivity" android:exported="false" />
         <receiver android:name=".NotificationReceiver" android:exported="false" />
+
     </application>
 
 </manifest>

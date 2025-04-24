@@ -1,110 +1,253 @@
 package com.example.tripcraft000;
 
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
+import com.bumptech.glide.Glide;
+import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
+import java.util.HashMap;
+import java.util.Map;
 
 public class ProfileActivity extends AppCompatActivity {
 
+    // UI components
     private ImageView profileImage;
+    private TextView profileName;
+    private TextView profileUsername;
+    private TextView usernameValue;
+    private TextView bioValue;
+    private TextView emailValue;
+    private MaterialButton editProfileButton;
+    private ImageButton settingsButton;
+    private Toolbar toolbar;
 
+    // Firebase components
     private FirebaseAuth mAuth;
+    private FirebaseDatabase database;
+    private DatabaseReference usersRef;
+    private StorageReference storageReference;
+    private FirebaseUser currentUser;
+
+    // For image selection
+    private ActivityResultLauncher<Intent> imagePickerLauncher;
+    private Uri selectedImageUri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
+        // Initialize Firebase
         mAuth = FirebaseAuth.getInstance();
-        FirebaseUser currentUser = mAuth.getCurrentUser();
+        database = FirebaseDatabase.getInstance();
+        usersRef = database.getReference("users");
+        storageReference = FirebaseStorage.getInstance().getReference();
+        currentUser = mAuth.getCurrentUser();
 
-        profileImage = findViewById(R.id.profileImage);
-        TextView nicknameText = findViewById(R.id.nicknameText);
-        TextView emailText = findViewById(R.id.emailText);
+        // Initialize UI
+        initializeViews();
+        setupToolbar();
+        setupButtons();
+        setupImagePicker();
 
-        setUserProfile(currentUser, nicknameText, emailText);
-
-        findViewById(R.id.backButton).setOnClickListener(v -> finish());
-        findViewById(R.id.logoutButton).setOnClickListener(v -> showLogoutConfirmation());
+        // Load user data
+        loadUserData();
     }
 
-    private void setUserProfile(FirebaseUser currentUser, TextView nicknameText, TextView emailText) {
-        if (currentUser != null) {
-            // Debug current Firebase values
-            System.out.println("PROFILE DEBUG: Current User UID: " + currentUser.getUid());
-            System.out.println("PROFILE DEBUG: Current User Email: " + currentUser.getEmail());
-            System.out.println("PROFILE DEBUG: Current Display Name: " + currentUser.getDisplayName());
+    private void initializeViews() {
+        profileImage    = findViewById(R.id.profileImage);
+        profileName     = findViewById(R.id.profileName);
+        profileUsername = findViewById(R.id.profileUsername);
+        usernameValue   = findViewById(R.id.usernameValue);
+        bioValue        = findViewById(R.id.bioValue);
+        emailValue      = findViewById(R.id.emailValue);
+        editProfileButton = findViewById(R.id.editProfileButton);
+        settingsButton    = findViewById(R.id.settingsButton);
+        toolbar           = findViewById(R.id.toolbar);
+    }
 
-            // Try SharedPreferences first
-            SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
-            String savedName = prefs.getString("displayName", null);
+    private void setupToolbar() {
+        setSupportActionBar(toolbar);
+        toolbar.setNavigationOnClickListener(v -> onBackPressed());
+    }
 
-            System.out.println("PROFILE DEBUG: SharedPrefs name: " + savedName);
+    private void setupButtons() {
+        editProfileButton.setOnClickListener(v ->
+                startActivity(new Intent(ProfileActivity.this, EditProfileActivity.class))
+        );
 
-            String email = currentUser.getEmail() != null ? currentUser.getEmail() : "No Email";
-            emailText.setText("Email: " + email);
+        settingsButton.setOnClickListener(v ->
+                startActivity(new Intent(ProfileActivity.this, SettingsActivity.class))
+        );
 
-            // First try to use the saved name from SharedPreferences
-            if (savedName != null && !savedName.isEmpty()) {
-                nicknameText.setText("Nickname: " + savedName);
-                System.out.println("PROFILE DEBUG: Using SharedPrefs name");
-            }
-            // Then try Firebase name if it's not the default "User Name"
-            else if (currentUser.getDisplayName() != null &&
-                    !currentUser.getDisplayName().isEmpty() &&
-                    !currentUser.getDisplayName().equals("User Name")) {
-                nicknameText.setText("Nickname: " + currentUser.getDisplayName());
-                System.out.println("PROFILE DEBUG: Using Firebase name");
-            }
-            // Fall back to email username
-            else if (email != null && !email.equals("No Email")) {
-                String usernameFromEmail = email.split("@")[0];
-                nicknameText.setText("Nickname: " + usernameFromEmail);
-                System.out.println("PROFILE DEBUG: Using email-derived name");
-            }
-            // Last resort
-            else {
-                nicknameText.setText("Nickname: Guest");
-                System.out.println("PROFILE DEBUG: Using Guest name");
-            }
+        profileImage.setOnClickListener(v -> openImagePicker());
+    }
 
-            // Still reload the user data to keep it fresh for next time
-            currentUser.reload().addOnCompleteListener(task -> {
-                if (task.isSuccessful()) {
-                    FirebaseUser refreshedUser = mAuth.getCurrentUser();
-                    System.out.println("PROFILE DEBUG: After reload - Display name: " +
-                            (refreshedUser != null ? refreshedUser.getDisplayName() : "null user"));
+    private void setupImagePicker() {
+        imagePickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                        selectedImageUri = result.getData().getData();
+                        if (selectedImageUri != null) {
+                            Glide.with(this)
+                                    .load(selectedImageUri)
+                                    .circleCrop()
+                                    .into(profileImage);
+                            uploadImageToFirebase();
+                        }
+                    }
                 }
-            });
-        } else {
-            nicknameText.setText("Nickname: Guest");
-            emailText.setText("Email: N/A");
-        }
+        );
     }
 
-    private void showLogoutConfirmation() {
-        new AlertDialog.Builder(this)
-                .setMessage("Are you sure you want to log out?")
-                .setCancelable(false)
-                .setPositiveButton("Yes", (dialog, id) -> {
-                    FirebaseAuth.getInstance().signOut();
-                    Intent intent = new Intent(ProfileActivity.this, SignUpActivity.class);
-                    startActivity(intent);
-                    finish();
-                })
-                .setNegativeButton("No", null)
-                .show();
+    private void openImagePicker() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("image/*");
+        imagePickerLauncher.launch(Intent.createChooser(intent, "Select Profile Image"));
+    }
+
+    private void uploadImageToFirebase() {
+        if (currentUser == null || selectedImageUri == null) return;
+
+        Toast.makeText(this, "Uploading image...", Toast.LENGTH_SHORT).show();
+        StorageReference profileImagesRef =
+                storageReference.child("profile_images/" + currentUser.getUid() + ".jpg");
+
+        profileImagesRef.putFile(selectedImageUri)
+                .addOnSuccessListener(taskSnapshot ->
+                        profileImagesRef.getDownloadUrl().addOnSuccessListener(uri ->
+                                updateProfileImageUrl(uri.toString())
+                        )
+                )
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
+    }
+
+    private void updateProfileImageUrl(String imageUrl) {
+        if (currentUser == null) return;
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("profileImageUrl", imageUrl);
+
+        usersRef.child(currentUser.getUid())
+                .updateChildren(updates)
+                .addOnSuccessListener(aVoid ->
+                        Toast.makeText(this, "Profile image updated", Toast.LENGTH_SHORT).show()
+                )
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Failed to update profile: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
+    }
+
+    private void loadUserData() {
+        if (currentUser == null) {
+            redirectToLogin();
+            return;
+        }
+
+        // Email from Auth
+        emailValue.setText(currentUser.getEmail());
+
+        // Listen for Realtime Database changes
+        usersRef.child(currentUser.getUid())
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot snap) {
+                        if (!snap.exists()) {
+                            createUserDocument();
+                            return;
+                        }
+
+                        String fullName = snap.child("fullName").getValue(String.class);
+                        profileName.setText(fullName != null ? fullName : "-");
+
+                        // existing fields
+                        String name = snap.child("name").getValue(String.class);
+                        String username = snap.child("username").getValue(String.class);
+                        String bio = snap.child("bio").getValue(String.class);
+                        String profileImageUrl = snap.child("profileImageUrl").getValue(String.class);
+
+                        profileUsername.setText(username != null ? "@" + username : "-");
+                        usernameValue.setText(username != null ? username : "-");
+                        bioValue.setText(bio != null ? bio : "No bio yet.");
+
+                        if (profileImageUrl != null && !profileImageUrl.isEmpty()) {
+                            Glide.with(ProfileActivity.this)
+                                    .load(profileImageUrl)
+                                    .circleCrop()
+                                    .placeholder(R.drawable.default_profile)
+                                    .error(R.drawable.default_profile)
+                                    .into(profileImage);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError error) {
+                        Toast.makeText(ProfileActivity.this,
+                                "Failed to load user data: " + error.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void createUserDocument() {
+        if (currentUser == null) return;
+
+        Map<String, Object> userData = new HashMap<>();
+        userData.put("name", currentUser.getDisplayName() != null
+                ? currentUser.getDisplayName() : "User");
+        userData.put("fullName", currentUser.getDisplayName() != null
+                ? currentUser.getDisplayName() : "User");  // <-- NEW
+        userData.put("username", "user" + currentUser.getUid().substring(0, 5));
+        userData.put("email", currentUser.getEmail());
+        userData.put("bio", "");
+        userData.put("profileImageUrl", "");
+        userData.put("createdAt", System.currentTimeMillis());
+
+        usersRef.child(currentUser.getUid())
+                .setValue(userData)
+                .addOnSuccessListener(aVoid -> loadUserData())
+                .addOnFailureListener(e ->
+                        Toast.makeText(this,
+                                "Failed to create user profile: " + e.getMessage(),
+                                Toast.LENGTH_SHORT).show()
+                );
+    }
+
+    private void redirectToLogin() {
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadUserData();
     }
 }

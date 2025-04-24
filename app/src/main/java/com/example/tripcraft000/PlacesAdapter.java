@@ -38,7 +38,7 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
     }
 
     public interface OnPlaceSelectionChangedListener {
-        void onPlaceSelectionChanged(MapPlacesActivity.PlaceMarker place, boolean isSelected, boolean isMandatory);
+        void onPlaceSelectionChanged(MapPlacesActivity.PlaceMarker place, boolean isSelected);
     }
 
     public PlacesAdapter(List<MapPlacesActivity.PlaceMarker> places,
@@ -124,24 +124,12 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
         return selectedPlaces;
     }
 
-    // Method to get mandatory places
-    public List<MapPlacesActivity.PlaceMarker> getMandatoryPlaces() {
-        List<MapPlacesActivity.PlaceMarker> mandatoryPlaces = new ArrayList<>();
-        for (MapPlacesActivity.PlaceMarker place : places) {
-            if (place.isSelected() && place.isMandatory()) {
-                mandatoryPlaces.add(place);
-            }
-        }
-        return mandatoryPlaces;
-    }
-
     static class PlaceViewHolder extends RecyclerView.ViewHolder {
         private final TextView nameTextView;
         private final TextView addressTextView;
         private final RatingBar ratingBar;
         private final RecyclerView imagesRecyclerView;
         private final CheckBox placeCheckbox;
-        private final TextView mandatoryTag;
         private final Button viewOnMapsButton;
         private final ImageView scrollIndicator;
 
@@ -152,7 +140,6 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
             ratingBar = itemView.findViewById(R.id.placeRating);
             imagesRecyclerView = itemView.findViewById(R.id.placeImagesRecyclerView);
             placeCheckbox = itemView.findViewById(R.id.placeCheckbox);
-            mandatoryTag = itemView.findViewById(R.id.mandatoryTag);
             viewOnMapsButton = itemView.findViewById(R.id.viewOnMapsButton);
             scrollIndicator = itemView.findViewById(R.id.scroll_indicator);
         }
@@ -165,9 +152,6 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
 
             // Set checkbox state
             placeCheckbox.setChecked(place.isSelected());
-
-            // Set mandatory tag visibility
-            mandatoryTag.setVisibility(place.isSelected() && place.isMandatory() ? View.VISIBLE : View.GONE);
 
             if (place.getRating() > 0) {
                 ratingBar.setVisibility(View.VISIBLE);
@@ -217,30 +201,9 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
                 boolean isSelected = placeCheckbox.isChecked();
                 place.setSelected(isSelected);
 
-                // If unselected, then it can't be mandatory
-                if (!isSelected) {
-                    place.setMandatory(false);
-                    mandatoryTag.setVisibility(View.GONE);
-                }
-
                 if (selectionListener != null) {
-                    selectionListener.onPlaceSelectionChanged(place, isSelected, place.isMandatory());
+                    selectionListener.onPlaceSelectionChanged(place, isSelected);
                 }
-            });
-
-            // Long press to mark as mandatory
-            itemView.setOnLongClickListener(v -> {
-                if (place.isSelected()) {
-                    boolean isMandatory = !place.isMandatory();
-                    place.setMandatory(isMandatory);
-                    mandatoryTag.setVisibility(isMandatory ? View.VISIBLE : View.GONE);
-
-                    if (selectionListener != null) {
-                        selectionListener.onPlaceSelectionChanged(place, true, isMandatory);
-                    }
-                    return true;
-                }
-                return false;
             });
 
             // Set click listener for the whole item (except checkbox)

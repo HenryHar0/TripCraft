@@ -60,12 +60,13 @@ public class InterestsActivity extends AppCompatActivity {
     private Button nextButton;
     private final List<String> pendingPageTokens = new ArrayList<>();
     private static final int PAGINATION_DELAY = 2000;
-    private final Set<String> processedPlaceIds = new HashSet<>();
     private LatLngBounds cityBounds;
     private int cityRadius = 5000;  // Default radius
     private final Set<String> selectedPlaceIds = new HashSet<>();
 
     private static final int REQUEST_CODE_PLACE_SELECTION = 100;
+
+    private Set<String> processedPlaceIdSet = new HashSet<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -247,7 +248,6 @@ public class InterestsActivity extends AppCompatActivity {
         statusText.setText("Loading places for " + selectedCityName + "...");
 
         typeCountMap.clear();
-        processedPlaceIds.clear();
         pendingPageTokens.clear();
         interestsLayout.removeAllViews();
 
@@ -484,7 +484,8 @@ public class InterestsActivity extends AppCompatActivity {
                 String placeId = place.getString("place_id");
 
                 // Only count a place once by using placeId as a unique identifier
-                if (processedPlaceIds.add(placeId) && place.has("types")) {
+                if (!processedPlaceIdSet.contains(placeId) && place.has("types")) {
+                    processedPlaceIdSet.add(placeId);
                     JSONArray types = place.getJSONArray("types");
                     boolean categoryAdded = false;
 
@@ -509,10 +510,6 @@ public class InterestsActivity extends AppCompatActivity {
         runOnUiThread(() -> {
             progressBar.setVisibility(View.GONE);
             statusText.setText("Found " + typeCountMap.size() + " categories in " + selectedCityName);
-
-            // Add this log statement to track processed place IDs every time UI updates
-            Log.d("InterestsActivity", "Current mandatory places count: " + processedPlaceIds.size() + " - Places: " + processedPlaceIds);
-
             categoriesLayout.setVisibility(View.VISIBLE);
             categoriesLayout.removeAllViews();
 
@@ -717,9 +714,6 @@ public class InterestsActivity extends AppCompatActivity {
 
                 Log.d("InterestsActivity", "Added " + newSelectedPlaceIds.size() +
                         " places. Total selected: " + selectedPlaceIds.size());
-
-                // Update the UI to show that places have been selected
-                // You could add a counter or indicator to the category card here
             }
         }
     }
@@ -792,10 +786,10 @@ public class InterestsActivity extends AppCompatActivity {
         // Pass selected categories
         intent.putStringArrayListExtra("selected_categories", new ArrayList<>(selectedCategories));
 
-        // Pass only selected place IDs instead of all processed places
+        // Pass selected places
         ArrayList<String> selectedPlacesList = new ArrayList<>(selectedPlaceIds);
         Log.d("InterestsActivity", "Passing " + selectedPlacesList.size() + " selected places to PlanActivity");
-        intent.putStringArrayListExtra("mandatory_place_ids", selectedPlacesList);
+        intent.putStringArrayListExtra("selected_place_ids", selectedPlacesList);
 
         // Start PlanActivity
         startActivity(intent);

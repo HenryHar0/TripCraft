@@ -17,6 +17,7 @@ public class VerifyEmailActivity extends AppCompatActivity {
     private Button buttonOpenEmail;
     private TextView textViewResend;
     private FirebaseAuth mAuth;
+    private boolean isCheckingVerification = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,15 +36,47 @@ public class VerifyEmailActivity extends AppCompatActivity {
         // Set up resend verification email functionality
         textViewResend.setOnClickListener(v -> resendVerificationEmail());
 
-        // Check if email verification has been completed
-        checkEmailVerification();
+        // Start continuous verification check
+        startVerificationCheck();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // Check verification status when the app resumes
-        checkEmailVerification();
+        // Restart verification check when app comes back to foreground
+        startVerificationCheck();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Stop checking when app goes to background
+        isCheckingVerification = false;
+    }
+
+    private void startVerificationCheck() {
+        if (!isCheckingVerification) {
+            isCheckingVerification = true;
+            // Check immediately once
+            checkEmailVerification();
+
+            // Then set up continuous checking
+            new Thread(() -> {
+                while (isCheckingVerification) {
+                    try {
+                        // Check every 3 seconds
+                        Thread.sleep(3000);
+
+                        // Make sure we're still checking
+                        if (isCheckingVerification) {
+                            runOnUiThread(this::checkEmailVerification);
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+        }
     }
 
     private void openEmailApp() {
@@ -78,15 +111,27 @@ public class VerifyEmailActivity extends AppCompatActivity {
         if (user != null) {
             user.reload().addOnCompleteListener(task -> {
                 if (task.isSuccessful()) {
-                    if (user.isEmailVerified()) {
-                        String name = "User Name";
-                        updateUserProfile(user, name);
+                    // Get fresh instance after reload
+                    FirebaseUser refreshedUser = mAuth.getCurrentUser();
+                    if (refreshedUser != null && refreshedUser.isEmailVerified()) {
+                        // Stop checking once verified
+                        isCheckingVerification = false;
+
+                        // Get existing name or use email username
+                        String name = refreshedUser.getDisplayName();
+                        if (name == null || name.isEmpty()) {
+                            String email = refreshedUser.getEmail();
+                            name = email != null ? email.split("@")[0] : "User";
+                        }
+
+                        updateUserProfile(refreshedUser, name);
                     }
-                    // If not verified, stay on the page and wait
-                } else {
-                    Toast.makeText(VerifyEmailActivity.this, "Failed to reload user information.", Toast.LENGTH_SHORT).show();
+                    // If not verified yet, we'll check again in 3 seconds
                 }
             });
+        } else {
+            // User is not logged in, stop checking
+            isCheckingVerification = false;
         }
     }
 
@@ -96,7 +141,7 @@ public class VerifyEmailActivity extends AppCompatActivity {
 
         user.updateProfile(profileUpdates).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
-                Toast.makeText(VerifyEmailActivity.this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(VerifyEmailActivity.this, "Email verified! Redirecting...", Toast.LENGTH_SHORT).show();
 
                 Intent intent = new Intent(VerifyEmailActivity.this, MainActivity.class);
                 startActivity(intent);

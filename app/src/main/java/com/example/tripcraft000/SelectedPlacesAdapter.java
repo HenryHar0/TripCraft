@@ -71,7 +71,7 @@ public class SelectedPlacesAdapter extends RecyclerView.Adapter<SelectedPlacesAd
             addressTextView.setText(place.getVicinity());
 
             // Set mandatory tag visibility
-            mandatoryTag.setVisibility(place.isMandatory() ? View.VISIBLE : View.GONE);
+            mandatoryTag.setVisibility(place.isSelected() ? View.VISIBLE : View.GONE);
 
             if (place.getRating() > 0) {
                 ratingBar.setVisibility(View.VISIBLE);

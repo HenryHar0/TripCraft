@@ -34,17 +34,21 @@
             android:layout_height="wrap_content"
             android:paddingBottom="24dp">
 
-            <ImageView
-                android:id="@+id/logoImage"
-                android:layout_width="90dp"
-                android:layout_height="90dp"
+            <TextView
+                android:id="@+id/textViewLogo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:src="@drawable/app_logo"
-                android:contentDescription="App Logo"
+                android:text="TripCraft"
+                android:textColor="@color/primary"
+                android:textSize="36sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.05"
+                android:elevation="2dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:tint="@color/primary" />
+                app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
                 android:id="@+id/textViewTitle"
@@ -57,7 +61,7 @@
                 android:layout_marginTop="8dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/logoImage" />
+                app:layout_constraintTop_toBottomOf="@id/textViewLogo" />
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardView"
@@ -68,9 +72,9 @@
                 android:layout_marginEnd="24dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/surface"
-                app:strokeColor="@color/secondary"
-                app:strokeWidth="1dp"
+                app:cardBackgroundColor="@color/background"
+                app:strokeColor="@color/primary"
+                app:strokeWidth="1.2dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/textViewTitle">
@@ -95,7 +99,7 @@
                             android:id="@+id/editTextEmail"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Email"
+                            android:hint="Username or Email"
                             android:inputType="textEmailAddress"
                             android:padding="14dp"
                             android:drawableStart="@drawable/ic_email"
@@ -167,7 +171,7 @@
                             android:layout_width="0dp"
                             android:layout_height="1dp"
                             android:layout_weight="1"
-                            android:background="@color/secondary"
+                            android:background="@color/on_secondary"
                             android:alpha="0.3" />
 
                         <TextView
@@ -178,13 +182,13 @@
                             android:textSize="14sp"
                             android:paddingStart="16dp"
                             android:paddingEnd="16dp"
-                            android:textColor="@color/secondary" />
+                            android:textColor="@color/on_secondary" />
 
                         <View
                             android:layout_width="0dp"
                             android:layout_height="1dp"
                             android:layout_weight="1"
-                            android:background="@color/secondary"
+                            android:background="@color/on_secondary"
                             android:alpha="0.3" />
                     </LinearLayout>
 
@@ -208,9 +212,11 @@
                             android:insetBottom="0dp"
                             app:cornerRadius="10dp"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            app:strokeColor="@color/secondary"
+                            app:strokeColor="@color/primary"
                             app:strokeWidth="1dp"
-                            app:iconTint="@color/on_surface" />
+                            android:textColor="@android:color/black"
+                            app:rippleColor="@android:color/darker_gray"
+                            app:iconTint="@null" />
                     </LinearLayout>
 
                 </LinearLayout>

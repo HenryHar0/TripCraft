@@ -97,4 +97,10 @@
         <item name="textAllCaps">false</item>
         <item name="android:letterSpacing">0.01</item>
     </style>
+
+    <style name="CircleImageView" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
 </resources>

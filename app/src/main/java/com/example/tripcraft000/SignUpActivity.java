@@ -3,212 +3,262 @@ package com.example.tripcraft000;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.widget.EditText;
-import android.widget.TextView;
+import android.util.Log;
 import android.widget.Toast;
 
-import com.google.android.material.button.MaterialButton;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.auth.UserProfileChangeRequest;
-import com.google.firebase.auth.GoogleAuthProvider;
-import com.google.firebase.auth.AuthCredential;
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.common.api.ApiException;
-import com.google.android.gms.tasks.Task;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.auth.UserProfileChangeRequest;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
+import java.util.HashMap;
+import java.util.Map;
+
 public class SignUpActivity extends AppCompatActivity {
+    private TextInputEditText etFullName, etUsername, etEmail, etPassword, etConfirm;
+    private MaterialButton btnSignUp, btnGoogle;
+    private FirebaseAuth auth;
+    private DatabaseReference db;
+    private GoogleSignInClient googleClient;
+    private static final int RC_GOOGLE = 9001;
 
-    private EditText editTextName, editTextEmail, editTextPassword, editTextConfirmPassword;
-    private MaterialButton buttonSignUp, buttonGoogleSignUp;
-    private TextView textViewLoginTopRight;
-
-    private FirebaseAuth mAuth;
-    private GoogleSignInClient mGoogleSignInClient;
-    private static final int RC_SIGN_IN = 9001;
+    private static final String TAG = "SignUpActivity"; // Added tag for logging
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d(TAG, "onCreate called");
+        auth = FirebaseAuth.getInstance();
+        db = FirebaseDatabase.getInstance().getReference();
 
-        mAuth = FirebaseAuth.getInstance();
-        FirebaseUser currentUser = mAuth.getCurrentUser();
+        FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser != null && currentUser.isEmailVerified()) {
-            Intent intent = new Intent(SignUpActivity.this, MainActivity.class);
-            startActivity(intent);
+            Log.d(TAG, "User is already verified. Redirecting to MainActivity.");
+            startActivity(new Intent(this, MainActivity.class));
             finish();
             return;
         }
 
         setContentView(R.layout.activity_signup);
+        bindViews();
+        setupListeners();
+        initGoogleSignIn();
+    }
 
-        editTextName = findViewById(R.id.editTextName);
-        editTextEmail = findViewById(R.id.editTextEmail);
-        editTextPassword = findViewById(R.id.editTextPassword);
-        editTextConfirmPassword = findViewById(R.id.editTextConfirmPassword);
-        buttonSignUp = findViewById(R.id.buttonSignUp);
-        textViewLoginTopRight = findViewById(R.id.textViewLoginTopRight);
-        buttonGoogleSignUp = findViewById(R.id.buttonGoogleSignUp);
+    private void bindViews() {
+        Log.d(TAG, "Binding views.");
+        etFullName = findViewById(R.id.editTextFullName);
+        etUsername = findViewById(R.id.editTextName);
+        etEmail = findViewById(R.id.editTextEmail);
+        etPassword = findViewById(R.id.editTextPassword);
+        etConfirm = findViewById(R.id.editTextConfirmPassword);
+        btnSignUp = findViewById(R.id.buttonSignUp);
+        btnGoogle = findViewById(R.id.buttonGoogleSignUp);
+    }
 
-        buttonSignUp.setOnClickListener(v -> signUp());
-        textViewLoginTopRight.setOnClickListener(v -> login());
-        buttonGoogleSignUp.setOnClickListener(v -> googleSignUp());
+    private void setupListeners() {
+        Log.d(TAG, "Setting up listeners.");
+        btnSignUp.setOnClickListener(v -> handleSignUp());
+        btnGoogle.setOnClickListener(v -> startActivityForResult(
+                googleClient.getSignInIntent(), RC_GOOGLE));
+        findViewById(R.id.textViewLoginTopRight)
+                .setOnClickListener(v -> startActivity(new Intent(this, LoginActivity.class)));
+    }
 
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+    private void initGoogleSignIn() {
+        Log.d(TAG, "Initializing Google Sign-In.");
+        GoogleSignInOptions options = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
                 .build();
-
-        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
+        googleClient = GoogleSignIn.getClient(this, options);
     }
 
-    private void signUp() {
-        final String[] name = {editTextName.getText().toString().trim()};
-        String email = editTextEmail.getText().toString().trim();
-        String password = editTextPassword.getText().toString().trim();
-        String confirmPassword = editTextConfirmPassword.getText().toString().trim();
+    private void handleSignUp() {
+        Log.d(TAG, "Handling sign up.");
+        String name = etFullName.getText().toString().trim();
+        String user = etUsername.getText().toString().trim().toLowerCase();
+        String email = etEmail.getText().toString().trim();
+        String pass = etPassword.getText().toString();
+        String conf = etConfirm.getText().toString();
 
-        // Basic validation...
+        if (!validateInputs(name, user, email, pass, conf)) {
+            Toast.makeText(this, "Validation failed", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        // Show loading state if needed
-
-        mAuth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this, task -> {
-                    if (task.isSuccessful()) {
-                        FirebaseUser user = mAuth.getCurrentUser();
-                        if (user != null) {
-                            System.out.println("SIGNUP DEBUG: User created successfully with email: " + email);
-                            System.out.println("SIGNUP DEBUG: Attempting to set display name to: " + name[0]);
-
-                            // IMPORTANT: Make sure name is not empty or null
-                            if (name[0] == null || name[0].isEmpty()) {
-                                System.out.println("SIGNUP DEBUG: WARNING! Name is empty or null!");
-                                // Use a fallback name if necessary
-                                name[0] = email.split("@")[0]; // Use part of email as name
-                            }
-
-                            // Store final name for use in lambda
-                            final String finalName = name[0];
-
-                            // Create profile update request
-                            UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
-                                    .setDisplayName(finalName)
-                                    .build();
-
-                            // Update the profile
-                            user.updateProfile(profileUpdates)
-                                    .addOnCompleteListener(profileTask -> {
-                                        if (profileTask.isSuccessful()) {
-                                            System.out.println("SIGNUP DEBUG: Profile update task completed successfully");
-
-                                            // Add a short delay before checking
-                                            new android.os.Handler().postDelayed(() -> {
-                                                // Get a fresh instance of the user
-                                                FirebaseUser updatedUser = FirebaseAuth.getInstance().getCurrentUser();
-                                                if (updatedUser != null) {
-                                                    System.out.println("SIGNUP DEBUG: After delay, display name is: " + updatedUser.getDisplayName());
-
-                                                    // Also save to SharedPreferences as a backup
-                                                    getSharedPreferences("UserPrefs", MODE_PRIVATE)
-                                                            .edit()
-                                                            .putString("displayName", finalName)
-                                                            .apply();
-
-                                                    // Now continue with email verification
-                                                    sendVerificationEmail(updatedUser);
-                                                }
-                                            }, 2000); // 2 second delay
-                                        } else {
-                                            System.out.println("SIGNUP DEBUG: Profile update FAILED: " +
-                                                    (profileTask.getException() != null ?
-                                                            profileTask.getException().getMessage() : "No error message"));
-
-                                            // Save to SharedPreferences anyway as fallback
-                                            getSharedPreferences("UserPrefs", MODE_PRIVATE)
-                                                    .edit()
-                                                    .putString("displayName", finalName)
-                                                    .apply();
-
-                                            // Continue with email verification despite profile update failure
-                                            sendVerificationEmail(user);
-                                        }
-                                    });
+        Log.d(TAG, "Checking if username exists in database.");
+        db.child("usernames").child(user)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snap) {
+                        Log.d(TAG, "onDataChange: " + snap.exists());
+                        if (snap.exists()) {
+                            etUsername.setError("Username already taken");
+                            etUsername.requestFocus();
+                        } else {
+                            createUser(name, user, email, pass);
                         }
-                    } else {
-                        // Handle account creation failure...
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Log.e(TAG, "Database error: " + error.getMessage());
+                        Toast.makeText(SignUpActivity.this,
+                                error.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
     }
 
-    private void sendVerificationEmail(FirebaseUser user) {
-        user.sendEmailVerification().addOnCompleteListener(emailTask -> {
-            // Hide progress indicator
-            // progressBar.setVisibility(View.GONE);
+    private boolean validateInputs(String name, String user, String email,
+                                   String pass, String conf) {
+        Log.d(TAG, "Validating inputs.");
+        if (TextUtils.isEmpty(name)) return setError(etFullName, "Full name is required");
+        if (TextUtils.isEmpty(user)) return setError(etUsername, "Username is required");
+        if (TextUtils.isEmpty(email)) return setError(etEmail, "Email is required");
+        if (TextUtils.isEmpty(pass)) return setError(etPassword, "Password is required");
+        if (pass.length() < 6) return setError(etPassword, "Password must be ≥6 chars");
+        if (!pass.equals(conf)) return setError(etConfirm, "Passwords do not match");
+        return true;
+    }
 
-            if (emailTask.isSuccessful()) {
-                Toast.makeText(SignUpActivity.this,
-                        "Verification email sent to " + user.getEmail(),
-                        Toast.LENGTH_SHORT).show();
+    private boolean setError(TextInputEditText et, String msg) {
+        Log.d(TAG, "Error: " + msg);
+        et.setError(msg);
+        et.requestFocus();
+        return false;
+    }
 
-                Intent intent = new Intent(SignUpActivity.this, VerifyEmailActivity.class);
-                startActivity(intent);
-                finish();
-            } else {
-                Toast.makeText(SignUpActivity.this,
-                        "Failed to send verification email: " + emailTask.getException().getMessage(),
-                        Toast.LENGTH_SHORT).show();
-            }
+    private void createUser(String name, String user, String email, String pass) {
+        Log.d(TAG, "createUser called with email: " + email);
+        auth.createUserWithEmailAndPassword(email, pass)
+                .addOnCompleteListener(this, task -> {
+                    Log.d(TAG, "Auth complete: " + task.isSuccessful());
+                    if (!task.isSuccessful()) {
+                        Log.e(TAG, "Auth failed: " + task.getException().getMessage());
+                        Toast.makeText(this,
+                                task.getException().getMessage(), Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    FirebaseUser u = auth.getCurrentUser();
+                    if (u == null) return;
+                    updateUserProfile(u, name, () -> saveUserData(u, name, user, email));
+                });
+    }
+
+    private void updateUserProfile(FirebaseUser u, String name, Runnable onSuccess) {
+        Log.d(TAG, "Updating user profile.");
+        UserProfileChangeRequest req = new UserProfileChangeRequest.Builder()
+                .setDisplayName(name).build();
+        u.updateProfile(req).addOnCompleteListener(t -> {
+            Log.d(TAG, "Profile update completed.");
+            onSuccess.run();
         });
     }
 
-    private void login() {
-        Intent intent = new Intent(SignUpActivity.this, LoginActivity.class);
-        startActivity(intent);
+    private void saveUserData(FirebaseUser u, String name,
+                              String user, String email) {
+        Log.d(TAG, "Saving user data.");
+        String uid = u.getUid();
+        Map<String, Object> data = new HashMap<>();
+        data.put("fullName", name);
+        data.put("username", user);
+        data.put("email", email);
+
+        db.child("users").child(uid).setValue(data);
+        db.child("usernames").child(user).setValue(uid);
+        db.child("emailToUsername")
+                .child(email.replace(".", ",")).setValue(user);
+
+        sendVerification(u);
     }
 
-    private void googleSignUp() {
-        Intent signInIntent = mGoogleSignInClient.getSignInIntent();
-        startActivityForResult(signInIntent, RC_SIGN_IN);
+    private void sendVerification(FirebaseUser u) {
+        Log.d(TAG, "Sending email verification.");
+        u.sendEmailVerification()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        Log.d(TAG, "Verification email sent.");
+                        Toast.makeText(this,
+                                "Verification email sent to " + u.getEmail(),
+                                Toast.LENGTH_SHORT).show();
+                    } else {
+                        Log.e(TAG, "Failed to send verification email: " + task.getException().getMessage());
+                        Toast.makeText(this,
+                                "Failed to send email: " + task.getException().getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    }
+                    startActivity(new Intent(SignUpActivity.this, VerifyEmailActivity.class));
+                    finish();
+                });
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+    protected void onActivityResult(int requestCode,
+                                    int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == RC_SIGN_IN) {
-            Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-            try {
-                GoogleSignInAccount account = task.getResult(ApiException.class);
-                firebaseAuthWithGoogle(account);
-            } catch (ApiException e) {
-                Toast.makeText(this, "Google sign in failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
+        if (requestCode != RC_GOOGLE) return;
+        try {
+            Log.d(TAG, "Handling Google sign-in result.");
+            GoogleSignInAccount acc = GoogleSignIn
+                    .getSignedInAccountFromIntent(data)
+                    .getResult(ApiException.class);
+            AuthCredential cred = GoogleAuthProvider
+                    .getCredential(acc.getIdToken(), null);
+            auth.signInWithCredential(cred)
+                    .addOnCompleteListener(this, task -> {
+                        if (!task.isSuccessful()) {
+                            Log.e(TAG, "Google sign-in failed: " + task.getException().getMessage());
+                            return;
+                        }
+                        FirebaseUser u = auth.getCurrentUser();
+                        if (u == null) return;
+                        String email = u.getEmail();
+                        String base = email != null ?
+                                email.split("@")[0] : "user" + System.currentTimeMillis();
+                        resolveGoogleUsername(base, acc.getDisplayName(), email, u);
+                    });
+        } catch (ApiException e) {
+            Log.e(TAG, "Google sign-in failed: " + e.getMessage());
+            Toast.makeText(this,
+                    "Google sign in failed: " + e.getMessage(),
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
-        AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
-        mAuth.signInWithCredential(credential)
-                .addOnCompleteListener(this, task -> {
-                    if (task.isSuccessful()) {
-                        FirebaseUser user = mAuth.getCurrentUser();
-                        if (user != null) {
-                            UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
-                                    .setDisplayName(acct.getDisplayName())
-                                    .build();
-                            user.updateProfile(profileUpdates);
+    private void resolveGoogleUsername(String base, String name,
+                                       String email, FirebaseUser u) {
+        Log.d(TAG, "Resolving Google username.");
+        db.child("usernames").child(base)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snap) {
+                        String finalUser = snap.exists() ?
+                                base + System.currentTimeMillis() : base;
+                        updateUserProfile(u, name,
+                                () -> saveUserData(u, name, finalUser, email));
+                        startActivity(new Intent(SignUpActivity.this, MainActivity.class));
+                        finish();
+                    }
 
-                            Toast.makeText(SignUpActivity.this, "Google sign-in successful", Toast.LENGTH_SHORT).show();
-                            Intent intent = new Intent(SignUpActivity.this, MainActivity.class);
-                            startActivity(intent);
-                            finish();
-                        }
-                    } else {
-                        Toast.makeText(SignUpActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError e) {
                     }
                 });
     }

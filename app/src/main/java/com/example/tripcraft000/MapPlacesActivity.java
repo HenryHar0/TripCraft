@@ -517,13 +517,7 @@ public class MapPlacesActivity extends AppCompatActivity implements
 
     private void updateSelectedCount() {
         List<PlaceMarker> selectedPlaces = placesAdapter.getSelectedPlaces();
-        List<PlaceMarker> mandatoryPlaces = placesAdapter.getMandatoryPlaces();
-
         String countText = selectedPlaces.size() + " places selected";
-        if (!mandatoryPlaces.isEmpty()) {
-            countText += " (" + mandatoryPlaces.size() + " mandatory)";
-        }
-
         selectedCountText.setText(countText);
     }
 
@@ -536,24 +530,17 @@ public class MapPlacesActivity extends AppCompatActivity implements
         }
 
         // Here you would typically pass these selected places back to the previous activity
-        // For example:
         Intent resultIntent = new Intent();
         ArrayList<String> selectedPlaceIds = new ArrayList<>();
         ArrayList<String> selectedPlaceNames = new ArrayList<>();
-        ArrayList<String> mandatoryPlaceIds = new ArrayList<>();
 
         for (PlaceMarker place : selectedPlaces) {
             selectedPlaceIds.add(place.getPlaceId());
             selectedPlaceNames.add(place.getName());
-
-            if (place.isMandatory()) {
-                mandatoryPlaceIds.add(place.getPlaceId());
-            }
         }
 
         resultIntent.putStringArrayListExtra("selected_place_ids", selectedPlaceIds);
         resultIntent.putStringArrayListExtra("selected_place_names", selectedPlaceNames);
-        resultIntent.putStringArrayListExtra("mandatory_place_ids", mandatoryPlaceIds);
 
         setResult(RESULT_OK, resultIntent);
         finish();
@@ -574,8 +561,7 @@ public class MapPlacesActivity extends AppCompatActivity implements
         }
     }
 
-    @Override
-    public void onPlaceSelectionChanged(PlaceMarker place, boolean isSelected, boolean isMandatory) {
+    public void onPlaceSelectionChanged(PlaceMarker place, boolean isSelected) {
         // Update marker icon on the map
         Marker marker = placeMarkers.get(place.getPlaceId());
         updateMarkerIcon(marker, isSelected);
@@ -584,7 +570,6 @@ public class MapPlacesActivity extends AppCompatActivity implements
         updateSelectedCount();
     }
 
-    // PlaceMarker class to store place information
     public static class PlaceMarker {
         private final String placeId;
         private final String name;
@@ -594,7 +579,6 @@ public class MapPlacesActivity extends AppCompatActivity implements
         private final double rating;
         private final List<String> photoUrls;
         private boolean selected;
-        private boolean mandatory;
 
         public PlaceMarker(String placeId, String name, String vicinity, double latitude, double longitude,
                            double rating, List<String> photoUrls) {
@@ -606,7 +590,6 @@ public class MapPlacesActivity extends AppCompatActivity implements
             this.rating = rating;
             this.photoUrls = photoUrls;
             this.selected = false;
-            this.mandatory = false;
         }
 
         public String getPlaceId() { return placeId; }
@@ -618,7 +601,5 @@ public class MapPlacesActivity extends AppCompatActivity implements
         public List<String> getPhotoUrls() { return photoUrls; }
         public boolean isSelected() { return selected; }
         public void setSelected(boolean selected) { this.selected = selected; }
-        public boolean isMandatory() { return mandatory; }
-        public void setMandatory(boolean mandatory) { this.mandatory = mandatory; }
     }
 }
