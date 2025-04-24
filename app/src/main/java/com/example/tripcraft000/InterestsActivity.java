@@ -724,11 +724,13 @@ public class InterestsActivity extends AppCompatActivity {
     private String getFormattedPlaceType(String type) {
         switch (type) {
             // High-value tourist categories
-            case "tourist_attraction": return "📸 Tourist Attraction";
-            case "museum": return "🏛 Museum";
-            case "landmark": return "🏛 Landmark";
+            case "museum":
+                return "🏛 Museum";
+            case "landmark":
             case "historical_landmark":
-            case "historical_site": return "🏰 Historical Site";
+            case "historical_site":
+            case "tourist_attraction":
+                return "📸 Tourist Attraction";
 
             // Food and drink
             case "restaurant": return "🍽 Restaurant";
