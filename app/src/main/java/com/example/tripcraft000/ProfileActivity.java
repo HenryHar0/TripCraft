@@ -41,7 +41,6 @@ public class ProfileActivity extends AppCompatActivity implements BottomNavigati
     private TextView usernameValue;
     private TextView bioValue;
     private TextView emailValue;
-    private MaterialButton editProfileButton;
     private ImageButton settingsButton;
     private Toolbar toolbar;
     private BottomNavigationView bottomNavigationView;
@@ -89,7 +88,6 @@ public class ProfileActivity extends AppCompatActivity implements BottomNavigati
         usernameValue = findViewById(R.id.usernameValue);
         bioValue = findViewById(R.id.bioValue);
         emailValue = findViewById(R.id.emailValue);
-        editProfileButton = findViewById(R.id.editProfileButton);
         settingsButton = findViewById(R.id.settingsButton);
         toolbar = findViewById(R.id.toolbar);
         bottomNavigationView = findViewById(R.id.bottomNavigation);
@@ -114,10 +112,6 @@ public class ProfileActivity extends AppCompatActivity implements BottomNavigati
                 startActivity(new Intent(ProfileActivity.this, CityActivity.class))
         );
 
-        // Set up other buttons
-        editProfileButton.setOnClickListener(v ->
-                startActivity(new Intent(ProfileActivity.this, EditProfileActivity.class))
-        );
 
         settingsButton.setOnClickListener(v ->
                 startActivity(new Intent(ProfileActivity.this, SettingsActivity.class))

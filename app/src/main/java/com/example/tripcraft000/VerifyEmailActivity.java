@@ -2,42 +2,68 @@ package com.example.tripcraft000;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.widget.Button;
+import android.view.View;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
 
 public class VerifyEmailActivity extends AppCompatActivity {
 
-    private Button buttonOpenEmail;
-    private TextView textViewResend;
+    private TextView textViewResend, textViewWaiting;
+    private MaterialButton buttonBack;
+    private ImageView imageViewEmail;
+    private CardView cardViewStatus;
     private FirebaseAuth mAuth;
     private boolean isCheckingVerification = false;
+    private Animation pulseAnimation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         mAuth = FirebaseAuth.getInstance();
-
         setContentView(R.layout.activity_verify_email);
 
-        buttonOpenEmail = findViewById(R.id.buttonOpenEmail);
+        // Initialize views
+        imageViewEmail = findViewById(R.id.imageViewEmail);
         textViewResend = findViewById(R.id.textViewResend);
+        textViewWaiting = findViewById(R.id.textViewWaiting);
+        buttonBack = findViewById(R.id.buttonBack);
+        cardViewStatus = findViewById(R.id.cardViewStatus);
 
-        // Open email app when button is clicked
-        buttonOpenEmail.setOnClickListener(v -> openEmailApp());
+        // Set up pulse animation for the waiting text
+        setupPulseAnimation();
 
         // Set up resend verification email functionality
         textViewResend.setOnClickListener(v -> resendVerificationEmail());
 
+        // Set up back button to return to SignupActivity
+        buttonBack.setOnClickListener(v -> {
+            Intent intent = new Intent(VerifyEmailActivity.this, SignUpActivity.class);
+            startActivity(intent);
+            finish();
+        });
+
         // Start continuous verification check
         startVerificationCheck();
+    }
+
+    private void setupPulseAnimation() {
+        pulseAnimation = new AlphaAnimation(0.5f, 1.0f);
+        pulseAnimation.setDuration(1000);
+        pulseAnimation.setRepeatMode(Animation.REVERSE);
+        pulseAnimation.setRepeatCount(Animation.INFINITE);
+        textViewWaiting.startAnimation(pulseAnimation);
     }
 
     @Override
@@ -79,30 +105,51 @@ public class VerifyEmailActivity extends AppCompatActivity {
         }
     }
 
-    private void openEmailApp() {
-        // Intent to open the email app
-        Intent intent = new Intent(Intent.ACTION_MAIN);
-        intent.addCategory(Intent.CATEGORY_APP_EMAIL);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        try {
-            startActivity(intent);
-        } catch (android.content.ActivityNotFoundException e) {
-            Toast.makeText(this, "No email app found. Please check your email manually.", Toast.LENGTH_LONG).show();
-        }
-    }
-
     private void resendVerificationEmail() {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
+            // Show loading state
+            textViewResend.setEnabled(false);
+            textViewResend.setText(R.string.sending);
+
             user.sendEmailVerification()
                     .addOnCompleteListener(task -> {
                         if (task.isSuccessful()) {
-                            Toast.makeText(VerifyEmailActivity.this, "Verification email sent again!", Toast.LENGTH_SHORT).show();
+                            // Show success animation
+                            showSuccessAnimation();
+                            Toast.makeText(VerifyEmailActivity.this, R.string.verification_email_sent, Toast.LENGTH_SHORT).show();
                         } else {
-                            Toast.makeText(VerifyEmailActivity.this, "Failed to send verification email.", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(VerifyEmailActivity.this, R.string.failed_to_send_email, Toast.LENGTH_SHORT).show();
                         }
+                        // Reset button text
+                        textViewResend.setText(R.string.resend_verification_email);
+                        textViewResend.setEnabled(true);
                     });
         }
+    }
+
+    private void showSuccessAnimation() {
+        // Flash the card view green briefly to indicate success
+        AlphaAnimation flashAnimation = new AlphaAnimation(0.0f, 1.0f);
+        flashAnimation.setDuration(300);
+        flashAnimation.setRepeatMode(Animation.REVERSE);
+        flashAnimation.setRepeatCount(1);
+
+        cardViewStatus.setCardBackgroundColor(getResources().getColor(R.color.success, null));
+        cardViewStatus.startAnimation(flashAnimation);
+
+        flashAnimation.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {}
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                cardViewStatus.setCardBackgroundColor(getResources().getColor(R.color.background, null));
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {}
+        });
     }
 
     private void checkEmailVerification() {
@@ -116,6 +163,7 @@ public class VerifyEmailActivity extends AppCompatActivity {
                     if (refreshedUser != null && refreshedUser.isEmailVerified()) {
                         // Stop checking once verified
                         isCheckingVerification = false;
+                        textViewWaiting.clearAnimation();
 
                         // Get existing name or use email username
                         String name = refreshedUser.getDisplayName();
@@ -132,22 +180,36 @@ public class VerifyEmailActivity extends AppCompatActivity {
         } else {
             // User is not logged in, stop checking
             isCheckingVerification = false;
+            textViewWaiting.clearAnimation();
         }
     }
 
     private void updateUserProfile(FirebaseUser user, String name) {
+        // Show verification success UI changes
+        imageViewEmail.setImageResource(R.drawable.ic_check);
+        imageViewEmail.setColorFilter(getResources().getColor(R.color.success, null));
+        textViewWaiting.setText(R.string.email_verified);
+        textViewWaiting.setTextColor(getResources().getColor(R.color.success, null));
+
         UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
                 .setDisplayName(name).build();
 
         user.updateProfile(profileUpdates).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
-                Toast.makeText(VerifyEmailActivity.this, "Email verified! Redirecting...", Toast.LENGTH_SHORT).show();
+                // Show success feedback with animation
+                cardViewStatus.setCardBackgroundColor(getResources().getColor(R.color.success, null));
 
-                Intent intent = new Intent(VerifyEmailActivity.this, MainActivity.class);
-                startActivity(intent);
-                finish();
+                Toast.makeText(VerifyEmailActivity.this, R.string.email_verified_redirecting, Toast.LENGTH_SHORT).show();
+
+                // Add a slight delay before redirecting for better UX
+                cardViewStatus.postDelayed(() -> {
+                    Intent intent = new Intent(VerifyEmailActivity.this, MainActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    finish();
+                }, 1500);
             } else {
-                Toast.makeText(VerifyEmailActivity.this, "Failed to update profile.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(VerifyEmailActivity.this, R.string.failed_to_update_profile, Toast.LENGTH_SHORT).show();
             }
         });
     }

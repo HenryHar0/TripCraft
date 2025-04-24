@@ -7,7 +7,8 @@
     <color name="secondary_variant">#26C6DA</color><!-- Soft aqua -->
     <color name="background">#F5FAFF</color>       <!-- Light icy blue -->
     <color name="surface">#FFFFFF</color>          <!-- Pure white surfaces -->
-    <color name="error">#D32F2F</color>            <!-- Standard error color -->
+    <color name="error">#D32F2F</color>             <!-- Standard error color -->
+    <color name="status_background">#F1F5F9</color>
 
     <!-- Text & Icon Colors -->
     <color name="on_primary">#FFFFFF</color>       <!-- White on primary -->

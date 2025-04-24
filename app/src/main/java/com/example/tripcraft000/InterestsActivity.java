@@ -789,6 +789,7 @@ public class InterestsActivity extends AppCompatActivity {
         // Pass selected places
         ArrayList<String> selectedPlacesList = new ArrayList<>(selectedPlaceIds);
         Log.d("InterestsActivity", "Passing " + selectedPlacesList.size() + " selected places to PlanActivity");
+        Log.d("InterestsActivity", "Passing " + selectedPlaceIds + " selected places to PlanActivity");
         intent.putStringArrayListExtra("selected_place_ids", selectedPlacesList);
 
         // Start PlanActivity

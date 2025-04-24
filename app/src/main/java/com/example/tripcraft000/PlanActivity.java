@@ -161,7 +161,7 @@ public class PlanActivity extends AppCompatActivity {
         Intent intent = getIntent();
         startDate = intent.getStringExtra("start_date");
         endDate = intent.getStringExtra("end_date");
-        city = intent.getStringExtra("selected_city");
+        city = intent.getStringExtra("city");
         latitude = intent.getDoubleExtra("latitude", 0.0);
         longitude = intent.getDoubleExtra("longitude", 0.0);
         ArrayList<String> selectedCategories = intent.getStringArrayListExtra("selected_categories");
