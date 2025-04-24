@@ -3,7 +3,7 @@ package com.example.tripcraft000;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
+import android.view.MenuItem;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -11,11 +11,14 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import com.bumptech.glide.Glide;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -29,7 +32,7 @@ import com.google.firebase.storage.StorageReference;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ProfileActivity extends AppCompatActivity {
+public class ProfileActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener {
 
     // UI components
     private ImageView profileImage;
@@ -41,10 +44,11 @@ public class ProfileActivity extends AppCompatActivity {
     private MaterialButton editProfileButton;
     private ImageButton settingsButton;
     private Toolbar toolbar;
+    private BottomNavigationView bottomNavigationView;
+    private FloatingActionButton generateNewPlanButton;
 
     // Firebase components
     private FirebaseAuth mAuth;
-    private FirebaseDatabase database;
     private DatabaseReference usersRef;
     private StorageReference storageReference;
     private FirebaseUser currentUser;
@@ -59,40 +63,58 @@ public class ProfileActivity extends AppCompatActivity {
         setContentView(R.layout.activity_profile);
 
         // Initialize Firebase
-        mAuth = FirebaseAuth.getInstance();
-        database = FirebaseDatabase.getInstance();
-        usersRef = database.getReference("users");
-        storageReference = FirebaseStorage.getInstance().getReference();
-        currentUser = mAuth.getCurrentUser();
+        initializeFirebase();
 
         // Initialize UI
         initializeViews();
         setupToolbar();
-        setupButtons();
+        setupNavigationAndButtons();
         setupImagePicker();
 
         // Load user data
         loadUserData();
     }
 
+    private void initializeFirebase() {
+        mAuth = FirebaseAuth.getInstance();
+        usersRef = FirebaseDatabase.getInstance().getReference("users");
+        storageReference = FirebaseStorage.getInstance().getReference();
+        currentUser = mAuth.getCurrentUser();
+    }
+
     private void initializeViews() {
-        profileImage    = findViewById(R.id.profileImage);
-        profileName     = findViewById(R.id.profileName);
+        profileImage = findViewById(R.id.profileImage);
+        profileName = findViewById(R.id.profileName);
         profileUsername = findViewById(R.id.profileUsername);
-        usernameValue   = findViewById(R.id.usernameValue);
-        bioValue        = findViewById(R.id.bioValue);
-        emailValue      = findViewById(R.id.emailValue);
+        usernameValue = findViewById(R.id.usernameValue);
+        bioValue = findViewById(R.id.bioValue);
+        emailValue = findViewById(R.id.emailValue);
         editProfileButton = findViewById(R.id.editProfileButton);
-        settingsButton    = findViewById(R.id.settingsButton);
-        toolbar           = findViewById(R.id.toolbar);
+        settingsButton = findViewById(R.id.settingsButton);
+        toolbar = findViewById(R.id.toolbar);
+        bottomNavigationView = findViewById(R.id.bottomNavigation);
+        generateNewPlanButton = findViewById(R.id.generateNewPlanButton);
     }
 
     private void setupToolbar() {
         setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayShowTitleEnabled(false);
+        }
         toolbar.setNavigationOnClickListener(v -> onBackPressed());
     }
 
-    private void setupButtons() {
+    private void setupNavigationAndButtons() {
+        // Set up bottom navigation
+        bottomNavigationView.setOnNavigationItemSelectedListener(this);
+        bottomNavigationView.setSelectedItemId(R.id.profileButton);
+
+        // Set up FAB
+        generateNewPlanButton.setOnClickListener(v ->
+                startActivity(new Intent(ProfileActivity.this, CityActivity.class))
+        );
+
+        // Set up other buttons
         editProfileButton.setOnClickListener(v ->
                 startActivity(new Intent(ProfileActivity.this, EditProfileActivity.class))
         );
@@ -111,15 +133,21 @@ public class ProfileActivity extends AppCompatActivity {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                         selectedImageUri = result.getData().getData();
                         if (selectedImageUri != null) {
-                            Glide.with(this)
-                                    .load(selectedImageUri)
-                                    .circleCrop()
-                                    .into(profileImage);
+                            updateProfileImagePreview();
                             uploadImageToFirebase();
                         }
                     }
                 }
         );
+    }
+
+    private void updateProfileImagePreview() {
+        Glide.with(this)
+                .load(selectedImageUri)
+                .circleCrop()
+                .placeholder(R.drawable.default_profile)
+                .error(R.drawable.default_profile)
+                .into(profileImage);
     }
 
     private void openImagePicker() {
@@ -131,19 +159,22 @@ public class ProfileActivity extends AppCompatActivity {
     private void uploadImageToFirebase() {
         if (currentUser == null || selectedImageUri == null) return;
 
-        Toast.makeText(this, "Uploading image...", Toast.LENGTH_SHORT).show();
+        showToast("Uploading image...");
+
         StorageReference profileImagesRef =
                 storageReference.child("profile_images/" + currentUser.getUid() + ".jpg");
 
         profileImagesRef.putFile(selectedImageUri)
                 .addOnSuccessListener(taskSnapshot ->
-                        profileImagesRef.getDownloadUrl().addOnSuccessListener(uri ->
-                                updateProfileImageUrl(uri.toString())
-                        )
+                        profileImagesRef.getDownloadUrl().addOnSuccessListener(this::updateProfileImageUrl)
                 )
                 .addOnFailureListener(e ->
-                        Toast.makeText(this, "Upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                        showToast("Upload failed: " + e.getMessage())
                 );
+    }
+
+    private void updateProfileImageUrl(Uri uri) {
+        updateProfileImageUrl(uri.toString());
     }
 
     private void updateProfileImageUrl(String imageUrl) {
@@ -155,10 +186,10 @@ public class ProfileActivity extends AppCompatActivity {
         usersRef.child(currentUser.getUid())
                 .updateChildren(updates)
                 .addOnSuccessListener(aVoid ->
-                        Toast.makeText(this, "Profile image updated", Toast.LENGTH_SHORT).show()
+                        showToast("Profile image updated")
                 )
                 .addOnFailureListener(e ->
-                        Toast.makeText(this, "Failed to update profile: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                        showToast("Failed to update profile: " + e.getMessage())
                 );
     }
 
@@ -181,36 +212,37 @@ public class ProfileActivity extends AppCompatActivity {
                             return;
                         }
 
-                        String fullName = snap.child("fullName").getValue(String.class);
-                        profileName.setText(fullName != null ? fullName : "-");
-
-                        // existing fields
-                        String name = snap.child("name").getValue(String.class);
-                        String username = snap.child("username").getValue(String.class);
-                        String bio = snap.child("bio").getValue(String.class);
-                        String profileImageUrl = snap.child("profileImageUrl").getValue(String.class);
-
-                        profileUsername.setText(username != null ? "@" + username : "-");
-                        usernameValue.setText(username != null ? username : "-");
-                        bioValue.setText(bio != null ? bio : "No bio yet.");
-
-                        if (profileImageUrl != null && !profileImageUrl.isEmpty()) {
-                            Glide.with(ProfileActivity.this)
-                                    .load(profileImageUrl)
-                                    .circleCrop()
-                                    .placeholder(R.drawable.default_profile)
-                                    .error(R.drawable.default_profile)
-                                    .into(profileImage);
-                        }
+                        updateUIWithUserData(snap);
                     }
 
                     @Override
                     public void onCancelled(DatabaseError error) {
-                        Toast.makeText(ProfileActivity.this,
-                                "Failed to load user data: " + error.getMessage(),
-                                Toast.LENGTH_SHORT).show();
+                        showToast("Failed to load user data: " + error.getMessage());
                     }
                 });
+    }
+
+    private void updateUIWithUserData(DataSnapshot snap) {
+        String fullName = snap.child("fullName").getValue(String.class);
+        String username = snap.child("username").getValue(String.class);
+        String bio = snap.child("bio").getValue(String.class);
+        String profileImageUrl = snap.child("profileImageUrl").getValue(String.class);
+
+        // Update UI elements
+        profileName.setText(fullName != null ? fullName : "-");
+        profileUsername.setText(username != null ? "@" + username : "-");
+        usernameValue.setText(username != null ? username : "-");
+        bioValue.setText(bio != null && !bio.isEmpty() ? bio : "No bio yet.");
+
+        // Load profile image
+        if (profileImageUrl != null && !profileImageUrl.isEmpty()) {
+            Glide.with(ProfileActivity.this)
+                    .load(profileImageUrl)
+                    .circleCrop()
+                    .placeholder(R.drawable.default_profile)
+                    .error(R.drawable.default_profile)
+                    .into(profileImage);
+        }
     }
 
     private void createUserDocument() {
@@ -220,7 +252,7 @@ public class ProfileActivity extends AppCompatActivity {
         userData.put("name", currentUser.getDisplayName() != null
                 ? currentUser.getDisplayName() : "User");
         userData.put("fullName", currentUser.getDisplayName() != null
-                ? currentUser.getDisplayName() : "User");  // <-- NEW
+                ? currentUser.getDisplayName() : "User");
         userData.put("username", "user" + currentUser.getUid().substring(0, 5));
         userData.put("email", currentUser.getEmail());
         userData.put("bio", "");
@@ -231,9 +263,7 @@ public class ProfileActivity extends AppCompatActivity {
                 .setValue(userData)
                 .addOnSuccessListener(aVoid -> loadUserData())
                 .addOnFailureListener(e ->
-                        Toast.makeText(this,
-                                "Failed to create user profile: " + e.getMessage(),
-                                Toast.LENGTH_SHORT).show()
+                        showToast("Failed to create user profile: " + e.getMessage())
                 );
     }
 
@@ -245,9 +275,31 @@ public class ProfileActivity extends AppCompatActivity {
         finish();
     }
 
+    private void showToast(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        int itemId = item.getItemId();
+
+        if (itemId == R.id.navigation_home) {
+            startActivity(new Intent(this, MainActivity.class));
+            return true;
+        } else if (itemId == R.id.profileButton) {
+            // Already on profile screen
+            return true;
+        }
+
+        return false;
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
         loadUserData();
+
+        // Make sure navigation is correctly selected
+        bottomNavigationView.setSelectedItemId(R.id.profileButton);
     }
 }

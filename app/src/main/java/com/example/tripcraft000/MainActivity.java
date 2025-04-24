@@ -3,20 +3,26 @@ package com.example.tripcraft000;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
 import android.widget.TextView;
+import android.app.ActivityOptions;
+import android.util.Pair;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener {
 
-    private Button generateNewPlanButton;
-    private Button savedPlansButton;
+    private FloatingActionButton generateNewPlanButton;
     private TextView usernameText;
+    private TextView sloganText;
+    private BottomNavigationView bottomNavigationView;
 
     private FirebaseAuth mAuth;
 
@@ -27,27 +33,55 @@ public class MainActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
+        // Initialize views
         usernameText = findViewById(R.id.usernameText);
+        sloganText = findViewById(R.id.sloganText);
         generateNewPlanButton = findViewById(R.id.generateNewPlanButton);
-        savedPlansButton = findViewById(R.id.savedPlansButton);
+        View yourPlansButton = findViewById(R.id.yourPlansButton);
+        bottomNavigationView = findViewById(R.id.bottomNavigation);
 
+        // Set username from Firebase or SharedPreferences
         setUsername();
 
-        View profileButton = findViewById(R.id.profileButton);
-        profileButton.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
-            startActivity(intent);
-        });
+        // Setup bottom navigation
+        bottomNavigationView.setOnNavigationItemSelectedListener(this);
 
+        // Hide center item to make room for FAB
+        bottomNavigationView.getMenu().findItem(R.id.navigation_placeholder).setEnabled(false);
+
+        // Setup click listeners
         generateNewPlanButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, CityActivity.class);
-            startActivityForResult(intent, 1);
+
+            // Create the zoom animation using ActivityOptions
+            ActivityOptions options = ActivityOptions.makeSceneTransitionAnimation(
+                    MainActivity.this,
+                    Pair.create(generateNewPlanButton, "transitionButton")
+            );
+
+            startActivityForResult(intent, 1, options.toBundle());
         });
 
-        savedPlansButton.setOnClickListener(v -> {
+        yourPlansButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, SavedPlansActivity.class);
             startActivity(intent);
         });
+    }
+
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+
+        if (id == R.id.navigation_home) {
+            // Already on home, do nothing or refresh
+            return true;
+        } else if (id == R.id.profileButton) {
+            Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
+            startActivity(intent);
+            return true;
+        }
+
+        return false;
     }
 
     @Override
@@ -99,21 +133,6 @@ public class MainActivity extends AppCompatActivity {
             }
         } else {
             usernameText.setText("Guest");
-        }
-    }
-
-    // Helper method to handle username with current data
-    private void handleUsernameWithCurrentData(FirebaseUser user) {
-        String username = user.getDisplayName();
-        if (username != null && !username.isEmpty()) {
-            usernameText.setText(username);
-        } else {
-            String email = user.getEmail();
-            if (email != null && !email.isEmpty()) {
-                usernameText.setText(email.split("@")[0]);
-            } else {
-                usernameText.setText("Guest");
-            }
         }
     }
 }

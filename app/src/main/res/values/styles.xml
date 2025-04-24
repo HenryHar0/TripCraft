@@ -34,6 +34,10 @@
         <!-- Component base styles -->
         <item name="materialButtonStyle">@style/Widget.App.Button</item>
         <item name="textInputStyle">@style/Widget.App.TextInputLayout</item>
+
+        <item name="android:windowContentTransitions">true</item>
+        <item name="android:windowAllowEnterTransitionOverlap">true</item>
+        <item name="android:windowAllowReturnTransitionOverlap">true</item>
     </style>
 
     <!-- Typography styles -->
