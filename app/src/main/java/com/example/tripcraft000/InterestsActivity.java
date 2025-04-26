@@ -84,7 +84,6 @@ public class InterestsActivity extends AppCompatActivity {
         interestsLayout = findViewById(R.id.interestsLayout);
         progressBar = findViewById(R.id.progressBar);
         statusText = findViewById(R.id.statusText);
-        applyFiltersButton = findViewById(R.id.applyFiltersButton);
         categoriesLayout = findViewById(R.id.categoriesLayout);
         nextButton = findViewById(R.id.nextButton);
 
