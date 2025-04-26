@@ -498,8 +498,8 @@ public class InterestsActivity extends AppCompatActivity {
             return;
         }
 
-        // Create intent for PlanActivity
-        Intent intent = new Intent(InterestsActivity.this, PlanActivity.class);
+        // Create intent for TimeActivity
+        Intent intent = new Intent(InterestsActivity.this, TimeActivity.class);
 
         // Pass along all the information received from the previous activity
         intent.putExtra("city", selectedCityName);
@@ -518,7 +518,7 @@ public class InterestsActivity extends AppCompatActivity {
 
         // Pass selected places
         ArrayList<String> selectedPlacesList = new ArrayList<>(selectedPlaceIds);
-        Log.d(TAG, "Passing " + selectedPlacesList.size() + " selected places to PlanActivity");
+        Log.d(TAG, "Passing " + selectedPlacesList.size() + " selected places to TimeActivity");
         intent.putStringArrayListExtra("selected_place_ids", selectedPlacesList);
 
         // Start PlanActivity

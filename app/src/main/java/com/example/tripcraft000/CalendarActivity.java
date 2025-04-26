@@ -202,7 +202,7 @@ public class CalendarActivity extends AppCompatActivity {
         Date d2 = parseStorageDate(end);
         if (d1 != null && d2 != null) {
             long diff = d2.getTime() - d1.getTime();
-            return (int) (diff / (1000 * 60 * 60 * 24));
+            return (int) (diff / (1000 * 60 * 60 * 24) + 1);
         }
         return 0;
     }

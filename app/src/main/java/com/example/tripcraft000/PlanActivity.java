@@ -572,7 +572,7 @@ public class PlanActivity extends AppCompatActivity {
 
             if (start != null && end != null) {
                 long differenceInMillis = end.getTime() - start.getTime();
-                long days = differenceInMillis / (1000 * 60 * 60 * 24);
+                long days = differenceInMillis / (1000 * 60 * 60 * 24) + 1;
                 durationValue.setText(days + " days");
             }
         } catch (ParseException e) {
