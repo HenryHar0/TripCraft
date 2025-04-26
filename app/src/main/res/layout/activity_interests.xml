@@ -77,20 +77,6 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone" />
-
-                <Button
-                    android:id="@+id/applyFiltersButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:backgroundTint="@color/primary"
-                    android:fontFamily="sans-serif-medium"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp"
-                    android:text="Apply Changes"
-                    android:textAllCaps="false"
-                    android:textColor="@color/on_primary"
-                    android:textSize="16sp" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 

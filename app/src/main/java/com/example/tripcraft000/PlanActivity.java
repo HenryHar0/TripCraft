@@ -27,6 +27,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
+
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -166,8 +169,8 @@ public class PlanActivity extends AppCompatActivity {
         startDate = intent.getStringExtra("start_date");
         endDate = intent.getStringExtra("end_date");
         city = intent.getStringExtra("city");
-        latitude = intent.getDoubleExtra("latitude", 0.0);
-        longitude = intent.getDoubleExtra("longitude", 0.0);
+        latitude = getIntent().getDoubleExtra("city_lat", 0.0);
+        longitude = getIntent().getDoubleExtra("city_lng", 0.0);
         ArrayList<String> selectedCategories = intent.getStringArrayListExtra("selected_categories");
         selectedPlaceIds = intent.getStringArrayListExtra("selected_place_ids");
 
@@ -186,10 +189,8 @@ public class PlanActivity extends AppCompatActivity {
             calculateDuration();
         }
 
-        // Fetch weather information
-        if (latitude != 0.0 && longitude != 0.0) {
-            fetchWeatherInfo();
-        }
+        fetchWeatherInfo();
+
 
         // Set button click listeners
         savePlanButton.setOnClickListener(v -> saveTripPlan());
@@ -441,43 +442,79 @@ public class PlanActivity extends AppCompatActivity {
             showingSelectedPlaces = true;
         }
     }
-
-
     private void fetchWeatherInfo() {
         executorService.execute(() -> {
             try {
-                // Step 1: Get Grid Points
-                String pointsUrl = NOAA_POINTS_BASE_URL + latitude + "," + longitude;
-                String gridResponse = makeHttpRequest(pointsUrl);
-                JSONObject gridPointsJson = new JSONObject(gridResponse);
+                // 0️⃣ Read trip start date from Intent (format “YYYY-MM-DD”)
+                String startDateStr = getIntent().getStringExtra("start_date");
+                int month;
+                try {
+                    month = Integer.parseInt(startDateStr.split("-")[1]); // “01”→1 … “12”→12
+                } catch (Exception e) {
+                    month = java.time.LocalDate.now().getMonthValue(); // fallback to current month
+                }
 
-                String gridId = gridPointsJson.getJSONObject("properties").getString("gridId");
-                int gridX = gridPointsJson.getJSONObject("properties").getInt("gridX");
-                int gridY = gridPointsJson.getJSONObject("properties").getInt("gridY");
+                // 1️⃣ Build the Open-Meteo climate API URL
+                String apiUrl = "https://climate-api.open-meteo.com/v1/climate" +
+                        "?latitude=" + latitude +
+                        "&longitude=" + longitude +
+                        "&start_date=1991-01-01" +
+                        "&end_date=2020-12-31" +
+                        "&model=ERA5" +
+                        "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum" +
+                        "&temperature_unit=celsius" +
+                        "&precipitation_unit=mm" +
+                        "&format=json";
 
-                // Step 2: Get Forecast
-                String forecastUrl = NOAA_FORECAST_BASE_URL + gridId + "/" + gridX + "," + gridY + "/forecast";
-                String forecastResponse = makeHttpRequest(forecastUrl);
-                JSONObject forecastJson = new JSONObject(forecastResponse);
+                // 2️⃣ Fetch & parse JSON
+                String jsonResponse = makeHttpRequest(apiUrl);
+                JSONObject root = new JSONObject(jsonResponse);
+                JSONObject daily = root.getJSONObject("daily");
 
-                JSONObject period = forecastJson.getJSONObject("properties")
-                        .getJSONArray("periods")
-                        .getJSONObject(0);
+                JSONArray tempsMax = daily.getJSONArray("temperature_2m_max");
+                JSONArray tempsMin = daily.getJSONArray("temperature_2m_min");
+                JSONArray precs = daily.getJSONArray("precipitation_sum");
 
-                final String temperature = period.getString("temperature") + "°" +
-                        period.getString("temperatureUnit");
-                final String forecast = period.getString("shortForecast");
+                // 3️⃣ Calculate average values for the target month
+                double sumTempMax = 0;
+                double sumTempMin = 0;
+                double sumPrecip = 0;
+                int count = 0;
 
-                runOnUiThread(() -> {
-                    weatherInfo.setText(String.format("Temperature: %s\nForecast: %s",
-                            temperature, forecast));
-                });
+                for (int i = 0; i < tempsMax.length(); i++) {
+                    // Assuming the dates are in order and correspond to the data arrays
+                    String dateStr = daily.getJSONArray("time").getString(i);
+                    int dataMonth = Integer.parseInt(dateStr.split("-")[1]);
+                    if (dataMonth == month) {
+                        sumTempMax += tempsMax.getDouble(i);
+                        sumTempMin += tempsMin.getDouble(i);
+                        sumPrecip += precs.getDouble(i);
+                        count++;
+                    }
+                }
+
+                double avgTempMax = sumTempMax / count;
+                double avgTempMin = sumTempMin / count;
+                double avgPrecip = sumPrecip / count;
+
+                // 4️⃣ Format for display
+                String monthName = new java.text.DateFormatSymbols()
+                        .getMonths()[month - 1];
+                final String display = String.format(
+                        "%s averages (1991–2020):\n" +
+                                "🌡 Max temp: %.1f °C\n" +
+                                "🌡 Min temp: %.1f °C\n" +
+                                "💧 Precipitation: %.1f mm",
+                        monthName, avgTempMax, avgTempMin, avgPrecip
+                );
+
+                // 5️⃣ Push to UI
+                runOnUiThread(() -> weatherInfo.setText(display));
 
             } catch (Exception e) {
-                Log.e(TAG, "Error fetching weather", e);
-                runOnUiThread(() -> {
-                    weatherInfo.setText("Unable to fetch weather information");
-                });
+                Log.e(TAG, "Error fetching historical climate data", e);
+                runOnUiThread(() ->
+                        weatherInfo.setText("Unable to fetch climate averages"));
             }
         });
     }
@@ -753,7 +790,6 @@ public class PlanActivity extends AppCompatActivity {
     }
 
 
-
     private void setupPlacesLoading() {
         placesData.clear();
         placesData.add("Loading places for your trip...");
@@ -857,7 +893,6 @@ public class PlanActivity extends AppCompatActivity {
         }, 5, TimeUnit.SECONDS);
     }
 
-    // Add this method for formatting place types
     private String getFormattedPlaceType(String type) {
         switch (type) {
             // High-value tourist categories
@@ -950,9 +985,6 @@ public class PlanActivity extends AppCompatActivity {
                     }
                 });
     }
-
-
-
 
     @Override
     protected void onDestroy() {

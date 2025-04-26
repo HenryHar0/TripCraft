@@ -38,9 +38,13 @@ import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class MapPlacesActivity extends AppCompatActivity implements
@@ -55,6 +59,7 @@ public class MapPlacesActivity extends AppCompatActivity implements
     private PlacesAdapter placesAdapter;
     private TextView selectedCountText;
     private Button doneButton;
+    private String startDate, endDate;
     private SearchView placeSearchView;
 
     private String selectedCityName;
@@ -99,6 +104,8 @@ public class MapPlacesActivity extends AppCompatActivity implements
         selectedCityName = getIntent().getStringExtra("city_name");
         double cityLat = getIntent().getDoubleExtra("city_lat", 0);
         double cityLng = getIntent().getDoubleExtra("city_lng", 0);
+        startDate = getIntent().getStringExtra("start_date");
+        endDate = getIntent().getStringExtra("end_date");
         selectedCityCoordinates = new LatLng(cityLat, cityLng);
         selectedCategoryName = getIntent().getStringExtra("category_name");
 
@@ -193,6 +200,38 @@ public class MapPlacesActivity extends AppCompatActivity implements
             googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(cityBounds, 50));
         }
     }
+
+    private int calculateDuration() {
+        // Validate that we have both dates
+        if (startDate == null || endDate == null) {
+            return 1; // Default to 1 day if dates aren't provided
+        }
+
+        try {
+            // Parse the dates using a simple date format
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+            Date start = dateFormat.parse(startDate);
+            Date end = dateFormat.parse(endDate);
+
+            if (start == null || end == null) {
+                return 1; // Default to 1 day if parsing fails
+            }
+
+            // Calculate difference in milliseconds
+            long diffInMillis = end.getTime() - start.getTime();
+
+            // Convert to days and add 1 (to include both start and end date)
+            int daysDiff = (int) (diffInMillis / (1000 * 60 * 60 * 24)) + 1;
+
+            // Ensure we return at least 1 day
+            return Math.max(1, daysDiff);
+        } catch (ParseException e) {
+            Log.e("MapPlacesActivity", "Error parsing dates", e);
+            return 1; // Default to 1 day if parsing throws exception
+        }
+    }
+
+
 
     private void fetchCityBoundaries(String cityName, final BoundariesCallback callback) {
         String encodedCityName;
@@ -517,19 +556,40 @@ public class MapPlacesActivity extends AppCompatActivity implements
 
     private void updateSelectedCount() {
         List<PlaceMarker> selectedPlaces = placesAdapter.getSelectedPlaces();
-        String countText = selectedPlaces.size() + " places selected";
+        int duration = calculateDuration();
+        int maxAllowed = duration * 2; // 2 places per day
+
+        String countText = selectedPlaces.size() + " / " + maxAllowed + " places selected";
         selectedCountText.setText(countText);
+
+        // Disable Done button if too many places selected
+        doneButton.setEnabled(selectedPlaces.size() <= maxAllowed);
+
+        // Show warning if too many places are selected
+        if (selectedPlaces.size() > maxAllowed) {
+            Toast.makeText(this,
+                    "You can select maximum " + maxAllowed + " places for a " +
+                            duration + "-day trip", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void finishWithSelectedPlaces() {
         List<PlaceMarker> selectedPlaces = placesAdapter.getSelectedPlaces();
+        int duration = calculateDuration();
+        int maxAllowed = duration * 2;
 
         if (selectedPlaces.isEmpty()) {
             Toast.makeText(this, "Please select at least one place", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Here you would typically pass these selected places back to the previous activity
+        if (selectedPlaces.size() > maxAllowed) {
+            Toast.makeText(this,
+                    "You can select maximum " + maxAllowed + " places for a " +
+                            duration + "-day trip", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Intent resultIntent = new Intent();
         ArrayList<String> selectedPlaceIds = new ArrayList<>();
         ArrayList<String> selectedPlaceNames = new ArrayList<>();
@@ -562,9 +622,30 @@ public class MapPlacesActivity extends AppCompatActivity implements
     }
 
     public void onPlaceSelectionChanged(PlaceMarker place, boolean isSelected) {
+        if (isSelected) {
+            int duration = calculateDuration();
+            int maxAllowed = duration * 2;
+            List<PlaceMarker> selectedPlaces = placesAdapter.getSelectedPlaces();
+
+            // If already at max and trying to select one more, prevent selection
+            if (selectedPlaces.size() > maxAllowed) {
+                // Revert the selection
+                place.setSelected(false);
+
+                // Update the adapter
+                placesAdapter.notifyDataSetChanged();
+
+                Toast.makeText(this,
+                        "You can select maximum " + maxAllowed + " places for a " +
+                                duration + "-day trip", Toast.LENGTH_SHORT).show();
+
+                return;
+            }
+        }
+
         // Update marker icon on the map
         Marker marker = placeMarkers.get(place.getPlaceId());
-        updateMarkerIcon(marker, isSelected);
+        updateMarkerIcon(marker, place.isSelected());
 
         // Update the selected count
         updateSelectedCount();
