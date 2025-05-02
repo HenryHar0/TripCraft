@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="@drawable/rounded_background"
     tools:context=".InterestsActivity">
 
     <!-- Close/Back button (X) -->
@@ -23,7 +23,7 @@
         app:layout_constraintTop_toTopOf="parent"
         app:tint="@color/primary" />
 
-    <!-- Progress bar divided into 5 parts (similar to calendar activity) -->
+    <!-- Progress bar divided into 4 parts (placed in front with elevation) -->
     <LinearLayout
         android:id="@+id/progress_container"
         android:layout_width="0dp"
@@ -32,6 +32,7 @@
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
         android:layout_marginTop="24dp"
+        android:elevation="10dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toEndOf="@id/back_button"
         app:layout_constraintEnd_toEndOf="parent">
@@ -41,7 +42,8 @@
             android:layout_width="0dp"
             android:layout_height="4dp"
             android:layout_weight="1"
-            android:background="@color/primary"
+            android:background="@drawable/rounded_progress_bar"
+            android:backgroundTint="@color/primary"
             android:layout_marginEnd="4dp"/>
 
         <View
@@ -49,7 +51,8 @@
             android:layout_width="0dp"
             android:layout_height="4dp"
             android:layout_weight="1"
-            android:background="@color/primary"
+            android:background="@drawable/rounded_progress_bar"
+            android:backgroundTint="@color/primary"
             android:layout_marginStart="4dp"
             android:layout_marginEnd="4dp"/>
 
@@ -58,7 +61,8 @@
             android:layout_width="0dp"
             android:layout_height="4dp"
             android:layout_weight="1"
-            android:background="@color/primary"
+            android:background="@drawable/rounded_progress_bar"
+            android:backgroundTint="@color/primary"
             android:layout_marginStart="4dp"
             android:layout_marginEnd="4dp"/>
 
@@ -67,20 +71,12 @@
             android:layout_width="0dp"
             android:layout_height="4dp"
             android:layout_weight="1"
-            android:background="@color/divider"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="4dp"/>
-
-        <View
-            android:id="@+id/progress_step5"
-            android:layout_width="0dp"
-            android:layout_height="4dp"
-            android:layout_weight="1"
-            android:background="@color/divider"
+            android:background="@drawable/rounded_progress_bar"
+            android:backgroundTint="@color/divider"
             android:layout_marginStart="4dp"/>
     </LinearLayout>
 
-    <!-- Decorative Shape (Similar to calendar activity) -->
+    <!-- Decorative gradient circle -->
     <View
         android:id="@+id/decorative_shape"
         android:layout_width="250dp"
@@ -130,6 +126,7 @@
         android:layout_marginTop="16dp"
         android:indeterminate="true"
         android:visibility="gone"
+        android:elevation="10dp"
         app:layout_constraintTop_toBottomOf="@id/subtitle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -144,11 +141,11 @@
         android:textSize="14sp"
         android:layout_marginTop="8dp"
         android:visibility="gone"
+        android:elevation="10dp"
         app:layout_constraintTop_toBottomOf="@id/progressBar"
         app:layout_constraintStart_toStartOf="@id/progressBar"
         app:layout_constraintEnd_toEndOf="@id/progressBar" />
 
-    <!-- Scrollable content area -->
     <ScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -202,24 +199,275 @@
                             android:layout_weight="1"
                             android:text="Select Categories"
                             android:textSize="20sp"
-                            android:textColor="@color/on_surface"
+                            android:textColor="@color/on_background"
                             android:layout_marginStart="16dp"
                             android:fontFamily="sans-serif-medium"
                             android:includeFontPadding="false"
                             android:lineSpacingMultiplier="1.1" />
                     </LinearLayout>
 
-                    <!-- Categories Content -->
-                    <LinearLayout
+                    <!-- Categories Content as ChipGroup with drawables -->
+                    <com.google.android.material.chip.ChipGroup
                         android:id="@+id/categoriesLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:visibility="gone" />
+                        app:singleSelection="false"
+                        app:chipSpacing="8dp">
+
+                        <FrameLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content">
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip_museum"
+                                style="@style/CustomChipStyle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                app:chipStartPadding="12dp"
+                                app:chipIconVisible="true"
+                                app:chipIcon="@drawable/ic_museum"
+                                app:chipIconTint="@color/primary"
+                                android:text="Museum" />
+
+                            <ImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@drawable/ic_fire"
+                                android:layout_gravity="top|end"
+                                android:layout_marginTop="-3dp"
+                                android:layout_marginEnd="-5.5dp" />
+                        </FrameLayout>
+
+                        <FrameLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content">
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip_tourist_attraction"
+                                style="@style/CustomChipStyle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                app:chipStartPadding="12dp"
+                                app:chipIconVisible="true"
+                                app:chipIcon="@drawable/ic_tourist_attraction"
+                                app:chipIconTint="@color/primary"
+                                android:text="Tourist Attraction" />
+
+                            <ImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@drawable/ic_fire"
+                                android:layout_gravity="top|end"
+                                android:layout_marginTop="-3dp"
+                                android:layout_marginEnd="-5.5dp" />
+                        </FrameLayout>
+
+                        <FrameLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content">
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip_restaurant"
+                                style="@style/CustomChipStyle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                app:chipStartPadding="12dp"
+                                app:chipIconVisible="true"
+                                app:chipIcon="@drawable/ic_restaurant"
+                                app:chipIconTint="@color/primary"
+                                android:text="Restaurant" />
+
+                            <ImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@drawable/ic_fire"
+                                android:layout_gravity="top|end"
+                                android:layout_marginTop="-3dp"
+                                android:layout_marginEnd="-5.5dp" />
+                        </FrameLayout>
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_cafe"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_cafe"
+                            app:chipIconTint="@color/primary"
+                            android:text="Cafe" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_bar"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_bar"
+                            app:chipIconTint="@color/primary"
+                            android:text="Bar" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_shopping_mall"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_shopping_mall"
+                            app:chipIconTint="@color/primary"
+                            android:text="Shopping Mall" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_theater"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_theater"
+                            app:chipIconTint="@color/primary"
+                            android:text="Theater" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_cinema"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_cinema"
+                            app:chipIconTint="@color/primary"
+                            android:text="Cinema" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_night_club"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_night_club"
+                            app:chipIconTint="@color/primary"
+                            android:text="Night Club" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_park"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_park"
+                            app:chipIconTint="@color/primary"
+                            android:text="Park" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_beach"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_beach"
+                            app:chipIconTint="@color/primary"
+                            android:text="Beach" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_nature_spot"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_nature_spot"
+                            app:chipIconTint="@color/primary"
+                            android:text="Nature Spot" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_art_gallery"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_art_gallery"
+                            app:chipIconTint="@color/primary"
+                            android:text="Art Gallery" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_place_of_worship"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_place_of_worship"
+                            app:chipIconTint="@color/primary"
+                            android:text="Place of Worship" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_zoo"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_zoo"
+                            app:chipIconTint="@color/primary"
+                            android:text="Zoo" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_aquarium"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_aquarium"
+                            app:chipIconTint="@color/primary"
+                            android:text="Aquarium" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_amusement_park"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_amusement_park"
+                            app:chipIconTint="@color/primary"
+                            android:text="Amusement Park" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_train_station"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_train_station"
+                            app:chipIconTint="@color/primary"
+                            android:text="Train Station" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_metro_station"
+                            style="@style/CustomChipStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_metro_station"
+                            app:chipIconTint="@color/primary"
+                            android:text="Metro Station" />
+
+                    </com.google.android.material.chip.ChipGroup>
+
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Interests Section -->
+            <!-- Interests Section (with improved card styling) -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -259,19 +507,17 @@
                             android:includeFontPadding="false"
                             android:lineSpacingMultiplier="1.1" />
                     </LinearLayout>
-
-                    <!-- Interests Content -->
                     <LinearLayout
                         android:id="@+id/interestsLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical" />
                 </LinearLayout>
+
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
     </ScrollView>
 
-    <!-- Next Button -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/next_button"
         android:layout_width="0dp"
@@ -286,7 +532,7 @@
         app:cornerRadius="30dp"
         app:backgroundTint="@color/primary"
         app:rippleColor="@color/ripple_light"
-        android:elevation="4dp"
+        android:elevation="8dp"
         android:stateListAnimator="@null"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

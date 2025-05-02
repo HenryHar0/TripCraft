@@ -809,7 +809,7 @@ public class PlanActivity extends AppCompatActivity {
             Log.d("SelectedCategory", category.toLowerCase());
             switch (category) {
                 case "🏛 Museum":
-                    typesToSearch.add("museum");
+                    typesToSearch.add("ic_museum.xml");
                     break;
                 case "📸 Tourist Attraction":
                     typesToSearch.add("landmark");
@@ -897,7 +897,7 @@ public class PlanActivity extends AppCompatActivity {
         switch (type) {
             // High-value tourist categories
             case "tourist_attraction": return "📸 Tourist Attraction";
-            case "museum": return "🏛 Museum";
+            case "ic_museum.xml": return "🏛 Museum";
             case "landmark": return "🏛 Landmark";
             case "historical_landmark":
             case "historical_site": return "🏰 Historical Site";

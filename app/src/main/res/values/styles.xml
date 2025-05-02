@@ -107,4 +107,30 @@
         <item name="cornerSize">50%</item>
     </style>
 
+    <style name="CustomChipStyle" parent="Widget.MaterialComponents.Chip.Choice">
+        <item name="chipIconVisible">true</item>
+        <item name="chipIconSize">24dp</item>
+        <item name="chipStartPadding">12dp</item>
+        <item name="chipEndPadding">12dp</item>
+        <item name="android:textAppearance">@style/ChipTextAppearance</item>
+        <item name="chipBackgroundColor">@color/chip_background</item>
+        <item name="android:textColor">@color/chip_text_color</item>
+        <item name="chipStrokeWidth">0.5dp</item>
+        <item name="chipStrokeColor">@color/divider</item>
+        <item name="rippleColor">@color/ripple_light</item>
+        <item name="shapeAppearanceOverlay">
+            @style/CustomChipShapeOverlay
+        </item>
+    </style>
+
+    <style name="CustomChipShapeOverlay" parent="">
+        <item name="cornerSize">8dp</item>
+    </style>
+
+
+    <style name="ChipTextAppearance" parent="TextAppearance.MaterialComponents.Chip">
+        <item name="android:textSize">14sp</item>
+        <item name="fontFamily">sans-serif-medium</item>
+    </style>
+
 </resources>
