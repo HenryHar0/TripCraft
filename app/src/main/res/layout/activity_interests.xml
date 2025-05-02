@@ -169,7 +169,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
-                app:cardCornerRadius="28dp"
                 app:cardElevation="6dp"
                 app:cardBackgroundColor="@color/surface"
                 app:strokeWidth="0dp">
@@ -214,77 +213,39 @@
                         app:singleSelection="false"
                         app:chipSpacing="8dp">
 
-                        <FrameLayout
+                        <!-- All chips now have the same structure -->
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_museum"
+                            style="@style/CustomChipStyle"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content">
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_museum"
+                            app:chipIconTint="@color/primary"
+                            android:text="Museum" />
 
-                            <com.google.android.material.chip.Chip
-                                android:id="@+id/chip_museum"
-                                style="@style/CustomChipStyle"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                app:chipStartPadding="12dp"
-                                app:chipIconVisible="true"
-                                app:chipIcon="@drawable/ic_museum"
-                                app:chipIconTint="@color/primary"
-                                android:text="Museum" />
-
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:src="@drawable/ic_fire"
-                                android:layout_gravity="top|end"
-                                android:layout_marginTop="-3dp"
-                                android:layout_marginEnd="-5.5dp" />
-                        </FrameLayout>
-
-                        <FrameLayout
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_tourist_attraction"
+                            style="@style/CustomChipStyle"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content">
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_tourist_attraction"
+                            app:chipIconTint="@color/primary"
+                            android:text="Tourist Attraction" />
 
-                            <com.google.android.material.chip.Chip
-                                android:id="@+id/chip_tourist_attraction"
-                                style="@style/CustomChipStyle"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                app:chipStartPadding="12dp"
-                                app:chipIconVisible="true"
-                                app:chipIcon="@drawable/ic_tourist_attraction"
-                                app:chipIconTint="@color/primary"
-                                android:text="Tourist Attraction" />
-
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:src="@drawable/ic_fire"
-                                android:layout_gravity="top|end"
-                                android:layout_marginTop="-3dp"
-                                android:layout_marginEnd="-5.5dp" />
-                        </FrameLayout>
-
-                        <FrameLayout
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_restaurant"
+                            style="@style/CustomChipStyle"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content">
-
-                            <com.google.android.material.chip.Chip
-                                android:id="@+id/chip_restaurant"
-                                style="@style/CustomChipStyle"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                app:chipStartPadding="12dp"
-                                app:chipIconVisible="true"
-                                app:chipIcon="@drawable/ic_restaurant"
-                                app:chipIconTint="@color/primary"
-                                android:text="Restaurant" />
-
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:src="@drawable/ic_fire"
-                                android:layout_gravity="top|end"
-                                android:layout_marginTop="-3dp"
-                                android:layout_marginEnd="-5.5dp" />
-                        </FrameLayout>
+                            android:layout_height="wrap_content"
+                            app:chipStartPadding="12dp"
+                            app:chipIconVisible="true"
+                            app:chipIcon="@drawable/ic_restaurant"
+                            app:chipIconTint="@color/primary"
+                            android:text="Restaurant" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/chip_cafe"
@@ -471,7 +432,7 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="28dp"
+                app:cardCornerRadius="0dp"
                 app:cardElevation="6dp"
                 app:cardBackgroundColor="@color/surface"
                 app:strokeWidth="0dp">

@@ -37,6 +37,8 @@ public class TimeActivity extends AppCompatActivity {
     private TextView tripSummaryText;
     private Toolbar toolbar;
 
+    private ImageButton backButton;
+
     // Data
     private HashMap<Integer, Integer> hoursPerDay;
     private DayAdapter dayAdapter;
@@ -68,6 +70,7 @@ public class TimeActivity extends AppCompatActivity {
         decrementBulkHours = findViewById(R.id.decrementBulkHours);
         incrementBulkHours = findViewById(R.id.incrementBulkHours);
         tripSummaryText = findViewById(R.id.tripSummaryText);
+        backButton = findViewById(R.id.back_button);
 
         // Disable continue button initially
         continueButton.setEnabled(false);
@@ -156,6 +159,15 @@ public class TimeActivity extends AppCompatActivity {
                 showMissingHoursWarning();
             }
         });
+
+        if (backButton != null) {
+            backButton.setOnClickListener(v -> {
+                Intent intent = new Intent(TimeActivity.this, MainActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                finish();
+            });
+        }
     }
 
     private void adjustBulkHours(int adjustment) {

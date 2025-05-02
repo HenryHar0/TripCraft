@@ -3,7 +3,9 @@ package com.example.tripcraft000;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.CalendarView;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -36,6 +38,8 @@ public class CalendarActivity extends AppCompatActivity {
     private boolean isArrivalTab = true;
     private boolean suppressListener = false;
 
+    private ImageButton backButton;
+
     private final SimpleDateFormat displayFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
     private final SimpleDateFormat storageFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
 
@@ -63,6 +67,7 @@ public class CalendarActivity extends AppCompatActivity {
         setupTabListener();
         setupDateChangeListener();
         setupNextButton();
+        setupBackButton();
     }
 
     private void initViews() {
@@ -72,6 +77,7 @@ public class CalendarActivity extends AppCompatActivity {
         arrivalDateText = findViewById(R.id.arrival_date);
         departureDateText = findViewById(R.id.departure_date);
         daysCountText = findViewById(R.id.days_count);
+        backButton = findViewById(R.id.back_button);
     }
 
     private void extractIntentData() {
@@ -163,6 +169,17 @@ public class CalendarActivity extends AppCompatActivity {
 
             startActivity(createInterestsIntent());
         });
+    }
+
+    private void setupBackButton(){
+        if (backButton != null) {
+            backButton.setOnClickListener(v -> {
+                Intent intent = new Intent(CalendarActivity.this, MainActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                finish();
+            });
+        }
     }
 
     private Intent createInterestsIntent() {

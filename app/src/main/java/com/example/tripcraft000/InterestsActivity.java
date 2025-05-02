@@ -1,27 +1,42 @@
 package com.example.tripcraft000;
 
+import android.app.ActivityOptions;
 import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
-import android.widget.CheckBox;
+import android.view.animation.Animation;
+import android.view.animation.DecelerateInterpolator;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -36,9 +51,8 @@ public class InterestsActivity extends AppCompatActivity {
     private LinearLayout interestsLayout;
     private ProgressBar progressBar;
     private TextView statusText;
-    private LinearLayout categoriesLayout;
+    private ChipGroup categoriesChipGroup;
     private MaterialButton nextButton;
-    private TextView categoryLimitText;
     private ImageButton backButton;
     private TextView titleTextView;
     private TextView subtitleTextView;
@@ -47,10 +61,11 @@ public class InterestsActivity extends AppCompatActivity {
     private String selectedCityName;
     private LatLng selectedCityCoordinates;
     private Set<String> selectedCategories = new HashSet<>();
-    private List<String> allCategories = new ArrayList<>();
     private final Set<String> selectedPlaceIds = new HashSet<>();
-    private CheckBox selectAllCheckbox;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+    // Map of chip IDs to categories
+    private final List<String> categoryNamesList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,19 +78,14 @@ public class InterestsActivity extends AppCompatActivity {
         // Get data from intent
         getDataFromIntent();
 
-        // Fetch city coordinates if needed
-        if (selectedCityCoordinates.latitude == 0 && selectedCityCoordinates.longitude == 0) {
-            fetchCityCoordinatesFromGeoNames(selectedCityName);
-        }
-
         // Set city title
         setPageTitle();
 
         // Setup button click listeners
         setupButtonListeners();
 
-        // Load predefined categories
-        loadPredefinedCategories();
+        // Setup chip listeners
+        setupChipListeners();
     }
 
     @Override
@@ -88,19 +98,11 @@ public class InterestsActivity extends AppCompatActivity {
         interestsLayout = findViewById(R.id.interestsLayout);
         progressBar = findViewById(R.id.progressBar);
         statusText = findViewById(R.id.statusText);
-        categoriesLayout = findViewById(R.id.categoriesLayout);
+        categoriesChipGroup = findViewById(R.id.categoriesLayout);
         nextButton = findViewById(R.id.next_button);
         backButton = findViewById(R.id.back_button);
         titleTextView = findViewById(R.id.title);
         subtitleTextView = findViewById(R.id.subtitle);
-
-        // Add category limit text
-        categoryLimitText = new TextView(this);
-        categoryLimitText.setText("Select up to " + MAX_CATEGORIES + " categories");
-        categoryLimitText.setTextSize(14);
-        categoryLimitText.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
-        categoryLimitText.setPadding(16, 4, 16, 16);
-        categoriesLayout.addView(categoryLimitText);
     }
 
     private void getDataFromIntent() {
@@ -121,9 +123,6 @@ public class InterestsActivity extends AppCompatActivity {
         if (titleTextView != null) {
             titleTextView.setText("Explore " + selectedCityName);
         }
-        if (subtitleTextView != null) {
-            subtitleTextView.setText("Select your interests");
-        }
     }
 
     private void setupButtonListeners() {
@@ -133,264 +132,82 @@ public class InterestsActivity extends AppCompatActivity {
         }
 
         if (backButton != null) {
-            backButton.setOnClickListener(v -> onBackPressed());
+            backButton.setOnClickListener(v -> {
+                Intent intent = new Intent(InterestsActivity.this, MainActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                finish();
+            });
         }
+
     }
 
-    private void fetchCityCoordinatesFromGeoNames(String cityName) {
-        progressBar.setVisibility(View.VISIBLE);
-        statusText.setVisibility(View.VISIBLE);
-        statusText.setText("Fetching location data...");
+    private void setupChipListeners() {
+        // Map all category chips
+        setupCategoryMapping();
 
-        executorService.execute(() -> {
-            try {
-                String apiUrl = "http://api.geonames.org/searchJSON?q=" + cityName +
-                        "&maxRows=1&username=henryhar";
-                java.net.URL url = new java.net.URL(apiUrl);
-                java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-                connection.setConnectTimeout(5000);
-                connection.setReadTimeout(5000);
+        // Setup click listeners for all chips
+        for (int i = 0; i < categoriesChipGroup.getChildCount(); i++) {
+            View view = categoriesChipGroup.getChildAt(i);
+            if (view instanceof Chip) {
+                Chip chip = (Chip) view;
 
-                int responseCode = connection.getResponseCode();
-                if (responseCode == 200) {
-                    java.io.InputStream inputStream = connection.getInputStream();
-                    java.util.Scanner scanner = new java.util.Scanner(inputStream).useDelimiter("\\A");
-                    String response = scanner.hasNext() ? scanner.next() : "";
+                chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                    String category = buttonView.getText().toString();
 
-                    org.json.JSONObject json = new org.json.JSONObject(response);
-                    if (json.has("geonames") && json.getJSONArray("geonames").length() > 0) {
-                        org.json.JSONObject location = json.getJSONArray("geonames").getJSONObject(0);
-                        double lat = location.getDouble("lat");
-                        double lng = location.getDouble("lng");
-
-                        selectedCityCoordinates = new LatLng(lat, lng);
-                        Log.d(TAG, "Fetched coordinates: " + lat + ", " + lng);
+                    if (isChecked) {
+                        // Check if adding this would exceed the limit
+                        if (selectedCategories.size() >= MAX_CATEGORIES) {
+                            Toast.makeText(this, "You can select a maximum of " + MAX_CATEGORIES + " categories",
+                                    Toast.LENGTH_SHORT).show();
+                            buttonView.setChecked(false);
+                            return;
+                        }
+                        selectedCategories.add(category);
                     } else {
-                        Log.w(TAG, "No coordinates found for: " + cityName);
+                        selectedCategories.remove(category);
                     }
-                } else {
-                    Log.e(TAG, "Error response code: " + responseCode);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Exception fetching coordinates", e);
-            } finally {
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    statusText.setText("Choose categories to explore in " + selectedCityName);
+
+                    // Update UI for better user feedback
+                    displaySelectedCategories();
                 });
             }
-        });
-    }
-
-    private void loadPredefinedCategories() {
-        progressBar.setVisibility(View.VISIBLE);
-        statusText.setVisibility(View.VISIBLE);
-        statusText.setText("Loading categories...");
-
-        // Clear previous data
-        allCategories.clear();
-
-        // Add all possible categories from getFormattedPlaceType method
-        allCategories.add("🏛 Museum");
-        allCategories.add("📸 Tourist Attraction");
-        allCategories.add("🍽 Restaurant");
-        allCategories.add("☕ Cafe");
-        allCategories.add("🍹 Bar");
-        allCategories.add("🛍 Shopping Mall");
-        allCategories.add("🎭 Theater");
-        allCategories.add("🎬 Cinema");
-        allCategories.add("🎶 Night Club");
-        allCategories.add("🌳 Park");
-        allCategories.add("🏖 Beach");
-        allCategories.add("🏞 Nature Spot");
-        allCategories.add("🖼 Art Gallery");
-        allCategories.add("🙏 Place of Worship");
-        allCategories.add("🦁 Zoo");
-        allCategories.add("🐠 Aquarium");
-        allCategories.add("🎢 Amusement Park");
-        allCategories.add("🚂 Train Station");
-        allCategories.add("🚇 Metro Station");
-
-        // Update UI with categories
-        updateUI();
-    }
-
-    private synchronized void updateUI() {
-        runOnUiThread(() -> {
-            progressBar.setVisibility(View.GONE);
-            categoriesLayout.setVisibility(View.VISIBLE);
-
-            // Remove all views except the category limit text
-            for (int i = categoriesLayout.getChildCount() - 1; i >= 0; i--) {
-                if (categoriesLayout.getChildAt(i) != categoryLimitText) {
-                    categoriesLayout.removeViewAt(i);
-                }
-            }
-
-            if (allCategories.isEmpty()) {
-                statusText.setText("No categories available. Please try again.");
-                return;
-            }
-
-            statusText.setText("Choose categories to explore in " + selectedCityName);
-
-            // Add "Select All" checkbox
-            addSelectAllCheckbox();
-
-            // Add category checkboxes
-            addCategoryCheckboxes();
-
-            // Display initially selected categories
-            displaySelectedCategories();
-
-            // Update category count indicator
-            updateCategoryCountIndicator();
-        });
-    }
-
-    private void addSelectAllCheckbox() {
-        selectAllCheckbox = new CheckBox(this);
-        selectAllCheckbox.setText("Select All");
-        selectAllCheckbox.setChecked(false);
-        selectAllCheckbox.setTextSize(16);
-        selectAllCheckbox.setPadding(8, 16, 8, 16);
-
-        selectAllCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked && allCategories.size() > MAX_CATEGORIES) {
-                // Prevent selecting all if it would exceed the limit
-                Toast.makeText(this, "You can select a maximum of " + MAX_CATEGORIES + " categories",
-                        Toast.LENGTH_SHORT).show();
-                selectAllCheckbox.setChecked(false);
-                return;
-            }
-
-            // Update all checkboxes and selected categories at once
-            for (int i = 0; i < categoriesLayout.getChildCount(); i++) {
-                View child = categoriesLayout.getChildAt(i);
-                if (child instanceof LinearLayout) {
-                    LinearLayout row = (LinearLayout) child;
-                    for (int j = 0; j < row.getChildCount(); j++) {
-                        View checkboxView = row.getChildAt(j);
-                        if (checkboxView instanceof CheckBox && checkboxView != buttonView) {
-                            ((CheckBox) checkboxView).setChecked(isChecked);
-
-                            // Update selected categories
-                            if (checkboxView.getTag() != null) {
-                                String category = (String) checkboxView.getTag();
-                                if (isChecked) {
-                                    selectedCategories.add(category);
-                                } else {
-                                    selectedCategories.remove(category);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Update displayed categories immediately
-            displaySelectedCategories();
-            updateCategoryCountIndicator();
-        });
-
-        LinearLayout selectAllRow = new LinearLayout(this);
-        selectAllRow.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
-        selectAllRow.addView(selectAllCheckbox);
-        selectAllRow.setPadding(16, 8, 16, 16);
-        categoriesLayout.addView(selectAllRow);
-    }
-
-    private void addCategoryCheckboxes() {
-        int columnCount = 2;
-        LinearLayout currentRow = null;
-
-        for (int i = 0; i < allCategories.size(); i++) {
-            if (i % columnCount == 0) {
-                currentRow = new LinearLayout(this);
-                currentRow.setLayoutParams(new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT));
-                currentRow.setOrientation(LinearLayout.HORIZONTAL);
-                currentRow.setPadding(16, 8, 16, 8);
-                categoriesLayout.addView(currentRow);
-            }
-
-            String category = allCategories.get(i);
-            CheckBox checkBox = new CheckBox(this);
-            checkBox.setText(category);
-            checkBox.setTag(category);
-            checkBox.setChecked(selectedCategories.contains(category));
-            checkBox.setTextSize(14);
-
-            checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                String categoryName = (String) buttonView.getTag();
-
-                if (isChecked) {
-                    // Check if adding this would exceed the limit
-                    if (selectedCategories.size() >= MAX_CATEGORIES) {
-                        Toast.makeText(this, "You can select a maximum of " + MAX_CATEGORIES + " categories",
-                                Toast.LENGTH_SHORT).show();
-                        buttonView.setChecked(false);
-                        return;
-                    }
-                    selectedCategories.add(categoryName);
-                } else {
-                    selectedCategories.remove(categoryName);
-                    // Uncheck "Select All" if any item is unchecked
-                    if (selectAllCheckbox.isChecked()) {
-                        selectAllCheckbox.setChecked(false);
-                    }
-                }
-
-                // Update UI immediately for better user feedback
-                updateCategoryCountIndicator();
-                displaySelectedCategories();
-            });
-
-            LinearLayout.LayoutParams checkboxParams = new LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1.0f);
-            checkBox.setLayoutParams(checkboxParams);
-
-            if (currentRow != null) {
-                currentRow.addView(checkBox);
-            }
         }
     }
 
-    private void updateCategoryCountIndicator() {
-        int count = selectedCategories.size();
+    private void setupCategoryMapping() {
+        // Clear previous mappings
+        categoryNamesList.clear();
 
-        if (count > 0) {
-            categoryLimitText.setText(count + " of " + MAX_CATEGORIES + " categories selected");
-
-            if (count == MAX_CATEGORIES) {
-                categoryLimitText.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_dark));
-            } else {
-                categoryLimitText.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
-            }
-        } else {
-            categoryLimitText.setText("Select up to " + MAX_CATEGORIES + " categories");
-            categoryLimitText.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
-        }
-
-        if (count > 0) {
-            statusText.setText("Selected " + count + " categories");
-        } else {
-            statusText.setText("Choose categories to explore in " + selectedCityName);
-        }
+        // Add each chip ID and its corresponding category name
+        categoryNamesList.add("Museum");
+        categoryNamesList.add("Tourist Attraction");
+        categoryNamesList.add("Restaurant");
+        categoryNamesList.add("Cafe");
+        categoryNamesList.add("Bar");
+        categoryNamesList.add("Shopping Mall");
+        categoryNamesList.add("Theater");
+        categoryNamesList.add("Cinema");
+        categoryNamesList.add("Night Club");
+        categoryNamesList.add("Park");
+        categoryNamesList.add("Beach");
+        categoryNamesList.add("Nature Spot");
+        categoryNamesList.add("Art Gallery");
+        categoryNamesList.add("Place of Worship");
+        categoryNamesList.add("Zoo");
+        categoryNamesList.add("Aquarium");
+        categoryNamesList.add("Amusement Park");
+        categoryNamesList.add("Train Station");
+        categoryNamesList.add("Metro Station");
     }
+
 
     private void displaySelectedCategories() {
         interestsLayout.removeAllViews();
 
         if (selectedCategories.isEmpty()) {
             TextView emptyView = new TextView(this);
-            emptyView.setText("Select categories from the list above");
+            emptyView.setText("Select categories from above");
             emptyView.setTextSize(16);
             emptyView.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
             emptyView.setPadding(16, 16, 16, 16);
@@ -398,78 +215,231 @@ public class InterestsActivity extends AppCompatActivity {
             return;
         }
 
-        for (String category : allCategories) {
-            if (selectedCategories.contains(category)) {
-                createCategoryCard(category);
-            }
+        for (String category : selectedCategories) {
+            createCategoryCard(category);
         }
     }
 
     private void createCategoryCard(final String category) {
-        // Create a MaterialCardView to match the design in XML
+        // Create a MaterialCardView with enhanced design
         MaterialCardView card = new MaterialCardView(this);
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
-        cardParams.setMargins(0, 8, 0, 8);
+        cardParams.setMargins(16, 12, 16, 12); // Increased margins for better spacing
         card.setLayoutParams(cardParams);
-        card.setRadius(20); // Match the rounded corners in the design
-        card.setCardElevation(2); // Subtle elevation
+        card.setRadius(24); // Increased corner radius for modern look
+        card.setCardElevation(4); // Slightly increased elevation
         card.setStrokeWidth(0); // No stroke
 
+        // Set card background color based on category
+        card.setCardBackgroundColor(getColorForCategory(category));
+
+        // Set up ripple effect for card touch feedback
+        TypedValue outValue = new TypedValue();
+        getTheme().resolveAttribute(android.R.attr.selectableItemBackground, outValue, true);
+        card.setForeground(getDrawable(outValue.resourceId));
+        card.setClickable(true);
+
+        // Create card content layout
         LinearLayout cardLayout = new LinearLayout(this);
         cardLayout.setOrientation(LinearLayout.HORIZONTAL);
-        cardLayout.setPadding(16, 16, 16, 16);
+        cardLayout.setPadding(24, 20, 24, 20); // Increased padding for better spacing
+        cardLayout.setGravity(Gravity.CENTER_VERTICAL); // Center items vertically
         cardLayout.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
 
-        // Icon based on category (emoji from the category name)
-        TextView iconView = new TextView(this);
-        String emoji = category.split(" ")[0]; // Extract emoji from category name
-        iconView.setText(emoji);
-        iconView.setTextSize(24);
-        iconView.setPadding(0, 0, 16, 0);
+        // Find the appropriate icon based on category
+        int iconResId = getIconResourceForCategory(category);
 
+        // Create icon view with improved design
+        ImageView iconView = new ImageView(this);
+        iconView.setImageResource(iconResId);
+        int iconSize = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                32, // Larger icon size
+                getResources().getDisplayMetrics());
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(iconSize, iconSize);
+        iconParams.setMarginEnd(16);
+        iconView.setLayoutParams(iconParams);
+
+        // Apply appropriate tint to the icon based on category
+        iconView.setColorFilter(ContextCompat.getColor(this, android.R.color.white),
+                PorterDuff.Mode.SRC_IN);
+
+        // Create text layout for category name with subtle shadow
         TextView categoryText = new TextView(this);
-        categoryText.setText(category.substring(category.indexOf(" ") + 1)); // Remove emoji
-        categoryText.setTextSize(16);
-        categoryText.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+        categoryText.setText(category);
+        categoryText.setTextSize(18); // Slightly larger text
+        categoryText.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL)); // Medium weight font
+        categoryText.setTextColor(ContextCompat.getColor(this, android.R.color.white));
+        // Add subtle text shadow for better readability on colored backgrounds
+        categoryText.setShadowLayer(1.5f, 0.5f, 0.5f, Color.parseColor("#33000000"));
 
         LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1.0f);
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
         categoryText.setLayoutParams(textParams);
 
-        // "View Places" button
+        // Enhanced "View" button
         MaterialButton viewButton = new MaterialButton(this);
         viewButton.setText("View");
-        viewButton.setTextColor(ContextCompat.getColor(this, android.R.color.white));
-        viewButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_blue_dark));
-        viewButton.setCornerRadius(16);
-        viewButton.setPadding(12, 0, 12, 0);
+        viewButton.setTextSize(14);
+        viewButton.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        viewButton.setTextColor(getCardButtonTextColor(category));
+        viewButton.setBackgroundColor(getCardButtonColor(category));
+        viewButton.setStrokeWidth(0);
+        viewButton.setCornerRadius(20); // Increased corner radius
         viewButton.setMinimumWidth(120);
+        viewButton.setPadding(24, 12, 24, 12); // Better button padding
+
+        // Add ripple effect for better touch feedback
+        viewButton.setRippleColor(ColorStateList.valueOf(Color.parseColor("#33FFFFFF")));
+
+        // Create button wrapper to help with animations
+        FrameLayout buttonWrapper = new FrameLayout(this);
+        buttonWrapper.addView(viewButton);
 
         viewButton.setOnClickListener(v -> {
-            Intent intent = new Intent(InterestsActivity.this, MapPlacesActivity.class);
-            intent.putExtra("city_name", selectedCityName);
-            intent.putExtra("city_lat", selectedCityCoordinates.latitude);
-            intent.putExtra("city_lng", selectedCityCoordinates.longitude);
-            intent.putExtra("start_date", getIntent().getStringExtra("start_date"));
-            intent.putExtra("end_date", getIntent().getStringExtra("end_date"));
-            intent.putExtra("category_name", category);
+            // Add button press animation
+            viewButton.animate()
+                    .scaleX(0.95f)
+                    .scaleY(0.95f)
+                    .setDuration(100)
+                    .withEndAction(() -> {
+                        viewButton.animate()
+                                .scaleX(1f)
+                                .scaleY(1f)
+                                .setDuration(100);
 
-            // Start activity for result to get the selected places back
-            startActivityForResult(intent, REQUEST_CODE_PLACE_SELECTION);
+                        // Original functionality preserved
+                        Intent intent = new Intent(InterestsActivity.this, MapPlacesActivity.class);
+                        intent.putExtra("city_name", selectedCityName);
+                        intent.putExtra("city_lat", selectedCityCoordinates.latitude);
+                        intent.putExtra("city_lng", selectedCityCoordinates.longitude);
+                        intent.putExtra("start_date", getIntent().getStringExtra("start_date"));
+                        intent.putExtra("end_date", getIntent().getStringExtra("end_date"));
+                        intent.putExtra("category_name", category);
+
+                        // Start activity for result to get the selected places back
+                        startActivityForResult(intent, REQUEST_CODE_PLACE_SELECTION);
+                    });
         });
 
+        // Add all views to card layout
         cardLayout.addView(iconView);
         cardLayout.addView(categoryText);
-        cardLayout.addView(viewButton);
+        cardLayout.addView(buttonWrapper);
 
         card.addView(cardLayout);
+
+        // Add card with entrance animation
         interestsLayout.addView(card);
+
+        // Run entrance animation
+        card.setAlpha(0f);
+        card.setScaleX(0.9f);
+        card.setScaleY(0.9f);
+        card.setTranslationY(50);
+
+        card.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationY(0)
+                .setDuration(300)
+                .setInterpolator(new DecelerateInterpolator())
+                .start();
+    }
+
+    // Helper method to get background color based on category
+    private int getColorForCategory(String category) {
+        // Create a hash from the category name to generate consistent colors
+        int hash = category.hashCode();
+
+        // Select from a set of predefined vibrant colors based on category hash
+        String[] colorPalette = {
+                "#4285F4", // Google Blue
+                "#EA4335", // Google Red
+                "#FBBC05", // Google Yellow
+                "#34A853", // Google Green
+                "#8E24AA", // Purple
+                "#0097A7", // Teal
+                "#F57C00", // Orange
+                "#C2185B", // Pink
+                "#7CB342", // Light Green
+                "#00ACC1"  // Cyan
+        };
+
+        int index = Math.abs(hash % colorPalette.length);
+        return Color.parseColor(colorPalette[index]);
+    }
+
+    // Helper method to get button color based on category
+    private int getCardButtonColor(String category) {
+        // Create semi-transparent white button for contrast against colored card
+        return Color.parseColor("#DDFFFFFF");
+    }
+
+    // Helper method to get button text color based on category
+    private int getCardButtonTextColor(String category) {
+        // Get base color and darken it for text
+        int baseColor = getColorForCategory(category);
+
+        // Convert color to HSV, reduce value (darken)
+        float[] hsv = new float[3];
+        Color.colorToHSV(baseColor, hsv);
+        hsv[2] *= 0.7f; // Darken by reducing value
+
+        return Color.HSVToColor(hsv);
+    }
+
+
+    private int getIconResourceForCategory(String category) {
+        // Map category names to drawable resources
+        // Note: replace with actual drawable resources from your project
+        switch (category) {
+            case "Museum":
+                return R.drawable.ic_museum;
+            case "Tourist Attraction":
+                return R.drawable.ic_tourist_attraction;
+            case "Restaurant":
+                return R.drawable.ic_restaurant;
+            case "Cafe":
+                return R.drawable.ic_cafe;
+            case "Bar":
+                return R.drawable.ic_bar;
+            case "Shopping Mall":
+                return R.drawable.ic_shopping_mall;
+            case "Theater":
+                return R.drawable.ic_theater;
+            case "Cinema":
+                return R.drawable.ic_cinema;
+            case "Night Club":
+                return R.drawable.ic_night_club;
+            case "Park":
+                return R.drawable.ic_park;
+            case "Beach":
+                return R.drawable.ic_beach;
+            case "Nature Spot":
+                return R.drawable.ic_nature_spot;
+            case "Art Gallery":
+                return R.drawable.ic_art_gallery;
+            case "Place of Worship":
+                return R.drawable.ic_place_of_worship;
+            case "Zoo":
+                return R.drawable.ic_zoo;
+            case "Aquarium":
+                return R.drawable.ic_aquarium;
+            case "Amusement Park":
+                return R.drawable.ic_amusement_park;
+            case "Train Station":
+                return R.drawable.ic_train_station;
+            case "Metro Station":
+                return R.drawable.ic_metro_station;
+            default:
+                return 0; // No matching icon
+        }
     }
 
     @Override
