@@ -9,6 +9,7 @@ import android.text.TextWatcher;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -41,6 +42,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private AutoCompleteTextView searchCity;
     private MaterialButton nextButton;
+    private ImageButton backButton;
     private View loadingIndicator;
     private GoogleMap mMap;
     private String geoNamesUsername = "henryhar";
@@ -93,16 +95,27 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_city);
 
+
         // Initialize the number formatter for population display
         numberFormat = NumberFormat.getNumberInstance(Locale.getDefault());
 
         searchCity = findViewById(R.id.search_city);
         nextButton = findViewById(R.id.next_button);
         loadingIndicator = findViewById(R.id.loading_indicator);
+        backButton = findViewById(R.id.back_button);
 
         if (loadingIndicator != null) {
             loadingIndicator.setVisibility(View.GONE);
         }
+
+        backButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(CityActivity.this, MainActivity.class);
+                startActivity(intent);
+                finish();
+            }
+        });
 
         // Initialize Retrofit early
         Retrofit retrofit = new Retrofit.Builder()

@@ -4,8 +4,8 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -16,6 +16,8 @@ import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -34,10 +36,12 @@ public class InterestsActivity extends AppCompatActivity {
     private LinearLayout interestsLayout;
     private ProgressBar progressBar;
     private TextView statusText;
-    private Button applyFiltersButton;
     private LinearLayout categoriesLayout;
-    private Button nextButton;
+    private MaterialButton nextButton;
     private TextView categoryLimitText;
+    private ImageButton backButton;
+    private TextView titleTextView;
+    private TextView subtitleTextView;
 
     // Data
     private String selectedCityName;
@@ -85,7 +89,10 @@ public class InterestsActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
         statusText = findViewById(R.id.statusText);
         categoriesLayout = findViewById(R.id.categoriesLayout);
-        nextButton = findViewById(R.id.nextButton);
+        nextButton = findViewById(R.id.next_button);
+        backButton = findViewById(R.id.back_button);
+        titleTextView = findViewById(R.id.title);
+        subtitleTextView = findViewById(R.id.subtitle);
 
         // Add category limit text
         categoryLimitText = new TextView(this);
@@ -111,25 +118,28 @@ public class InterestsActivity extends AppCompatActivity {
     }
 
     private void setPageTitle() {
-        TextView titleTextView = findViewById(R.id.titleText);
         if (titleTextView != null) {
             titleTextView.setText("Explore " + selectedCityName);
+        }
+        if (subtitleTextView != null) {
+            subtitleTextView.setText("Select your interests");
         }
     }
 
     private void setupButtonListeners() {
-        if (applyFiltersButton != null) {
-            applyFiltersButton.setOnClickListener(v -> applyFilters());
-        }
-
         if (nextButton != null) {
             nextButton.setOnClickListener(v -> navigateToNextScreen());
             nextButton.setEnabled(true);
+        }
+
+        if (backButton != null) {
+            backButton.setOnClickListener(v -> onBackPressed());
         }
     }
 
     private void fetchCityCoordinatesFromGeoNames(String cityName) {
         progressBar.setVisibility(View.VISIBLE);
+        statusText.setVisibility(View.VISIBLE);
         statusText.setText("Fetching location data...");
 
         executorService.execute(() -> {
@@ -375,22 +385,18 @@ public class InterestsActivity extends AppCompatActivity {
         }
     }
 
-    private void applyFilters() {
-        displaySelectedCategories();
-        Toast.makeText(this, selectedCategories.size() + " categories selected", Toast.LENGTH_SHORT).show();
-    }
-
     private void displaySelectedCategories() {
         interestsLayout.removeAllViews();
 
         if (selectedCategories.isEmpty()) {
-            CardView messageCard = createTitleCard("Select categories from the list above");
-            interestsLayout.addView(messageCard);
+            TextView emptyView = new TextView(this);
+            emptyView.setText("Select categories from the list above");
+            emptyView.setTextSize(16);
+            emptyView.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
+            emptyView.setPadding(16, 16, 16, 16);
+            interestsLayout.addView(emptyView);
             return;
         }
-
-        CardView titleCard = createTitleCard("Your Interests in " + selectedCityName);
-        interestsLayout.addView(titleCard);
 
         for (String category : allCategories) {
             if (selectedCategories.contains(category)) {
@@ -399,57 +405,51 @@ public class InterestsActivity extends AppCompatActivity {
         }
     }
 
-    private CardView createTitleCard(String title) {
-        CardView card = new CardView(this);
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        cardParams.setMargins(16, 16, 16, 16);
-        card.setLayoutParams(cardParams);
-        card.setCardElevation(8);
-        card.setRadius(12);
-
-        TextView titleText = new TextView(this);
-        titleText.setText(title);
-        titleText.setTextSize(18);
-        titleText.setTextColor(ContextCompat.getColor(this, android.R.color.black));
-        titleText.setPadding(24, 24, 24, 24);
-        titleText.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
-
-        card.addView(titleText);
-        return card;
-    }
-
     private void createCategoryCard(final String category) {
-        CardView card = new CardView(this);
+        // Create a MaterialCardView to match the design in XML
+        MaterialCardView card = new MaterialCardView(this);
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
-        cardParams.setMargins(16, 8, 16, 8);
+        cardParams.setMargins(0, 8, 0, 8);
         card.setLayoutParams(cardParams);
-        card.setCardElevation(4);
-        card.setRadius(12);
+        card.setRadius(20); // Match the rounded corners in the design
+        card.setCardElevation(2); // Subtle elevation
+        card.setStrokeWidth(0); // No stroke
 
         LinearLayout cardLayout = new LinearLayout(this);
-        cardLayout.setOrientation(LinearLayout.VERTICAL);
+        cardLayout.setOrientation(LinearLayout.HORIZONTAL);
         cardLayout.setPadding(16, 16, 16, 16);
+        cardLayout.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        // Icon based on category (emoji from the category name)
+        TextView iconView = new TextView(this);
+        String emoji = category.split(" ")[0]; // Extract emoji from category name
+        iconView.setText(emoji);
+        iconView.setTextSize(24);
+        iconView.setPadding(0, 0, 16, 0);
 
         TextView categoryText = new TextView(this);
-        categoryText.setText(category);
+        categoryText.setText(category.substring(category.indexOf(" ") + 1)); // Remove emoji
         categoryText.setTextSize(16);
         categoryText.setTextColor(ContextCompat.getColor(this, android.R.color.black));
 
-        Button viewButton = new Button(this);
-        viewButton.setText("View Places");
-        viewButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_blue_dark));
-        viewButton.setTextColor(ContextCompat.getColor(this, android.R.color.white));
-        viewButton.setPadding(16, 8, 16, 8);
+        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1.0f);
+        categoryText.setLayoutParams(textParams);
 
-        LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        buttonParams.setMargins(0, 16, 0, 0);
-        viewButton.setLayoutParams(buttonParams);
+        // "View Places" button
+        MaterialButton viewButton = new MaterialButton(this);
+        viewButton.setText("View");
+        viewButton.setTextColor(ContextCompat.getColor(this, android.R.color.white));
+        viewButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_blue_dark));
+        viewButton.setCornerRadius(16);
+        viewButton.setPadding(12, 0, 12, 0);
+        viewButton.setMinimumWidth(120);
 
         viewButton.setOnClickListener(v -> {
             Intent intent = new Intent(InterestsActivity.this, MapPlacesActivity.class);
@@ -464,6 +464,7 @@ public class InterestsActivity extends AppCompatActivity {
             startActivityForResult(intent, REQUEST_CODE_PLACE_SELECTION);
         });
 
+        cardLayout.addView(iconView);
         cardLayout.addView(categoryText);
         cardLayout.addView(viewButton);
 
@@ -521,7 +522,7 @@ public class InterestsActivity extends AppCompatActivity {
         Log.d(TAG, "Passing " + selectedPlacesList.size() + " selected places to TimeActivity");
         intent.putStringArrayListExtra("selected_place_ids", selectedPlacesList);
 
-        // Start PlanActivity
+        // Start TimeActivity
         startActivity(intent);
         finish();
     }

@@ -6,6 +6,78 @@
     android:transitionName="transitionButton"
     android:background="@color/background">
 
+    <!-- Close button (X) -->
+    <ImageButton
+        android:id="@+id/back_button"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_close"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="12dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:contentDescription="Go back"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/primary" />
+
+    <!-- Progress bar divided into 5 parts -->
+    <LinearLayout
+        android:id="@+id/progress_container"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="24dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@id/back_button"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <View
+            android:id="@+id/progress_step1"
+            android:layout_width="0dp"
+            android:layout_height="4dp"
+            android:layout_weight="1"
+            android:background="@color/primary"
+            android:layout_marginEnd="4dp"/>
+
+        <View
+            android:id="@+id/progress_step2"
+            android:layout_width="0dp"
+            android:layout_height="4dp"
+            android:layout_weight="1"
+            android:background="@color/divider"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
+
+        <View
+            android:id="@+id/progress_step3"
+            android:layout_width="0dp"
+            android:layout_height="4dp"
+            android:layout_weight="1"
+            android:background="@color/divider"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
+
+        <View
+            android:id="@+id/progress_step4"
+            android:layout_width="0dp"
+            android:layout_height="4dp"
+            android:layout_weight="1"
+            android:background="@color/divider"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
+
+        <View
+            android:id="@+id/progress_step5"
+            android:layout_width="0dp"
+            android:layout_height="4dp"
+            android:layout_weight="1"
+            android:background="@color/divider"
+            android:layout_marginStart="4dp"/>
+    </LinearLayout>
+
     <View
         android:id="@+id/blur_overlay"
         android:layout_width="match_parent"
@@ -37,9 +109,9 @@
         android:textColor="@color/primary_variant"
         android:fontFamily="sans-serif-medium"
         android:letterSpacing="0.05"
-        android:layout_marginTop="48dp"
+        android:layout_marginTop="24dp"
         android:layout_marginStart="32dp"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/progress_container"
         app:layout_constraintStart_toStartOf="parent"/>
 
     <TextView
