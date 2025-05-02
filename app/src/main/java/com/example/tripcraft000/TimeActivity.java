@@ -4,12 +4,13 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -32,6 +33,9 @@ public class TimeActivity extends AppCompatActivity {
     private RecyclerView daysRecyclerView;
     private EditText bulkHoursInput;
     private Button applyBulkButton, continueButton;
+    private ImageButton decrementBulkHours, incrementBulkHours;
+    private TextView tripSummaryText;
+    private Toolbar toolbar;
 
     // Data
     private HashMap<Integer, Integer> hoursPerDay;
@@ -48,20 +52,34 @@ public class TimeActivity extends AppCompatActivity {
 
         initViews();
         loadTripData();
+        setupToolbar();
         setupDaysRecyclerView();
         setupListeners();
+        updateTripSummary(); // Initial summary update
         validateContinueButton(); // Initial validation
     }
 
     private void initViews() {
+        toolbar = findViewById(R.id.toolbar);
         daysRecyclerView = findViewById(R.id.daysRecyclerView);
         bulkHoursInput = findViewById(R.id.bulkHoursInput);
         applyBulkButton = findViewById(R.id.applyBulkButton);
         continueButton = findViewById(R.id.continueButton);
+        decrementBulkHours = findViewById(R.id.decrementBulkHours);
+        incrementBulkHours = findViewById(R.id.incrementBulkHours);
+        tripSummaryText = findViewById(R.id.tripSummaryText);
 
         // Disable continue button initially
         continueButton.setEnabled(false);
         continueButton.setAlpha(0.5f);
+    }
+
+    private void setupToolbar() {
+        setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle("Plan Your Daily Hours");
+        }
     }
 
     private void loadTripData() {
@@ -111,6 +129,9 @@ public class TimeActivity extends AppCompatActivity {
         hoursPerDay = new HashMap<>();
         dayAdapter = new DayAdapter(totalDays, hoursPerDay, this::onHoursChanged);
 
+        // Set the start date to correctly display dates in the adapter
+        dayAdapter.setStartDate(tripData.getStartDate());
+
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         daysRecyclerView.setLayoutManager(layoutManager);
 
@@ -124,6 +145,10 @@ public class TimeActivity extends AppCompatActivity {
 
     private void setupListeners() {
         applyBulkButton.setOnClickListener(v -> applyBulkHours());
+
+        decrementBulkHours.setOnClickListener(v -> adjustBulkHours(-1));
+        incrementBulkHours.setOnClickListener(v -> adjustBulkHours(1));
+
         continueButton.setOnClickListener(v -> {
             if (allDaysHaveValidHours()) {
                 proceedToPlanActivity();
@@ -133,9 +158,26 @@ public class TimeActivity extends AppCompatActivity {
         });
     }
 
+    private void adjustBulkHours(int adjustment) {
+        try {
+            String currentValue = bulkHoursInput.getText().toString().trim();
+            int hours = currentValue.isEmpty() ? 0 : Integer.parseInt(currentValue);
+
+            hours += adjustment;
+
+            // Clamp values within valid range
+            hours = Math.max(MIN_HOURS_PER_DAY, Math.min(MAX_HOURS_PER_DAY, hours));
+
+            bulkHoursInput.setText(String.valueOf(hours));
+        } catch (NumberFormatException e) {
+            bulkHoursInput.setText(adjustment > 0 ? "1" : "0");
+        }
+    }
+
     private void onHoursChanged(int dayIndex, int hours) {
         // Callback when hours are changed for a specific day
         hoursPerDay.put(dayIndex, hours);
+        updateTripSummary();
         validateContinueButton();
     }
 
@@ -158,11 +200,21 @@ public class TimeActivity extends AppCompatActivity {
                 hoursPerDay.put(i, bulkHours);
             }
             dayAdapter.notifyDataSetChanged();
+            updateTripSummary();
             validateContinueButton();
 
         } catch (NumberFormatException e) {
             Toast.makeText(this, "Invalid number format", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void updateTripSummary() {
+        int totalHours = 0;
+        for (Integer hours : hoursPerDay.values()) {
+            totalHours += hours != null ? hours : 0;
+        }
+
+        tripSummaryText.setText(totalDays + " Days • " + totalHours + " Total Hours");
     }
 
     private boolean allDaysHaveValidHours() {
@@ -238,6 +290,12 @@ public class TimeActivity extends AppCompatActivity {
             Toast.makeText(this, "Error calculating trip days", Toast.LENGTH_SHORT).show();
         }
         return 1; // Default at least 1 day
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        onBackPressed();
+        return true;
     }
 
     /**

@@ -32,93 +32,253 @@
 
             <!-- Instructions Card -->
             <com.google.android.material.card.MaterialCardView
+                xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardBackgroundColor="@color/card_nature"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="4dp">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="3dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="#E3F2FD">
 
-                <LinearLayout
+                <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
                     android:padding="16dp">
 
+                    <!-- Top decoration line -->
+                    <View
+                        android:id="@+id/topDecoration"
+                        android:layout_width="60dp"
+                        android:layout_height="4dp"
+                        android:background="#1E88E5"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintStart_toStartOf="parent" />
+
+                    <!-- Icon for visual interest -->
+                    <ImageView
+                        android:id="@+id/instructionIcon"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_info_outline"
+                        app:tint="#1E88E5"
+                        android:layout_marginTop="16dp"
+                        app:layout_constraintTop_toBottomOf="@id/topDecoration"
+                        app:layout_constraintStart_toStartOf="parent"
+                        android:contentDescription="Instructions" />
+
+                    <!-- Title -->
                     <TextView
-                        android:layout_width="match_parent"
+                        android:id="@+id/instructionTitle"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:text="How many hours will you spend sightseeing each day?"
-                        android:textColor="@color/on_surface"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#1E3A5F"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="8dp"
+                        app:layout_constraintTop_toTopOf="@id/instructionIcon"
+                        app:layout_constraintBottom_toBottomOf="@id/instructionIcon"
+                        app:layout_constraintStart_toEndOf="@id/instructionIcon"
+                        app:layout_constraintEnd_toEndOf="parent" />
 
+                    <!-- Description -->
                     <TextView
+                        android:id="@+id/instructionDescription"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:text="Set hours for each day of your trip. This helps us optimize your daily itinerary with the perfect balance of activities and relaxation."
+                        android:textSize="15sp"
+                        android:textColor="#37474F"
+                        android:layout_marginTop="12dp"
+                        app:layout_constraintTop_toBottomOf="@id/instructionTitle"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent" />
+
+                    <!-- Tips for better planning -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="Set hours for each day of your trip. This helps us optimize your daily itinerary."
-                        android:textColor="@color/on_surface" />
-                </LinearLayout>
+                        android:orientation="horizontal"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/tip_background"
+                        android:padding="12dp"
+                        app:layout_constraintTop_toBottomOf="@id/instructionDescription"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent">
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_lightbulb"
+                            app:tint="#FFA000"
+                            android:layout_gravity="center_vertical"
+                            android:contentDescription="Tip" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:textStyle="italic"
+                            android:textSize="14sp"
+                            android:textColor="#5D4037"
+                            android:text="Tip: 4-6 hours per day is recommended for most travelers to avoid exhaustion while seeing the highlights." />
+                    </LinearLayout>
+                </androidx.constraintlayout.widget.ConstraintLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Bulk Hours Card -->
             <com.google.android.material.card.MaterialCardView
+                xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="2dp">
+                android:layout_marginVertical="8dp"
+                android:layout_marginHorizontal="4dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="3dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="#E0E0E0"
+                app:cardBackgroundColor="#FFFFFF">
 
-                <LinearLayout
+                <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
                     android:padding="16dp">
 
-                    <TextView
+                    <!-- Decoration element to maintain visual consistency -->
+                    <View
+                        android:id="@+id/bulkIndicator"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bulk_hours_circle"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintStart_toStartOf="parent" />
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_time_schedule"
+                        app:tint="#FFFFFF"
+                        app:layout_constraintTop_toTopOf="@id/bulkIndicator"
+                        app:layout_constraintBottom_toBottomOf="@id/bulkIndicator"
+                        app:layout_constraintStart_toStartOf="@id/bulkIndicator"
+                        app:layout_constraintEnd_toEndOf="@id/bulkIndicator"
+                        android:contentDescription="Set hours for all days" />
+
+                    <!-- Text section -->
+                    <LinearLayout
+                        android:id="@+id/bulkTextContainer"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Set hours for all days:"
-                        android:textColor="@color/on_surface"
-                        android:textSize="16sp" />
+                        android:orientation="vertical"
+                        android:layout_marginStart="16dp"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintStart_toEndOf="@id/bulkIndicator"
+                        app:layout_constraintEnd_toStartOf="@id/bulkInputContainer">
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="80dp"
-                        android:layout_height="wrap_content"
-                        android:hint="Hours"
-                        app:boxStrokeColor="@color/primary"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/bulkHoursInput"
-                            android:layout_width="match_parent"
+                        <TextView
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:inputType="number"
-                            android:maxLength="2"
-                            android:textColor="@color/on_surface" />
-                    </com.google.android.material.textfield.TextInputLayout>
+                            android:text="Set hours for all days"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="#263238" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/applyBulkButton"
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Apply the same schedule to every day of your trip"
+                            android:textSize="14sp"
+                            android:textColor="#78909C"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
+
+                    <!-- Input section -->
+                    <LinearLayout
+                        android:id="@+id/bulkInputContainer"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:backgroundTint="@color/secondary"
-                        android:text="Apply"
-                        android:textColor="@color/on_primary"
-                        app:cornerRadius="8dp" />
-                </LinearLayout>
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="#F5F7FA"
+                        android:padding="12dp"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent">
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:boxBackgroundColor="#FFFFFF"
+                            app:hintEnabled="false"
+                            app:boxCornerRadiusTopStart="8dp"
+                            app:boxCornerRadiusTopEnd="8dp"
+                            app:boxCornerRadiusBottomStart="8dp"
+                            app:boxCornerRadiusBottomEnd="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/bulkHoursInput"
+                                android:layout_width="70dp"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:maxLength="2"
+                                android:gravity="center"
+                                android:textSize="18sp"
+                                android:textColor="#1E88E5"
+                                android:hint="0" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- Stepper buttons and apply button -->
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="8dp"
+                            android:gravity="center">
+
+                            <ImageButton
+                                android:id="@+id/decrementBulkHours"
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:src="@drawable/ic_remove_circle"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="Decrease hours" />
+
+                            <ImageButton
+                                android:id="@+id/incrementBulkHours"
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:src="@drawable/ic_add_circle"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="Increase hours" />
+                        </LinearLayout>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/applyBulkButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:backgroundTint="#1E88E5"
+                            android:textColor="#FFFFFF"
+                            android:text="Apply to All"
+                            app:cornerRadius="8dp"
+                            android:paddingVertical="8dp"
+                            app:icon="@drawable/ic_check"
+                            app:iconGravity="textStart" />
+                    </LinearLayout>
+                </androidx.constraintlayout.widget.ConstraintLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Days List Card -->
-            <com.google.android.material.card.MaterialCardView
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/surface"
                 app:cardCornerRadius="8dp"
                 app:cardElevation="2dp">
 
@@ -130,31 +290,70 @@
                     android:overScrollMode="never"
                     android:paddingTop="8dp"
                     android:paddingBottom="8dp" />
-            </com.google.android.material.card.MaterialCardView>
+            </androidx.cardview.widget.CardView>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
     <!-- Bottom Action Bar -->
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="@color/surface"
-        android:elevation="8dp"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:background="@drawable/bottom_bar_background"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="16dp"
+        android:elevation="12dp">
+
+        <!-- Summary information -->
+        <LinearLayout
+            android:id="@+id/summaryInfo"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginEnd="16dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/continueButton">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Trip Summary"
+                android:textSize="14sp"
+                android:textColor="#78909C"/>
+
+            <TextView
+                android:id="@+id/tripSummaryText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="7 Days • 32 Total Hours"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#263238"/>
+        </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/continueButton"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:backgroundTint="@color/primary"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp"
             android:text="Continue to Itinerary"
-            android:textColor="@color/on_primary"
-            app:cornerRadius="8dp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:paddingVertical="12dp"
+            android:paddingHorizontal="24dp"
+            android:backgroundTint="#1E88E5"
+            app:cornerRadius="24dp"
+            app:elevation="4dp"
             app:icon="@drawable/ic_arrow_forward"
-            app:iconGravity="textEnd" />
-    </LinearLayout>
+            app:iconGravity="end"
+            app:iconTint="#FFFFFF"
+            app:rippleColor="#BBDEFB"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
