@@ -808,69 +808,63 @@ public class PlanActivity extends AppCompatActivity {
         for (String category : selectedCategories) {
             Log.d("SelectedCategory", category.toLowerCase());
             switch (category) {
-                case "🏛 Museum":
-                    typesToSearch.add("ic_museum.xml");
+                case "Museum":
+                    typesToSearch.add("museum");
                     break;
-                case "📸 Tourist Attraction":
+                case "Tourist Attraction":
                     typesToSearch.add("landmark");
                     typesToSearch.add("historical_landmark");
                     typesToSearch.add("historical_site");
                     typesToSearch.add("tourist_attraction");
                     break;
-                case "🍽 Restaurant":
+                case "Restaurant":
                     typesToSearch.add("restaurant");
                     break;
-                case "☕ Cafe":
+                case "Cafe":
                     typesToSearch.add("cafe");
                     break;
-                case "🍹 Bar":
+                case "Bar":
                     typesToSearch.add("bar");
                     break;
-                case "🛍 Shopping Mall":
+                case "Shopping Mall":
                     typesToSearch.add("shopping_mall");
                     break;
-                case "🎭 Theater":
+                case "Theater":
                     typesToSearch.add("theater");
                     break;
-                case "🎬 Cinema":
+                case "Cinema":
                     typesToSearch.add("movie_theater");
                     break;
-                case "🎶 Night Club":
+                case "Night Club":
                     typesToSearch.add("night_club");
                     break;
-                case "🌳 Park":
+                case "Park":
                     typesToSearch.add("park");
                     break;
-                case "🏖 Beach":
+                case "Beach":
                     typesToSearch.add("beach");
                     break;
-                case "🏞 Nature Spot":
+                case "Nature Spot":
                     typesToSearch.add("natural_feature");
                     break;
-                case "🖼 Art Gallery":
+                case "Art Gallery":
                     typesToSearch.add("art_gallery");
                     break;
-                case "🙏 Place of Worship":
+                case "Place of Worship":
                     typesToSearch.add("place_of_worship");
                     typesToSearch.add("church");
                     typesToSearch.add("hindu_temple");
                     typesToSearch.add("mosque");
                     typesToSearch.add("synagogue");
                     break;
-                case "🦁 Zoo":
+                case "Zoo":
                     typesToSearch.add("zoo");
                     break;
-                case "🐠 Aquarium":
+                case "Aquarium":
                     typesToSearch.add("aquarium");
                     break;
-                case "🎢 Amusement Park":
+                case "Amusement Park":
                     typesToSearch.add("amusement_park");
-                    break;
-                case "🚂 Train Station":
-                    typesToSearch.add("train_station");
-                    break;
-                case "🚇 Metro Station":
-                    typesToSearch.add("subway_station");
                     break;
             }
         }
@@ -896,46 +890,42 @@ public class PlanActivity extends AppCompatActivity {
     private String getFormattedPlaceType(String type) {
         switch (type) {
             // High-value tourist categories
-            case "tourist_attraction": return "📸 Tourist Attraction";
-            case "ic_museum.xml": return "🏛 Museum";
-            case "landmark": return "🏛 Landmark";
+            case "museum": return "Museum";
+            case "landmark":
+            case "tourist_attraction":
             case "historical_landmark":
-            case "historical_site": return "🏰 Historical Site";
+            case "historical_site": return "Tourist Attraction";
 
             // Food and drink
-            case "restaurant": return "🍽 Restaurant";
-            case "cafe": return "☕ Cafe";
-            case "bar": return "🍹 Bar";
+            case "restaurant": return "Restaurant";
+            case "cafe": return "Cafe";
+            case "bar": return "Bar";
 
             // Entertainment
-            case "shopping_mall": return "🛍 Shopping Mall";
-            case "theater": return "🎭 Theater";
-            case "movie_theater": return "🎬 Cinema";
-            case "night_club": return "🎶 Night Club";
+            case "shopping_mall": return "Shopping Mall";
+            case "theater": return "Theater";
+            case "movie_theater": return "Cinema";
+            case "night_club": return "Night Club";
 
             // Nature and outdoors
-            case "park": return "🌳 Park";
-            case "beach": return "🏖 Beach";
-            case "natural_feature": return "🏞 Nature Spot";
+            case "park": return "Park";
+            case "beach": return "Beach";
+            case "natural_feature": return "Nature Spot";
 
             // Cultural sites
-            case "art_gallery": return "🖼 Art Gallery";
+            case "art_gallery": return "Art Gallery";
             case "place_of_worship":
             case "church":
             case "hindu_temple":
             case "mosque":
-            case "synagogue": return "🙏 Place of Worship";
+            case "synagogue": return "Place of Worship";
 
             // Family attractions
-            case "zoo": return "🦁 Zoo";
-            case "aquarium": return "🐠 Aquarium";
-            case "amusement_park": return "🎢 Amusement Park";
+            case "zoo": return "Zoo";
+            case "aquarium": return "Aquarium";
+            case "amusement_park": return "Amusement Park";
 
-            // Only include transportation that tourists need
-            case "train_station": return "🚂 Train Station";
-            case "subway_station": return "🚇 Metro Station";
-
-            default: return null; // Filter out other categories
+            default: return null;
         }
     }
 

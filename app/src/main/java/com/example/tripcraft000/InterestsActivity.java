@@ -197,8 +197,6 @@ public class InterestsActivity extends AppCompatActivity {
         categoryNamesList.add("Zoo");
         categoryNamesList.add("Aquarium");
         categoryNamesList.add("Amusement Park");
-        categoryNamesList.add("Train Station");
-        categoryNamesList.add("Metro Station");
     }
 
 
@@ -433,10 +431,6 @@ public class InterestsActivity extends AppCompatActivity {
                 return R.drawable.ic_aquarium;
             case "Amusement Park":
                 return R.drawable.ic_amusement_park;
-            case "Train Station":
-                return R.drawable.ic_train_station;
-            case "Metro Station":
-                return R.drawable.ic_metro_station;
             default:
                 return 0; // No matching icon
         }

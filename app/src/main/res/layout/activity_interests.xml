@@ -401,28 +401,6 @@
                             app:chipIconTint="@color/primary"
                             android:text="Amusement Park" />
 
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_train_station"
-                            style="@style/CustomChipStyle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            app:chipStartPadding="12dp"
-                            app:chipIconVisible="true"
-                            app:chipIcon="@drawable/ic_train_station"
-                            app:chipIconTint="@color/primary"
-                            android:text="Train Station" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_metro_station"
-                            style="@style/CustomChipStyle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            app:chipStartPadding="12dp"
-                            app:chipIconVisible="true"
-                            app:chipIcon="@drawable/ic_metro_station"
-                            app:chipIconTint="@color/primary"
-                            android:text="Metro Station" />
-
                     </com.google.android.material.chip.ChipGroup>
 
                 </LinearLayout>
