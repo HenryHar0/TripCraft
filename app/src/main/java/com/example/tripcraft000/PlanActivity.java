@@ -23,6 +23,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.privacysandbox.tools.core.model.Method;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -31,22 +32,34 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 
+
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+import java.net.URLEncoder;
+import java.io.UnsupportedEncodingException;
+
+
+
+import com.android.volley.toolbox.Volley;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.libraries.places.api.Places;
 import com.google.android.libraries.places.api.model.LocationBias;
@@ -81,8 +94,6 @@ public class PlanActivity extends AppCompatActivity {
     private static final String NOTIFICATION_PREF = "NotificationsEnabled";
     private static final String FIRST_TIME_KEY = "FirstTimeUser";
     private static final String TAG = "PlanActivity";
-    private static final String NOAA_POINTS_BASE_URL = "https://api.weather.gov/points/";
-    private static final String NOAA_FORECAST_BASE_URL = "https://api.weather.gov/gridpoints/";
     private static final String CHANNEL_ID = "trip_reminder_channel";
     private static final int ONE_WEEK_NOTIFICATION_ID = 1;
     private static final int ONE_DAY_NOTIFICATION_ID = 2;
@@ -737,57 +748,109 @@ public class PlanActivity extends AppCompatActivity {
         }
     }
 
-    private void getBoundariesFromPlacesAPI(String cityName) {
-        if (!Places.isInitialized()) {
-            Places.initialize(this, "AIzaSyCYnYiiqrHO0uwKoxNQLA_mKEIuX1aRyL4");
+    private void getBoundariesFromNominatim(String cityName, final Runnable onComplete) {
+        Log.d("Geocoding", "Initializing Nominatim API request for city: " + cityName);
+
+        // Create a URL for the Nominatim API request
+        String encodedCityName;
+        try {
+            encodedCityName = URLEncoder.encode(cityName, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            Log.e("Geocoding", "Error encoding city name: " + e.getMessage());
+            return;
         }
 
-        PlacesClient placesClient = Places.createClient(this);
+        // Build the URL with parameters
+        String url = "https://nominatim.openstreetmap.org/search" +
+                "?format=json" +
+                "&q=" + encodedCityName +
+                "&limit=1" +
+                "&addressdetails=1" +
+                "&polygon_geojson=0" +
+                "&bounded=1" +
+                "&featuretype=city";
 
-        // Create a FindAutocompletePredictionsRequest for the city
-        FindAutocompletePredictionsRequest request = FindAutocompletePredictionsRequest.builder()
-                .setQuery(cityName)
-                .setTypeFilter(TypeFilter.CITIES)
+        Log.d("Geocoding", "Making request to Nominatim API: " + url);
+
+        // Create OkHttp client
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
                 .build();
 
-        placesClient.findAutocompletePredictions(request)
-                .addOnSuccessListener((response) -> {
-                    if (response.getAutocompletePredictions().size() > 0) {
-                        String placeId = response.getAutocompletePredictions().get(0).getPlaceId();
+        // Build the request with proper headers
+        Request request = new Request.Builder()
+                .url(url)
+                .header("User-Agent", "YourAppName/1.0 (your@email.com)") // Required by Nominatim's usage policy
+                .build();
 
-                        // Get the place details to retrieve the viewport bounds
-                        List<Place.Field> placeFields = Arrays.asList(Place.Field.VIEWPORT);
-                        FetchPlaceRequest placeRequest = FetchPlaceRequest.builder(placeId, placeFields).build();
+        // Execute the request asynchronously
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.e("Geocoding", "Nominatim API request failed: " + e.getMessage());
+            }
 
-                        placesClient.fetchPlace(placeRequest)
-                                .addOnSuccessListener((fetchPlaceResponse) -> {
-                                    Place place = fetchPlaceResponse.getPlace();
-                                    if (place.getViewport() != null) {
-                                        // Use the precise city bounds
-                                        cityBounds = place.getViewport();
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    Log.e("Geocoding", "Unexpected code: " + response);
+                    return;
+                }
 
-                                        // Create RectangularBounds for LocationBias
-                                        rectangularBounds = RectangularBounds.newInstance(
-                                                cityBounds.southwest,
-                                                cityBounds.northeast
-                                        );
+                try {
+                    String responseData = response.body().string();
+                    JSONArray jsonArray = new JSONArray(responseData);
 
-                                        Log.d("Geocoding", "Retrieved precise city bounds for " + cityName);
-                                    } else {
-                                        // Fall back to the approximate method
-                                    }
-                                })
-                                .addOnFailureListener((exception) -> {
-                                    Log.e("Geocoding", "Place not found: " + exception.getMessage());
-                                });
-                    } else {
-                        Log.e("Geocoding", "No predictions found for " + cityName);
-                    }
-                })
-                .addOnFailureListener((exception) -> {
-                    Log.e("Geocoding", "Prediction fetching failed: " + exception.getMessage());
-                });
+                    // Switch to main thread for UI updates
+                    runOnUiThread(() -> {
+                        try {
+                            Log.d("Geocoding", "Response received from Nominatim API");
+
+                            if (jsonArray.length() > 0) {
+                                JSONObject place = jsonArray.getJSONObject(0);
+
+                                // Extract the bounding box coordinates
+                                JSONArray boundingBox = place.getJSONArray("boundingbox");
+                                double south = Double.parseDouble(boundingBox.getString(0));
+                                double north = Double.parseDouble(boundingBox.getString(1));
+                                double west = Double.parseDouble(boundingBox.getString(2));
+                                double east = Double.parseDouble(boundingBox.getString(3));
+
+                                Log.d("Geocoding", "Bounding box for " + cityName + ": S=" + south +
+                                        ", N=" + north + ", W=" + west + ", E=" + east);
+
+                                // Create LatLngBounds similar to Google Maps viewport
+                                LatLng southwest = new LatLng(south, west);
+                                LatLng northeast = new LatLng(north, east);
+                                cityBounds = new LatLngBounds(southwest, northeast);
+
+                                rectangularBounds = RectangularBounds.newInstance(cityBounds.southwest, cityBounds.northeast);
+
+                                Log.d("Geocoding", "rectangularbounds: " + rectangularBounds);
+
+                                Log.d("Geocoding", "City bounds and rectangular bounds created successfully");
+
+                                // Call the callback function (fetchPlacesOfType) once the bounds are set
+                                if (onComplete != null) {
+                                    onComplete.run();
+                                }
+                            } else {
+                                Log.e("Geocoding", "No results found for " + cityName);
+                            }
+                        } catch (JSONException e) {
+                            Log.e("Geocoding", "Error parsing Nominatim response: " + e.getMessage());
+                        }
+                    });
+                } catch (JSONException e) {
+                    Log.e("Geocoding", "Error parsing JSON: " + e.getMessage());
+                }
+            }
+        });
     }
+
+
 
 
     private void setupPlacesLoading() {
@@ -799,7 +862,6 @@ public class PlanActivity extends AppCompatActivity {
 
     private void fetchPlacesForCategories(ArrayList<String> selectedCategories) {
         placesData.clear();
-        getBoundariesFromPlacesAPI(city);
 
         // Create an empty list to store the specific types to search for
         List<String> typesToSearch = new ArrayList<>();
@@ -929,52 +991,169 @@ public class PlanActivity extends AppCompatActivity {
         }
     }
 
+    private static final String TAG1 = "PlaceFetchDebug";
+    private static final int MAX_RESULTS_PER_TYPE = 20;
+
     private void fetchPlacesOfType(String placeType) {
-        // Skip place types that don't match our formatted list
+        Log.d(TAG1, "Fetching places for type: " + placeType);
+
         String formattedType = getFormattedPlaceType(placeType);
         if (formattedType == null) {
+            Log.w(TAG1, "Skipping unformatted place type: " + placeType);
             return;
         }
 
-        // Fix: Use rectangularBounds (which is RectangularBounds) as LocationBias
-        FindAutocompletePredictionsRequest request = FindAutocompletePredictionsRequest.builder()
-                .setLocationBias(rectangularBounds) // Changed from cityBounds to rectangularBounds
-                .setTypesFilter(Arrays.asList(placeType))
-                .setQuery(city)
-                .build();
+        getBoundariesFromNominatim(city, () -> {
+            LatLng centerLatLng = getCenterFromBounds(rectangularBounds);
+            double lat = centerLatLng.latitude;
+            double lng = centerLatLng.longitude;
 
-        placesClient.findAutocompletePredictions(request)
-                .addOnSuccessListener((response) -> {
-                    // Limit to 2 results per type to manage quota
-                    int count = 0;
-                    for (com.google.android.libraries.places.api.model.AutocompletePrediction prediction : response.getAutocompletePredictions()) {
-                        if (count >= 2) break;
+            // Calculate radius based on the bounds
+            int radius = calculateRadiusFromBounds(rectangularBounds);
+            Log.d(TAG1, "Calculated radius: " + radius + " meters");
 
-                        String placeName = prediction.getPrimaryText(null).toString();
+            String apiKey = getString(R.string.google_api_key);
+            String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?"
+                    + "location=" + lat + "," + lng
+                    + "&radius=" + radius
+                    + "&type=" + placeType
+                    + "&key=" + apiKey;
 
-                        // Use our formatted place type instead of raw type
-                        String placeEntry = formattedType + ": " + placeName;
+            Log.d(TAG1, "Nearby Search URL: " + url);
 
-                        placesData.add(placeEntry);
-                        count++;
+            OkHttpClient client = new OkHttpClient();
+
+            Request request = new Request.Builder()
+                    .url(url)
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    Log.e(TAG1, "Nearby search API call failed", e);
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    if (!response.isSuccessful()) {
+                        Log.e(TAG1, "Unexpected response code: " + response.code());
+                        return;
                     }
 
-                    // Update the UI with the places we found
-                    runOnUiThread(() -> {
-                        if (placesAdapter == null) {
-                            placesAdapter = new ActivityAdapter(placesData);
-                            activitiesList.setAdapter(placesAdapter);
-                        } else {
-                            placesAdapter.notifyDataSetChanged();
+                    String responseBody = response.body().string();
+                    try {
+                        JSONObject json = new JSONObject(responseBody);
+                        JSONArray results = json.getJSONArray("results");
+
+                        int count = 0;
+                        for (int i = 0; i < results.length() && count < MAX_RESULTS_PER_TYPE; i++) {
+                            JSONObject place = results.getJSONObject(i);
+                            String name = place.getString("name");
+
+                            String placeEntry = formattedType + ": " + name;
+                            placesData.add(placeEntry);
+                            Log.d(TAG1, "Place found: " + placeEntry);
+                            count++;
                         }
-                    });
-                })
-                .addOnFailureListener((exception) -> {
-                    if (exception instanceof ApiException) {
-                        Log.e(TAG, "Place lookup failed: " + exception.getMessage());
+
+                        if (count == 0) {
+                            Log.w(TAG1, "No places added for type: " + placeType + " (formatted: " + formattedType + ")");
+                        }
+
+                        runOnUiThread(() -> {
+                            if (placesAdapter == null) {
+                                placesAdapter = new ActivityAdapter(placesData);
+                                activitiesList.setAdapter(placesAdapter);
+                            } else {
+                                placesAdapter.notifyDataSetChanged();
+                            }
+                        });
+
+                    } catch (JSONException e) {
+                        Log.e(TAG1, "JSON parse error", e);
                     }
-                });
+                }
+            });
+        });
     }
+
+    /**
+     * Calculates the radius based on rectangular bounds to ensure coverage of the entire area.
+     * The radius is calculated as the distance from the center to the farthest corner of the bounds.
+     *
+     * @param bounds The rectangular bounds of the area
+     * @return The calculated radius in meters
+     */
+    private int calculateRadiusFromBounds(RectangularBounds bounds) {
+        LatLng center = getCenterFromBounds(bounds);
+        LatLng northeast = bounds.getNortheast();
+        LatLng southwest = bounds.getSouthwest();
+
+        // Calculate distance to all four corners and find the maximum
+        double[] distances = new double[4];
+
+        // Distance to northeast corner
+        distances[0] = calculateDistance(center.latitude, center.longitude,
+                northeast.latitude, northeast.longitude);
+
+        // Distance to northwest corner
+        distances[1] = calculateDistance(center.latitude, center.longitude,
+                northeast.latitude, southwest.longitude);
+
+        // Distance to southeast corner
+        distances[2] = calculateDistance(center.latitude, center.longitude,
+                southwest.latitude, northeast.longitude);
+
+        // Distance to southwest corner
+        distances[3] = calculateDistance(center.latitude, center.longitude,
+                southwest.latitude, southwest.longitude);
+
+        // Find the maximum distance
+        double maxDistance = distances[0];
+        for (int i = 1; i < distances.length; i++) {
+            if (distances[i] > maxDistance) {
+                maxDistance = distances[i];
+            }
+        }
+
+        // Round up to the nearest meter and ensure minimum radius
+        int radius = (int) Math.ceil(maxDistance);
+
+        // Ensure radius doesn't exceed Google Places API limit of 50,000 meters
+        return Math.min(radius, 50000);
+    }
+
+    /**
+     * Calculates the distance between two points using the Haversine formula.
+     *
+     * @param lat1 Latitude of point 1
+     * @param lng1 Longitude of point 1
+     * @param lat2 Latitude of point 2
+     * @param lng2 Longitude of point 2
+     * @return Distance between the points in meters
+     */
+    private double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+        final int EARTH_RADIUS = 6371000; // Earth's radius in meters
+
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lngDistance = Math.toRadians(lng2 - lng1);
+
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lngDistance / 2) * Math.sin(lngDistance / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return EARTH_RADIUS * c;
+    }
+
+    private LatLng getCenterFromBounds(RectangularBounds bounds) {
+        double lat = (bounds.getSouthwest().latitude + bounds.getNortheast().latitude) / 2.0;
+        double lng = (bounds.getSouthwest().longitude + bounds.getNortheast().longitude) / 2.0;
+        return new LatLng(lat, lng);
+    }
+
+
 
     @Override
     protected void onDestroy() {
