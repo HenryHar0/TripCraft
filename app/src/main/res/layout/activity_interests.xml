@@ -335,16 +335,6 @@
                             app:chipIconTint="@color/primary"
                             android:text="Beach" />
 
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_nature_spot"
-                            style="@style/CustomChipStyle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            app:chipStartPadding="12dp"
-                            app:chipIconVisible="true"
-                            app:chipIcon="@drawable/ic_nature_spot"
-                            app:chipIconTint="@color/primary"
-                            android:text="Nature Spot" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/chip_art_gallery"

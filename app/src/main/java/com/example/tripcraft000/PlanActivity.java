@@ -50,8 +50,10 @@ import java.util.concurrent.Executors;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 
 import java.net.URLEncoder;
@@ -862,10 +864,7 @@ public class PlanActivity extends AppCompatActivity {
 
     private void fetchPlacesForCategories(ArrayList<String> selectedCategories) {
         placesData.clear();
-
-        // Create an empty list to store the specific types to search for
         List<String> typesToSearch = new ArrayList<>();
-
 
         for (String category : selectedCategories) {
             Log.d("SelectedCategory", category.toLowerCase());
@@ -874,9 +873,6 @@ public class PlanActivity extends AppCompatActivity {
                     typesToSearch.add("museum");
                     break;
                 case "Tourist Attraction":
-                    typesToSearch.add("landmark");
-                    typesToSearch.add("historical_landmark");
-                    typesToSearch.add("historical_site");
                     typesToSearch.add("tourist_attraction");
                     break;
                 case "Restaurant":
@@ -884,6 +880,7 @@ public class PlanActivity extends AppCompatActivity {
                     break;
                 case "Cafe":
                     typesToSearch.add("cafe");
+                    typesToSearch.add("bakery");
                     break;
                 case "Bar":
                     typesToSearch.add("bar");
@@ -892,7 +889,8 @@ public class PlanActivity extends AppCompatActivity {
                     typesToSearch.add("shopping_mall");
                     break;
                 case "Theater":
-                    typesToSearch.add("theater");
+                    typesToSearch.add("concert_hall");
+                    typesToSearch.add("performing_arts_theater");
                     break;
                 case "Cinema":
                     typesToSearch.add("movie_theater");
@@ -906,14 +904,10 @@ public class PlanActivity extends AppCompatActivity {
                 case "Beach":
                     typesToSearch.add("beach");
                     break;
-                case "Nature Spot":
-                    typesToSearch.add("natural_feature");
-                    break;
                 case "Art Gallery":
                     typesToSearch.add("art_gallery");
                     break;
                 case "Place of Worship":
-                    typesToSearch.add("place_of_worship");
                     typesToSearch.add("church");
                     typesToSearch.add("hindu_temple");
                     typesToSearch.add("mosque");
@@ -927,20 +921,18 @@ public class PlanActivity extends AppCompatActivity {
                     break;
                 case "Amusement Park":
                     typesToSearch.add("amusement_park");
+                    typesToSearch.add("bowling_alley");
                     break;
             }
         }
 
-        // Fetch places for each specific type
         for (String placeType : typesToSearch) {
             fetchPlacesOfType(placeType);
         }
 
-        // Schedule to check results
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         scheduler.schedule(() -> {
             checkForEmptyResults();
-            // Update the UI
             runOnUiThread(() -> {
                 if (!placesData.isEmpty() && allPlacesData.isEmpty()) {
                     allPlacesData.addAll(placesData);
@@ -949,123 +941,223 @@ public class PlanActivity extends AppCompatActivity {
         }, 5, TimeUnit.SECONDS);
     }
 
+
     private String getFormattedPlaceType(String type) {
         switch (type) {
-            // High-value tourist categories
-            case "museum": return "Museum";
-            case "landmark":
+            // Cultural & tourist attractions
+            case "museum":
+                return "Museum";
             case "tourist_attraction":
-            case "historical_landmark":
-            case "historical_site": return "Tourist Attraction";
-
-            // Food and drink
-            case "restaurant": return "Restaurant";
-            case "cafe": return "Cafe";
-            case "bar": return "Bar";
-
-            // Entertainment
-            case "shopping_mall": return "Shopping Mall";
-            case "theater": return "Theater";
-            case "movie_theater": return "Cinema";
-            case "night_club": return "Night Club";
-
-            // Nature and outdoors
-            case "park": return "Park";
-            case "beach": return "Beach";
-            case "natural_feature": return "Nature Spot";
-
-            // Cultural sites
-            case "art_gallery": return "Art Gallery";
-            case "place_of_worship":
+                return "Tourist Attraction";
+            case "art_gallery":
+                return "Art Gallery";
             case "church":
             case "hindu_temple":
             case "mosque":
-            case "synagogue": return "Place of Worship";
+            case "synagogue":
+                return "Place of Worship";
 
-            // Family attractions
-            case "zoo": return "Zoo";
-            case "aquarium": return "Aquarium";
-            case "amusement_park": return "Amusement Park";
+            // Food and drink
+            case "restaurant":
+                return "Restaurant";
+            case "cafe":
+            case "bakery":
+                return "Cafe";
+            case "bar":
+                return "Bar";
 
-            default: return null;
+            // Entertainment & leisure
+            case "shopping_mall":
+                return "Shopping Mall";
+            case "concert_hall":
+            case "performing_arts_theater":
+                return "Theater";
+            case "movie_theater":
+                return "Cinema";
+            case "night_club":
+                return "Night Club";
+            case "amusement_park":
+            case "bowling_alley":
+                return "Amusement Park";
+
+            // Nature & outdoor
+            case "park":
+                return "Park";
+            case "beach":
+                return "Beach";
+
+            // Family-friendly
+            case "zoo":
+                return "Zoo";
+            case "aquarium":
+                return "Aquarium";
+
+            // Default for unknown or unsupported types
+            default:
+                return null;
         }
     }
+
+
 
     private static final String TAG1 = "PlaceFetchDebug";
     private static final int MAX_RESULTS_PER_TYPE = 20;
 
+    private List<PlaceData> placeDataList = new ArrayList<>();
+    private PlaceAdapter1 placeAdapter1;
+
     private void fetchPlacesOfType(String placeType) {
         Log.d(TAG1, "Fetching places for type: " + placeType);
 
+        // 1. Format the place type (e.g. "restaurant" → "restaurant")
         String formattedType = getFormattedPlaceType(placeType);
         if (formattedType == null) {
             Log.w(TAG1, "Skipping unformatted place type: " + placeType);
             return;
         }
 
+        // 2. First, get city boundaries via Nominatim (unchanged)
         getBoundariesFromNominatim(city, () -> {
             LatLng centerLatLng = getCenterFromBounds(rectangularBounds);
             double lat = centerLatLng.latitude;
             double lng = centerLatLng.longitude;
 
-            // Calculate radius based on the bounds
+            // 3. Compute radius in meters based on bounding box
             int radius = calculateRadiusFromBounds(rectangularBounds);
+            // Cap the radius to Google's maximum allowed (50,000 meters)
+            radius = Math.min(radius, 50000);
             Log.d(TAG1, "Calculated radius: " + radius + " meters");
 
+            // 4. Build the POST URL (with API key as a query param)
             String apiKey = getString(R.string.google_api_key);
-            String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?"
-                    + "location=" + lat + "," + lng
-                    + "&radius=" + radius
-                    + "&type=" + placeType
-                    + "&key=" + apiKey;
+            String url = "https://places.googleapis.com/v1/places:searchNearby"
+                    + "?key=" + apiKey
+                    + "&fields=places.id,places.displayName.text,places.formattedAddress,places.rating,places.location,places.photos";
 
-            Log.d(TAG1, "Nearby Search URL: " + url);
 
+
+            // 5. Build the JSON request body
+            JSONObject bodyJson = new JSONObject();
+            try {
+                // locationRestriction.circle
+                JSONObject center = new JSONObject()
+                        .put("latitude", lat)
+                        .put("longitude", lng);
+                JSONObject circle = new JSONObject()
+                        .put("center", center)
+                        .put("radius", (double) radius);
+                JSONObject locationRestriction = new JSONObject()
+                        .put("circle", circle);
+
+                bodyJson.put("locationRestriction", locationRestriction);
+                bodyJson.put("includedTypes", new JSONArray().put(formattedType.toLowerCase())); // Google uses lowercase types
+                bodyJson.put("maxResultCount", MAX_RESULTS_PER_TYPE);
+
+            } catch (JSONException e) {
+                Log.e(TAG1, "Failed to build JSON body", e);
+                return;
+            }
+
+
+            Log.d(TAG1, "SearchNearby POST body: " + bodyJson.toString());
+
+            // 6. Send the POST request with OkHttp
             OkHttpClient client = new OkHttpClient();
-
+            RequestBody requestBody = RequestBody.create(
+                    bodyJson.toString(),
+                    MediaType.parse("application/json; charset=utf-8")
+            );
             Request request = new Request.Builder()
                     .url(url)
+                    .post(requestBody)
                     .build();
 
             client.newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
-                    Log.e(TAG1, "Nearby search API call failed", e);
+                    Log.e(TAG1, "Places:searchNearby API call failed", e);
                 }
 
                 @Override
                 public void onResponse(Call call, Response response) throws IOException {
                     if (!response.isSuccessful()) {
                         Log.e(TAG1, "Unexpected response code: " + response.code());
+                        // Print the response body to debug
+                        if (response.body() != null) {
+                            String errorBody = response.body().string();
+                            Log.e(TAG1, "Error response: " + errorBody);
+                        }
                         return;
                     }
 
                     String responseBody = response.body().string();
                     try {
                         JSONObject json = new JSONObject(responseBody);
-                        JSONArray results = json.getJSONArray("results");
+                        JSONArray places = json.optJSONArray("places");
 
+                        if (places == null || places.length() == 0) {
+                            Log.w(TAG1, "No places found for type: " + formattedType);
+                            return;
+                        }
+
+                        List<PlaceData> newPlaces = new ArrayList<>();
                         int count = 0;
-                        for (int i = 0; i < results.length() && count < MAX_RESULTS_PER_TYPE; i++) {
-                            JSONObject place = results.getJSONObject(i);
-                            String name = place.getString("name");
 
-                            String placeEntry = formattedType + ": " + name;
-                            placesData.add(placeEntry);
-                            Log.d(TAG1, "Place found: " + placeEntry);
+                        for (int i = 0; i < places.length() && count < MAX_RESULTS_PER_TYPE; i++) {
+                            JSONObject place = places.getJSONObject(i);
+
+                            String placeId = place.getString("id");  // ✅ NEW field
+                            String name = place.getJSONObject("displayName").getString("text");  // ✅ NEW structure
+                            String address = place.optString("formattedAddress", "No address available");
+                            float rating = (float) place.optDouble("rating", 0.0);
+
+                            JSONObject loc = place.getJSONObject("location");
+                            LatLng placeLatLng = new LatLng(
+                                    loc.getDouble("latitude"),
+                                    loc.getDouble("longitude")
+                            );
+
+
+                            // build PlaceData
+                            PlaceData pd = new PlaceData(placeId, name, address, rating, placeLatLng, formattedType);
+
+                            if (place.has("photos")) {
+                                JSONArray photos = place.getJSONArray("photos");
+                                for (int j = 0; j < photos.length(); j++) {
+                                    String ref = photos.getJSONObject(j).getString("name");
+                                    String photoUrl = "https://places.googleapis.com/v1/" + ref + "/media?key=" + R.string.google_api_key;
+                                    pd.addPhotoReference(photoUrl);
+                                    Log.d(TAG1, "Photo URL for " + name + ": " + photoUrl);  // Debug the URL
+                                }
+                            } else {
+                                pd.addPhotoReference("default_placeholder");
+                            }
+
+
+                            newPlaces.add(pd);
+                            Log.d(TAG1, "Place found: " + formattedType + ": " + name);
                             count++;
                         }
 
-                        if (count == 0) {
-                            Log.w(TAG1, "No places added for type: " + placeType + " (formatted: " + formattedType + ")");
+                        if (newPlaces.isEmpty()) {
+                            Log.w(TAG1, "No places added for type: " + formattedType);
+                        } else {
+                            // merge into main list
+                            synchronized (placeDataList) {
+                                placeDataList.addAll(newPlaces);
+                            }
                         }
 
+                        // 7. Update UI on main thread
                         runOnUiThread(() -> {
-                            if (placesAdapter == null) {
-                                placesAdapter = new ActivityAdapter(placesData);
-                                activitiesList.setAdapter(placesAdapter);
+                            if (placeAdapter1 == null) {
+                                placeAdapter1 = new PlaceAdapter1(placeDataList, apiKey);
+                                activitiesList.setAdapter(placeAdapter1);
+                                activitiesList.setLayoutManager(
+                                        new LinearLayoutManager(getApplicationContext())
+                                );
                             } else {
-                                placesAdapter.notifyDataSetChanged();
+                                placeAdapter1.updatePlaces(placeDataList);
                             }
                         });
 
@@ -1076,6 +1168,7 @@ public class PlanActivity extends AppCompatActivity {
             });
         });
     }
+
 
     /**
      * Calculates the radius based on rectangular bounds to ensure coverage of the entire area.

@@ -191,7 +191,6 @@ public class InterestsActivity extends AppCompatActivity {
         categoryNamesList.add("Night Club");
         categoryNamesList.add("Park");
         categoryNamesList.add("Beach");
-        categoryNamesList.add("Nature Spot");
         categoryNamesList.add("Art Gallery");
         categoryNamesList.add("Place of Worship");
         categoryNamesList.add("Zoo");
