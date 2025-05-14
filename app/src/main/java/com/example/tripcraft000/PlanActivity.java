@@ -455,6 +455,219 @@ public class PlanActivity extends AppCompatActivity {
             showingSelectedPlaces = true;
         }
     }
+
+    private class ActivityAdapter extends RecyclerView.Adapter<ActivityAdapter.ViewHolder> {
+        private ArrayList<String> activities;
+
+        public ActivityAdapter(ArrayList<String> activities) {
+            this.activities = activities;
+        }
+
+
+        @Override
+        public ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
+            android.view.View view = getLayoutInflater().inflate(
+                    R.layout.place_item, parent, false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(ViewHolder holder, int position) {
+            String placeInfo = activities.get(position);
+            holder.textView.setText(placeInfo);
+
+            // If it's a mandatory place (has star emoji), highlight it with blue
+            if (placeInfo.contains("🌟")) {
+                holder.textView.setTextColor(getResources().getColor(android.R.color.holo_blue_light));
+                holder.textView.setTypeface(null, Typeface.BOLD);
+                holder.textView.setBackgroundResource(R.drawable.mandatory_place_background);
+                holder.textView.setPadding(16, 12, 16, 12);
+            }
+            // Your existing highlighting code
+            else if (placeInfo.contains("📸") || placeInfo.contains("🍽") ||
+                    placeInfo.contains("🌳") || placeInfo.contains("🏛")) {
+                holder.textView.setTextColor(getResources().getColor(android.R.color.holo_blue_dark));
+            }
+        }
+
+        @Override
+        public int getItemCount() {
+            return activities.size();
+        }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            TextView textView;
+
+            ViewHolder(android.view.View itemView) {
+                super(itemView);
+                textView = itemView.findViewById(R.id.place_name);
+            }
+        }
+    }
+    private static final String TAG1 = "PlaceFetchDebug";
+    private static final int MAX_RESULTS_PER_TYPE = 20;
+
+    private List<PlaceData> placeDataList = new ArrayList<>();
+    private PlaceAdapter1 placeAdapter1;
+
+    private void fetchPlacesOfType(String placeType) {
+        Log.d(TAG1, "Fetching places for type: " + placeType);
+
+
+        // 2. First, get city boundaries via Nominatim (unchanged)
+        getBoundariesFromNominatim(city, () -> {
+            LatLng centerLatLng = getCenterFromBounds(rectangularBounds);
+            double lat = centerLatLng.latitude;
+            double lng = centerLatLng.longitude;
+
+            // 3. Compute radius in meters based on bounding box
+            int radius = calculateRadiusFromBounds(rectangularBounds);
+            // Cap the radius to Google's maximum allowed (50,000 meters)
+            radius = Math.min(radius, 50000);
+            Log.d(TAG1, "Calculated radius: " + radius + " meters");
+
+            // 4. Build the POST URL (with API key as a query param)
+            String apiKey = getString(R.string.google_api_key);
+            String url = "https://places.googleapis.com/v1/places:searchNearby"
+                    + "?key=" + apiKey
+                    + "&fields=places.id,places.displayName.text,places.formattedAddress,places.rating,places.location,places.photos";
+
+
+
+            // 5. Build the JSON request body
+            JSONObject bodyJson = new JSONObject();
+            try {
+                // locationRestriction.circle
+                JSONObject center = new JSONObject()
+                        .put("latitude", lat)
+                        .put("longitude", lng);
+                JSONObject circle = new JSONObject()
+                        .put("center", center)
+                        .put("radius", (double) radius);
+                JSONObject locationRestriction = new JSONObject()
+                        .put("circle", circle);
+
+                bodyJson.put("locationRestriction", locationRestriction);
+                bodyJson.put("includedTypes", new JSONArray().put(placeType.toLowerCase())); // Google uses lowercase types
+                bodyJson.put("maxResultCount", MAX_RESULTS_PER_TYPE);
+
+            } catch (JSONException e) {
+                Log.e(TAG1, "Failed to build JSON body", e);
+                return;
+            }
+
+
+            Log.d(TAG1, "SearchNearby POST body: " + bodyJson.toString());
+
+            // 6. Send the POST request with OkHttp
+            OkHttpClient client = new OkHttpClient();
+            RequestBody requestBody = RequestBody.create(
+                    bodyJson.toString(),
+                    MediaType.parse("application/json; charset=utf-8")
+            );
+            Request request = new Request.Builder()
+                    .url(url)
+                    .post(requestBody)
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    Log.e(TAG1, "Places:searchNearby API call failed", e);
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    if (!response.isSuccessful()) {
+                        Log.e(TAG1, "Unexpected response code: " + response.code());
+                        // Print the response body to debug
+                        if (response.body() != null) {
+                            String errorBody = response.body().string();
+                            Log.e(TAG1, "Error response: " + errorBody);
+                        }
+                        return;
+                    }
+
+                    String responseBody = response.body().string();
+                    try {
+                        JSONObject json = new JSONObject(responseBody);
+                        JSONArray places = json.optJSONArray("places");
+
+                        if (places == null || places.length() == 0) {
+                            Log.w(TAG1, "No places found for type: " + placeType);
+                            return;
+                        }
+
+                        List<PlaceData> newPlaces = new ArrayList<>();
+                        int count = 0;
+
+                        for (int i = 0; i < places.length() && count < MAX_RESULTS_PER_TYPE; i++) {
+                            JSONObject place = places.getJSONObject(i);
+
+                            String placeId = place.getString("id");  // ✅ NEW field
+                            String name = place.getJSONObject("displayName").getString("text");  // ✅ NEW structure
+                            String address = place.optString("formattedAddress", "No address available");
+                            float rating = (float) place.optDouble("rating", 0.0);
+
+                            JSONObject loc = place.getJSONObject("location");
+                            LatLng placeLatLng = new LatLng(
+                                    loc.getDouble("latitude"),
+                                    loc.getDouble("longitude")
+                            );
+
+
+                            // build PlaceData
+                            PlaceData pd = new PlaceData(placeId, name, address, rating, placeLatLng, placeType);
+
+                            if (place.has("photos")) {
+                                JSONArray photos = place.getJSONArray("photos");
+                                for (int j = 0; j < photos.length(); j++) {
+                                    String ref = photos.getJSONObject(j).getString("name");
+                                    String apiKey = getString(R.string.google_api_key);
+                                    String photoUrl = "https://places.googleapis.com/v1/" + ref + "/media?maxWidthPx=400&key=" + apiKey;
+
+                                    pd.addPhotoReference(photoUrl);
+                                    Log.d(TAG1, "Photo URL for " + name + ": " + photoUrl);  // Debug the URL
+                                }
+                            } else {
+                                pd.addPhotoReference("default_placeholder");
+                            }
+
+
+                            newPlaces.add(pd);
+                            Log.d(TAG1, "Place found: " + placeType + ": " + name);
+                            count++;
+                        }
+
+                        if (newPlaces.isEmpty()) {
+                            Log.w(TAG1, "No places added for type: " + placeType);
+                        } else {
+                            // merge into main list
+                            synchronized (placeDataList) {
+                                placeDataList.addAll(newPlaces);
+                            }
+                        }
+
+                        // 7. Update UI on main thread
+                        runOnUiThread(() -> {
+                            if (placeAdapter1 == null) {
+                                placeAdapter1 = new PlaceAdapter1(placeDataList, apiKey);
+                                activitiesList.setAdapter(placeAdapter1);
+                                activitiesList.setLayoutManager(
+                                        new LinearLayoutManager(getApplicationContext())
+                                );
+                            } else {
+                                placeAdapter1.updatePlaces(placeDataList);
+                            }
+                        });
+
+                    } catch (JSONException e) {
+                        Log.e(TAG1, "JSON parse error", e);
+                    }
+                }
+            });
+        });
+    }
     private void fetchWeatherInfo() {
         executorService.execute(() -> {
             try {
@@ -701,54 +914,6 @@ public class PlanActivity extends AppCompatActivity {
         }
     }
 
-    private class ActivityAdapter extends RecyclerView.Adapter<ActivityAdapter.ViewHolder> {
-        private ArrayList<String> activities;
-
-        public ActivityAdapter(ArrayList<String> activities) {
-            this.activities = activities;
-        }
-
-
-        @Override
-        public ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
-            android.view.View view = getLayoutInflater().inflate(
-                    R.layout.place_item, parent, false);
-            return new ViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(ViewHolder holder, int position) {
-            String placeInfo = activities.get(position);
-            holder.textView.setText(placeInfo);
-
-            // If it's a mandatory place (has star emoji), highlight it with blue
-            if (placeInfo.contains("🌟")) {
-                holder.textView.setTextColor(getResources().getColor(android.R.color.holo_blue_light));
-                holder.textView.setTypeface(null, Typeface.BOLD);
-                holder.textView.setBackgroundResource(R.drawable.mandatory_place_background);
-                holder.textView.setPadding(16, 12, 16, 12);
-            }
-            // Your existing highlighting code
-            else if (placeInfo.contains("📸") || placeInfo.contains("🍽") ||
-                    placeInfo.contains("🌳") || placeInfo.contains("🏛")) {
-                holder.textView.setTextColor(getResources().getColor(android.R.color.holo_blue_dark));
-            }
-        }
-
-        @Override
-        public int getItemCount() {
-            return activities.size();
-        }
-
-        class ViewHolder extends RecyclerView.ViewHolder {
-            TextView textView;
-
-            ViewHolder(android.view.View itemView) {
-                super(itemView);
-                textView = itemView.findViewById(R.id.place_name);
-            }
-        }
-    }
 
     private void getBoundariesFromNominatim(String cityName, final Runnable onComplete) {
         Log.d("Geocoding", "Initializing Nominatim API request for city: " + cityName);
@@ -857,7 +1022,6 @@ public class PlanActivity extends AppCompatActivity {
 
     private void setupPlacesLoading() {
         placesData.clear();
-        placesData.add("Loading places for your trip...");
         placesAdapter = new ActivityAdapter(placesData);
         activitiesList.setAdapter(placesAdapter);
     }
@@ -999,175 +1163,6 @@ public class PlanActivity extends AppCompatActivity {
     }
 
 
-
-    private static final String TAG1 = "PlaceFetchDebug";
-    private static final int MAX_RESULTS_PER_TYPE = 20;
-
-    private List<PlaceData> placeDataList = new ArrayList<>();
-    private PlaceAdapter1 placeAdapter1;
-
-    private void fetchPlacesOfType(String placeType) {
-        Log.d(TAG1, "Fetching places for type: " + placeType);
-
-        // 1. Format the place type (e.g. "restaurant" → "restaurant")
-        String formattedType = getFormattedPlaceType(placeType);
-        if (formattedType == null) {
-            Log.w(TAG1, "Skipping unformatted place type: " + placeType);
-            return;
-        }
-
-        // 2. First, get city boundaries via Nominatim (unchanged)
-        getBoundariesFromNominatim(city, () -> {
-            LatLng centerLatLng = getCenterFromBounds(rectangularBounds);
-            double lat = centerLatLng.latitude;
-            double lng = centerLatLng.longitude;
-
-            // 3. Compute radius in meters based on bounding box
-            int radius = calculateRadiusFromBounds(rectangularBounds);
-            // Cap the radius to Google's maximum allowed (50,000 meters)
-            radius = Math.min(radius, 50000);
-            Log.d(TAG1, "Calculated radius: " + radius + " meters");
-
-            // 4. Build the POST URL (with API key as a query param)
-            String apiKey = getString(R.string.google_api_key);
-            String url = "https://places.googleapis.com/v1/places:searchNearby"
-                    + "?key=" + apiKey
-                    + "&fields=places.id,places.displayName.text,places.formattedAddress,places.rating,places.location,places.photos";
-
-
-
-            // 5. Build the JSON request body
-            JSONObject bodyJson = new JSONObject();
-            try {
-                // locationRestriction.circle
-                JSONObject center = new JSONObject()
-                        .put("latitude", lat)
-                        .put("longitude", lng);
-                JSONObject circle = new JSONObject()
-                        .put("center", center)
-                        .put("radius", (double) radius);
-                JSONObject locationRestriction = new JSONObject()
-                        .put("circle", circle);
-
-                bodyJson.put("locationRestriction", locationRestriction);
-                bodyJson.put("includedTypes", new JSONArray().put(formattedType.toLowerCase())); // Google uses lowercase types
-                bodyJson.put("maxResultCount", MAX_RESULTS_PER_TYPE);
-
-            } catch (JSONException e) {
-                Log.e(TAG1, "Failed to build JSON body", e);
-                return;
-            }
-
-
-            Log.d(TAG1, "SearchNearby POST body: " + bodyJson.toString());
-
-            // 6. Send the POST request with OkHttp
-            OkHttpClient client = new OkHttpClient();
-            RequestBody requestBody = RequestBody.create(
-                    bodyJson.toString(),
-                    MediaType.parse("application/json; charset=utf-8")
-            );
-            Request request = new Request.Builder()
-                    .url(url)
-                    .post(requestBody)
-                    .build();
-
-            client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                    Log.e(TAG1, "Places:searchNearby API call failed", e);
-                }
-
-                @Override
-                public void onResponse(Call call, Response response) throws IOException {
-                    if (!response.isSuccessful()) {
-                        Log.e(TAG1, "Unexpected response code: " + response.code());
-                        // Print the response body to debug
-                        if (response.body() != null) {
-                            String errorBody = response.body().string();
-                            Log.e(TAG1, "Error response: " + errorBody);
-                        }
-                        return;
-                    }
-
-                    String responseBody = response.body().string();
-                    try {
-                        JSONObject json = new JSONObject(responseBody);
-                        JSONArray places = json.optJSONArray("places");
-
-                        if (places == null || places.length() == 0) {
-                            Log.w(TAG1, "No places found for type: " + formattedType);
-                            return;
-                        }
-
-                        List<PlaceData> newPlaces = new ArrayList<>();
-                        int count = 0;
-
-                        for (int i = 0; i < places.length() && count < MAX_RESULTS_PER_TYPE; i++) {
-                            JSONObject place = places.getJSONObject(i);
-
-                            String placeId = place.getString("id");  // ✅ NEW field
-                            String name = place.getJSONObject("displayName").getString("text");  // ✅ NEW structure
-                            String address = place.optString("formattedAddress", "No address available");
-                            float rating = (float) place.optDouble("rating", 0.0);
-
-                            JSONObject loc = place.getJSONObject("location");
-                            LatLng placeLatLng = new LatLng(
-                                    loc.getDouble("latitude"),
-                                    loc.getDouble("longitude")
-                            );
-
-
-                            // build PlaceData
-                            PlaceData pd = new PlaceData(placeId, name, address, rating, placeLatLng, formattedType);
-
-                            if (place.has("photos")) {
-                                JSONArray photos = place.getJSONArray("photos");
-                                for (int j = 0; j < photos.length(); j++) {
-                                    String ref = photos.getJSONObject(j).getString("name");
-                                    String photoUrl = "https://places.googleapis.com/v1/" + ref + "/media?key=" + R.string.google_api_key;
-                                    pd.addPhotoReference(photoUrl);
-                                    Log.d(TAG1, "Photo URL for " + name + ": " + photoUrl);  // Debug the URL
-                                }
-                            } else {
-                                pd.addPhotoReference("default_placeholder");
-                            }
-
-
-                            newPlaces.add(pd);
-                            Log.d(TAG1, "Place found: " + formattedType + ": " + name);
-                            count++;
-                        }
-
-                        if (newPlaces.isEmpty()) {
-                            Log.w(TAG1, "No places added for type: " + formattedType);
-                        } else {
-                            // merge into main list
-                            synchronized (placeDataList) {
-                                placeDataList.addAll(newPlaces);
-                            }
-                        }
-
-                        // 7. Update UI on main thread
-                        runOnUiThread(() -> {
-                            if (placeAdapter1 == null) {
-                                placeAdapter1 = new PlaceAdapter1(placeDataList, apiKey);
-                                activitiesList.setAdapter(placeAdapter1);
-                                activitiesList.setLayoutManager(
-                                        new LinearLayoutManager(getApplicationContext())
-                                );
-                            } else {
-                                placeAdapter1.updatePlaces(placeDataList);
-                            }
-                        });
-
-                    } catch (JSONException e) {
-                        Log.e(TAG1, "JSON parse error", e);
-                    }
-                }
-            });
-        });
-    }
 
 
     /**

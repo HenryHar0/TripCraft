@@ -33,23 +33,16 @@ public class PlaceImagesAdapter extends RecyclerView.Adapter<PlaceImagesAdapter.
 
     @Override
     public void onBindViewHolder(@NonNull ImageViewHolder holder, int position) {
-        String photoReference = photoReferences.get(position);
+        String photoUrl = photoReferences.get(position);
 
-        // Construct the Google Places Photo URL
-        String photoUrl = "https://maps.googleapis.com/maps/api/place/photo" +
-                "?maxwidth=400" +
-                "&photo_reference=" + photoReference +
-                "&key=" + apiKey;
-
-        // Load image with Glide
         Glide.with(holder.itemView.getContext())
                 .load(photoUrl)
                 .centerCrop()
                 .into(holder.placeImageItem);
 
-        // Set the image counter
         holder.imageCountText.setText((position + 1) + "/" + photoReferences.size());
     }
+
 
     @Override
     public int getItemCount() {
