@@ -85,6 +85,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 
+
 public class PlanActivity extends AppCompatActivity {
 
     private TextView planTitle, weatherInfo;
@@ -92,13 +93,7 @@ public class PlanActivity extends AppCompatActivity {
     private RecyclerView activitiesList, chosenActivitiesRecycler;
     private Button savePlanButton, editPlanButton, backToMainButton;
 
-    private static final String PREFS_NAME = "TripPlanPrefs";
-    private static final String NOTIFICATION_PREF = "NotificationsEnabled";
-    private static final String FIRST_TIME_KEY = "FirstTimeUser";
     private static final String TAG = "PlanActivity";
-    private static final String CHANNEL_ID = "trip_reminder_channel";
-    private static final int ONE_WEEK_NOTIFICATION_ID = 1;
-    private static final int ONE_DAY_NOTIFICATION_ID = 2;
 
     private String startDate, endDate, city;
     private double latitude, longitude;
@@ -108,15 +103,13 @@ public class PlanActivity extends AppCompatActivity {
     private ActivityResultLauncher<String> requestPermissionLauncher;
 
     private PlacesClient placesClient;
-    private ArrayList<String> placesData = new ArrayList<>();
-    private ActivityAdapter placesAdapter;
     private LatLngBounds cityBounds;
     private RectangularBounds rectangularBounds;
-    private Button showMandatoryButton;
     private ArrayList<String> selectedPlaceIds;
-    private boolean showingSelectedPlaces = false;
-    private ArrayList<String> allPlacesData;
 
+    // Add notification manager
+    private TripNotificationManager notificationManager;
+    private TripPlanStorageManager tripPlanStorageManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -128,7 +121,7 @@ public class PlanActivity extends AppCompatActivity {
         httpClient = new OkHttpClient();
 
         if (!Places.isInitialized()) {
-            Places.initialize(getApplicationContext(), "AIzaSyCYnYiiqrHO0uwKoxNQLA_mKEIuX1aRyL4");
+            Places.initialize(getApplicationContext(), getString(R.string.google_api_key));
         }
         placesClient = Places.createClient(this);
 
@@ -142,40 +135,21 @@ public class PlanActivity extends AppCompatActivity {
         savePlanButton = findViewById(R.id.savePlanButton);
         editPlanButton = findViewById(R.id.editPlanButton);
         backToMainButton = findViewById(R.id.backToMainButton);
-        showMandatoryButton = findViewById(R.id.showMandatoryButton);
-
-        allPlacesData = new ArrayList<>();
-        showMandatoryButton.setOnClickListener(v -> toggleSelectedPlaces());
 
         // Setup notification permission launcher
         requestPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 isGranted -> {
-                    if (isGranted) {
-                        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-                        SharedPreferences.Editor editor = sharedPreferences.edit();
-                        editor.putBoolean(NOTIFICATION_PREF, true);
-                        editor.apply();
-
-                        // Schedule notifications if start date is available
-                        if (startDate != null && !startDate.isEmpty()) {
-                            scheduleNotifications(startDate);
-                        }
-
-                        Toast.makeText(this, "Trip reminders will be sent before your journey!", Toast.LENGTH_SHORT).show();
-                    } else {
-                        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-                        SharedPreferences.Editor editor = sharedPreferences.edit();
-                        editor.putBoolean(NOTIFICATION_PREF, false);
-                        editor.apply();
-
-                        Toast.makeText(this, "Notifications disabled. You can enable them later in settings.", Toast.LENGTH_SHORT).show();
-                    }
+                    // Use notification manager to handle permission result
+                    notificationManager.handlePermissionResult(isGranted, city, startDate);
                 }
         );
 
-        // Create notification channel
-        createNotificationChannel();
+        // Initialize notification manager
+        notificationManager = new TripNotificationManager(this, requestPermissionLauncher);
+
+        // Initialize trip plan storage manager
+        tripPlanStorageManager = new TripPlanStorageManager(this, notificationManager);
 
         // Retrieve intent extras
         Intent intent = getIntent();
@@ -204,154 +178,13 @@ public class PlanActivity extends AppCompatActivity {
 
         fetchWeatherInfo();
 
-
         // Set button click listeners
         savePlanButton.setOnClickListener(v -> saveTripPlan());
         editPlanButton.setOnClickListener(v -> editTripPlan());
         backToMainButton.setOnClickListener(v -> goBackToMainMenu());
 
-
-        // Check if first time user
-        checkFirstTimeUser();
-    }
-
-    private void checkFirstTimeUser() {
-        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        boolean isFirstTime = sharedPreferences.getBoolean(FIRST_TIME_KEY, true);
-
-        if (isFirstTime) {
-            showNotificationExplanationDialog();
-
-            // Mark as not first time anymore
-            SharedPreferences.Editor editor = sharedPreferences.edit();
-            editor.putBoolean(FIRST_TIME_KEY, false);
-            editor.apply();
-        }
-    }
-
-    private void showNotificationExplanationDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Trip Reminders");
-
-        // Blue-styled explanation text
-        TextView messageView = new TextView(this);
-        messageView.setText("TripCraft can send you helpful reminders about your upcoming trips!\n\n" +
-                "• Get notified one week before your trip to start packing\n" +
-                "• Receive a final reminder the day before departure\n\n" +
-                "Would you like to enable trip reminders?");
-        messageView.setPadding(30, 30, 30, 30);
-        messageView.setTextColor(getResources().getColor(android.R.color.holo_blue_dark));
-        messageView.setTextSize(16);
-
-        builder.setView(messageView);
-
-        builder.setPositiveButton("Enable", (dialog, which) -> {
-            requestNotificationPermission();
-        });
-
-        builder.setNegativeButton("Not Now", (dialog, which) -> {
-            Toast.makeText(this, "You can enable notifications later in settings", Toast.LENGTH_SHORT).show();
-        });
-
-        builder.setCancelable(false);
-        builder.show();
-    }
-
-    private void requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS);
-        } else {
-            // For older versions, no runtime permission needed
-            SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-            SharedPreferences.Editor editor = sharedPreferences.edit();
-            editor.putBoolean(NOTIFICATION_PREF, true);
-            editor.apply();
-
-            if (startDate != null && !startDate.isEmpty()) {
-                scheduleNotifications(startDate);
-            }
-
-            Toast.makeText(this, "Trip reminders enabled!", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = "Trip Reminders";
-            String description = "Notifications for upcoming trips";
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-            channel.setDescription(description);
-
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-        }
-    }
-
-    private void scheduleNotifications(String tripDate) {
-        try {
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-            Date tripStartDate = dateFormat.parse(tripDate);
-
-            if (tripStartDate != null) {
-                scheduleNotification(tripStartDate, 7, ONE_WEEK_NOTIFICATION_ID,
-                        "Trip to " + city + " is in one week!",
-                        "Time to start planning and packing for your adventure.");
-
-                scheduleNotification(tripStartDate, 1, ONE_DAY_NOTIFICATION_ID,
-                        "Your trip to " + city + " is tomorrow!",
-                        "Final preparations for your journey to " + city + ".");
-            }
-        } catch (ParseException e) {
-            Log.e(TAG, "Error scheduling notifications", e);
-        }
-    }
-
-    private void scheduleNotification(Date tripDate, int daysBefore, int notificationId, String title, String message) {
-        Intent intent = new Intent(this, NotificationReceiver.class);
-        intent.putExtra("notification_id", notificationId);
-        intent.putExtra("title", title);
-        intent.putExtra("message", message);
-
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                this,
-                notificationId,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(tripDate);
-        calendar.add(Calendar.DAY_OF_YEAR, -daysBefore);
-        calendar.set(Calendar.HOUR_OF_DAY, 9);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-
-        if (alarmManager != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                            AlarmManager.RTC_WAKEUP,
-                            calendar.getTimeInMillis(),
-                            pendingIntent
-                    );
-                } else {
-                    alarmManager.set(
-                            AlarmManager.RTC_WAKEUP,
-                            calendar.getTimeInMillis(),
-                            pendingIntent
-                    );
-                }
-            } else {
-                alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
-                        pendingIntent
-                );
-            }
-        }
+        // Check if first time user using notification manager
+        notificationManager.checkFirstTimeUser(city, startDate);
     }
 
     private void fetchPlaceById(String placeId) {
@@ -380,7 +213,7 @@ public class PlanActivity extends AppCompatActivity {
 
                         if (!placeTypes.isEmpty()) {
                             for (String type : placeTypes) {
-                                placeType = getFormattedPlaceType(type);
+                                placeType = getFormattedPlaceType(type).toString();
                                 if (placeType != null) {
                                     break; // Exit loop when a valid formatted type is found
                                 }
@@ -398,112 +231,17 @@ public class PlanActivity extends AppCompatActivity {
                     // Format the place information
                     String placeInfo = placeType + ": " + place.getName();
 
-                    // Add to the displayed list
-                    placesData.add("★ " + placeInfo);
-                    placesAdapter.notifyDataSetChanged();
-
                     Log.d("PlaceDetails", "Successfully fetched: " + placeInfo);
                 })
                 .addOnFailureListener((exception) -> {
                     if (exception instanceof ApiException) {
                         ApiException apiException = (ApiException) exception;
                         Log.e("PlaceDetails", "Place not found: " + apiException.getStatusCode());
-
-                        // Add a placeholder entry if the place couldn't be found
-                        placesData.add("★ Unknown Place (ID: " + placeId + ")");
-                        placesAdapter.notifyDataSetChanged();
                     }
                 });
     }
-    private void toggleSelectedPlaces() {
-        if (showingSelectedPlaces) {
-            // Show all places
-            placesData.clear();
-            placesData.addAll(allPlacesData);
-            placesAdapter.notifyDataSetChanged();
-            showMandatoryButton.setText("Show Selected");
-            showingSelectedPlaces = false;
-        } else {
-            // Show only selected places
-            if (allPlacesData.isEmpty()) {
-                allPlacesData.addAll(placesData);
-                Log.d("ToggleDebug", "Backed up placesData to allPlacesData");
-            }
-
-            // Clear the list to show only selected places
-            placesData.clear();
-
-            // Check if we have any selected place IDs
-            if (selectedPlaceIds == null || selectedPlaceIds.isEmpty()) {
-                placesData.add("No places selected for this trip");
-                placesAdapter.notifyDataSetChanged();
-            } else {
-                // Show a loading message while we fetch place details
-                placesData.add("Loading selected places...");
-                placesAdapter.notifyDataSetChanged();
-
-                // Clear the list again to remove the loading message once we get real data
-                placesData.clear();
-
-                // Fetch details for each selected place ID
-                for (String placeId : selectedPlaceIds) {
-                    fetchPlaceById(placeId);
-                }
-            }
-
-            showMandatoryButton.setText("Show All Places");
-            showingSelectedPlaces = true;
-        }
-    }
-
-    private class ActivityAdapter extends RecyclerView.Adapter<ActivityAdapter.ViewHolder> {
-        private ArrayList<String> activities;
-
-        public ActivityAdapter(ArrayList<String> activities) {
-            this.activities = activities;
-        }
 
 
-        @Override
-        public ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
-            android.view.View view = getLayoutInflater().inflate(
-                    R.layout.place_item, parent, false);
-            return new ViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(ViewHolder holder, int position) {
-            String placeInfo = activities.get(position);
-            holder.textView.setText(placeInfo);
-
-            // If it's a mandatory place (has star emoji), highlight it with blue
-            if (placeInfo.contains("🌟")) {
-                holder.textView.setTextColor(getResources().getColor(android.R.color.holo_blue_light));
-                holder.textView.setTypeface(null, Typeface.BOLD);
-                holder.textView.setBackgroundResource(R.drawable.mandatory_place_background);
-                holder.textView.setPadding(16, 12, 16, 12);
-            }
-            // Your existing highlighting code
-            else if (placeInfo.contains("📸") || placeInfo.contains("🍽") ||
-                    placeInfo.contains("🌳") || placeInfo.contains("🏛")) {
-                holder.textView.setTextColor(getResources().getColor(android.R.color.holo_blue_dark));
-            }
-        }
-
-        @Override
-        public int getItemCount() {
-            return activities.size();
-        }
-
-        class ViewHolder extends RecyclerView.ViewHolder {
-            TextView textView;
-
-            ViewHolder(android.view.View itemView) {
-                super(itemView);
-                textView = itemView.findViewById(R.id.place_name);
-            }
-        }
-    }
     private static final String TAG1 = "PlaceFetchDebug";
     private static final int MAX_RESULTS_PER_TYPE = 20;
 
@@ -770,24 +508,12 @@ public class PlanActivity extends AppCompatActivity {
 
         // Set up activities list RecyclerView
         activitiesList.setLayoutManager(new LinearLayoutManager(this));
-        placesData = new ArrayList<>();
 
-        // Show loading indicator
-        setupPlacesLoading();
 
         // Fetch places for the given categories
         fetchPlacesForCategories(categories);
     }
 
-    private void checkForEmptyResults() {
-        runOnUiThread(() -> {
-            if (placesData.isEmpty() || (placesData.size() == 1 && placesData.get(0).contains("Loading"))) {
-                placesData.clear();
-                placesData.add("No places found in this city. Try adjusting your categories.");
-                placesAdapter.notifyDataSetChanged();
-            }
-        });
-    }
 
     private void calculateDuration() {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
@@ -810,64 +536,17 @@ public class PlanActivity extends AppCompatActivity {
     private void saveTripPlan() {
         final String destination = destinationValue.getText().toString();
         final String duration = durationValue.getText().toString();
-        final String activities;
-
-        if (activitiesListData != null && !activitiesListData.isEmpty()) {
-            activities = TextUtils.join(", ", activitiesListData);
-        } else {
-            activities = "No activities planned";
-        }
-
         final String weather = weatherInfo.getText().toString();
 
-        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Select a slot to save the plan");
-
-        String[] slots = new String[5];
-        for (int i = 0; i < 5; i++) {
-            String slotData = sharedPreferences.getString("PlanSlot_" + i, "Empty Slot");
-            slots[i] = "Slot " + (i + 1) + ": " + slotData;
-        }
-
-        builder.setItems(slots, (dialog, which) -> {
-            String selectedSlotKey = "PlanSlot_" + which;
-            if (sharedPreferences.contains(selectedSlotKey)) {
-                confirmOverwrite(which, destination, duration, activities, weather);
-            } else {
-                savePlanToSlot(which, destination, duration, activities, weather);
-            }
-        });
-
-        builder.show();
-    }
-
-    private void confirmOverwrite(int slot, String destination, String duration, String activities, String weather) {
-        new AlertDialog.Builder(this)
-                .setTitle("Overwrite Slot")
-                .setMessage("Do you want to overwrite this slot?")
-                .setPositiveButton("Yes", (dialog, which) -> savePlanToSlot(slot, destination, duration, activities, weather))
-                .setNegativeButton("No", null)
-                .show();
-    }
-
-    private void savePlanToSlot(int slot, String destination, String duration, String activities, String weather) {
-        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        String planDetails = "Destination: " + destination +
-                "\nDuration: " + duration +
-                "\nActivities: " + activities +
-                "\nWeather: " + weather;
-        editor.putString("PlanSlot_" + slot, planDetails);
-        editor.apply();
-
-        boolean notificationsEnabled = sharedPreferences.getBoolean(NOTIFICATION_PREF, false);
-        if (notificationsEnabled && startDate != null && !startDate.isEmpty()) {
-            scheduleNotifications(startDate);
-        }
-
-        Toast.makeText(this, "Plan saved to Slot " + (slot + 1), Toast.LENGTH_SHORT).show();
+        // Use the TripPlanStorageManager to show save dialog and handle saving
+        tripPlanStorageManager.showSaveTripPlanDialog(
+                destination,
+                duration,
+                activitiesListData,
+                weather,
+                city,
+                startDate
+        );
     }
 
     private void editTripPlan() {
@@ -913,6 +592,133 @@ public class PlanActivity extends AppCompatActivity {
             }
         }
     }
+
+
+
+    private void fetchPlacesForCategories(ArrayList<String> selectedCategories) {
+        List<String> typesToSearch = new ArrayList<>();
+
+        for (String category : selectedCategories) {
+            Log.d("SelectedCategory", category.toLowerCase());
+            switch (category) {
+                case "Museum":
+                    typesToSearch.add("museum");
+                    break;
+                case "Tourist Attraction":
+                    typesToSearch.add("tourist_attraction");
+                    break;
+                case "Restaurant":
+                    typesToSearch.add("restaurant");
+                    break;
+                case "Cafe":
+                    typesToSearch.add("cafe");
+                    typesToSearch.add("bakery");
+                    break;
+                case "Bar":
+                    typesToSearch.add("bar");
+                    break;
+                case "Shopping Mall":
+                    typesToSearch.add("shopping_mall");
+                    break;
+                case "Theater":
+                    typesToSearch.add("concert_hall");
+                    typesToSearch.add("performing_arts_theater");
+                    break;
+                case "Cinema":
+                    typesToSearch.add("movie_theater");
+                    break;
+                case "Night Club":
+                    typesToSearch.add("night_club");
+                    break;
+                case "Park":
+                    typesToSearch.add("park");
+                    break;
+                case "Beach":
+                    typesToSearch.add("beach");
+                    break;
+                case "Art Gallery":
+                    typesToSearch.add("art_gallery");
+                    break;
+                case "Place of Worship":
+                    typesToSearch.add("church");
+                    typesToSearch.add("hindu_temple");
+                    typesToSearch.add("mosque");
+                    typesToSearch.add("synagogue");
+                    break;
+                case "Zoo":
+                    typesToSearch.add("zoo");
+                    break;
+                case "Aquarium":
+                    typesToSearch.add("aquarium");
+                    break;
+                case "Amusement Park":
+                    typesToSearch.add("amusement_park");
+                    typesToSearch.add("bowling_alley");
+                    break;
+            }
+        }
+
+        for (String placeType : typesToSearch) {
+            fetchPlacesOfType(placeType);
+        }
+    }
+
+    private PlaceTypeInfo getFormattedPlaceType(String type) {
+        switch (type) {
+            // Cultural & tourist attractions
+            case "museum":
+                return new PlaceTypeInfo("Museum", R.drawable.ic_museum);
+            case "tourist_attraction":
+                return new PlaceTypeInfo("Tourist Attraction", R.drawable.ic_tourist_attraction);
+            case "art_gallery":
+                return new PlaceTypeInfo("Art Gallery", R.drawable.ic_art_gallery);
+            case "church":
+            case "hindu_temple":
+            case "mosque":
+            case "synagogue":
+                return new PlaceTypeInfo("Place of Worship", R.drawable.ic_place_of_worship);
+
+            // Food and drink
+            case "restaurant":
+                return new PlaceTypeInfo("Restaurant", R.drawable.ic_restaurant);
+            case "cafe":
+            case "bakery":
+                return new PlaceTypeInfo("Cafe", R.drawable.ic_cafe);
+            case "bar":
+                return new PlaceTypeInfo("Bar", R.drawable.ic_bar);
+
+            // Entertainment & leisure
+            case "shopping_mall":
+                return new PlaceTypeInfo("Shopping Mall", R.drawable.ic_shopping_mall);
+            case "concert_hall":
+            case "performing_arts_theater":
+                return new PlaceTypeInfo("Theater", R.drawable.ic_theater);
+            case "movie_theater":
+                return new PlaceTypeInfo("Cinema", R.drawable.ic_cinema);
+            case "night_club":
+                return new PlaceTypeInfo("Night Club", R.drawable.ic_night_club);
+            case "amusement_park":
+            case "bowling_alley":
+                return new PlaceTypeInfo("Amusement Park", R.drawable.ic_amusement_park);
+
+            // Nature & outdoor
+            case "park":
+                return new PlaceTypeInfo("Park", R.drawable.ic_park);
+            case "beach":
+                return new PlaceTypeInfo("Beach", R.drawable.ic_beach);
+
+            // Family-friendly
+            case "zoo":
+                return new PlaceTypeInfo("Zoo", R.drawable.ic_zoo);
+            case "aquarium":
+                return new PlaceTypeInfo("Aquarium", R.drawable.ic_aquarium);
+
+            // Default for unknown types
+            default:
+                return null;
+        }
+    }
+
 
 
     private void getBoundariesFromNominatim(String cityName, final Runnable onComplete) {
@@ -1017,154 +823,6 @@ public class PlanActivity extends AppCompatActivity {
         });
     }
 
-
-
-
-    private void setupPlacesLoading() {
-        placesData.clear();
-        placesAdapter = new ActivityAdapter(placesData);
-        activitiesList.setAdapter(placesAdapter);
-    }
-
-    private void fetchPlacesForCategories(ArrayList<String> selectedCategories) {
-        placesData.clear();
-        List<String> typesToSearch = new ArrayList<>();
-
-        for (String category : selectedCategories) {
-            Log.d("SelectedCategory", category.toLowerCase());
-            switch (category) {
-                case "Museum":
-                    typesToSearch.add("museum");
-                    break;
-                case "Tourist Attraction":
-                    typesToSearch.add("tourist_attraction");
-                    break;
-                case "Restaurant":
-                    typesToSearch.add("restaurant");
-                    break;
-                case "Cafe":
-                    typesToSearch.add("cafe");
-                    typesToSearch.add("bakery");
-                    break;
-                case "Bar":
-                    typesToSearch.add("bar");
-                    break;
-                case "Shopping Mall":
-                    typesToSearch.add("shopping_mall");
-                    break;
-                case "Theater":
-                    typesToSearch.add("concert_hall");
-                    typesToSearch.add("performing_arts_theater");
-                    break;
-                case "Cinema":
-                    typesToSearch.add("movie_theater");
-                    break;
-                case "Night Club":
-                    typesToSearch.add("night_club");
-                    break;
-                case "Park":
-                    typesToSearch.add("park");
-                    break;
-                case "Beach":
-                    typesToSearch.add("beach");
-                    break;
-                case "Art Gallery":
-                    typesToSearch.add("art_gallery");
-                    break;
-                case "Place of Worship":
-                    typesToSearch.add("church");
-                    typesToSearch.add("hindu_temple");
-                    typesToSearch.add("mosque");
-                    typesToSearch.add("synagogue");
-                    break;
-                case "Zoo":
-                    typesToSearch.add("zoo");
-                    break;
-                case "Aquarium":
-                    typesToSearch.add("aquarium");
-                    break;
-                case "Amusement Park":
-                    typesToSearch.add("amusement_park");
-                    typesToSearch.add("bowling_alley");
-                    break;
-            }
-        }
-
-        for (String placeType : typesToSearch) {
-            fetchPlacesOfType(placeType);
-        }
-
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-        scheduler.schedule(() -> {
-            checkForEmptyResults();
-            runOnUiThread(() -> {
-                if (!placesData.isEmpty() && allPlacesData.isEmpty()) {
-                    allPlacesData.addAll(placesData);
-                }
-            });
-        }, 5, TimeUnit.SECONDS);
-    }
-
-
-    private String getFormattedPlaceType(String type) {
-        switch (type) {
-            // Cultural & tourist attractions
-            case "museum":
-                return "Museum";
-            case "tourist_attraction":
-                return "Tourist Attraction";
-            case "art_gallery":
-                return "Art Gallery";
-            case "church":
-            case "hindu_temple":
-            case "mosque":
-            case "synagogue":
-                return "Place of Worship";
-
-            // Food and drink
-            case "restaurant":
-                return "Restaurant";
-            case "cafe":
-            case "bakery":
-                return "Cafe";
-            case "bar":
-                return "Bar";
-
-            // Entertainment & leisure
-            case "shopping_mall":
-                return "Shopping Mall";
-            case "concert_hall":
-            case "performing_arts_theater":
-                return "Theater";
-            case "movie_theater":
-                return "Cinema";
-            case "night_club":
-                return "Night Club";
-            case "amusement_park":
-            case "bowling_alley":
-                return "Amusement Park";
-
-            // Nature & outdoor
-            case "park":
-                return "Park";
-            case "beach":
-                return "Beach";
-
-            // Family-friendly
-            case "zoo":
-                return "Zoo";
-            case "aquarium":
-                return "Aquarium";
-
-            // Default for unknown or unsupported types
-            default:
-                return null;
-        }
-    }
-
-
-
-
     /**
      * Calculates the radius based on rectangular bounds to ensure coverage of the entire area.
      * The radius is calculated as the distance from the center to the farthest corner of the bounds.
@@ -1240,6 +898,16 @@ public class PlanActivity extends AppCompatActivity {
         double lng = (bounds.getSouthwest().longitude + bounds.getNortheast().longitude) / 2.0;
         return new LatLng(lat, lng);
     }
+    public class PlaceTypeInfo {
+        public final String name;
+        public final int drawableRes;
+
+        public PlaceTypeInfo(String name, int drawableRes) {
+            this.name = name;
+            this.drawableRes = drawableRes;
+        }
+    }
+
 
 
 

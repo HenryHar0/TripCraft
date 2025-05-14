@@ -45,30 +45,10 @@
                 android:fontFamily="sans-serif-medium"
                 app:layout_constraintTop_toTopOf="@id/headerIcon"
                 app:layout_constraintStart_toEndOf="@id/headerIcon"
-                app:layout_constraintEnd_toStartOf="@id/showMandatoryButton"
                 app:layout_constraintBottom_toBottomOf="@id/headerIcon"
                 android:layout_marginStart="8dp"
                 android:layout_marginEnd="16dp"/>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/showMandatoryButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Show Selected"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp"
-                android:minWidth="120dp"
-                android:backgroundTint="#3B88F7"
-                app:cornerRadius="8dp"
-                style="@style/Widget.MaterialComponents.Button"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@id/headerIcon"
-                app:layout_constraintBottom_toBottomOf="@id/headerIcon"
-                android:visibility="visible"/>
 
             <View
                 android:id="@+id/divider1"
