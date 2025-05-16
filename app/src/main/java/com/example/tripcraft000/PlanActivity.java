@@ -132,6 +132,8 @@ public class PlanActivity extends AppCompatActivity {
         }
         placesClient = Places.createClient(this);
 
+
+
         // Initialize views
         planTitle = findViewById(R.id.planTitle);
         destinationValue = findViewById(R.id.destinationValue);
@@ -169,10 +171,17 @@ public class PlanActivity extends AppCompatActivity {
         selectedPlaceIds = intent.getStringArrayListExtra("selected_place_ids");
         hoursList = intent.getIntegerArrayListExtra("hours_per_day");
 
+        if (selectedPlaceIds != null && !selectedPlaceIds.isEmpty()) {
+            for (String id : selectedPlaceIds) {
+                fetchPlaceById(id);
+            }
+        }
+
         // Set up chosen activities
         if (selectedCategories != null && !selectedCategories.isEmpty()) {
             setupChosenActivities(selectedCategories);
         }
+
 
         // Set destination
         if (city != null) {
@@ -782,6 +791,7 @@ public class PlanActivity extends AppCompatActivity {
             fetchPlacesOfType(placeType, timeSpent);
         }
     }
+
 
 
     private PlaceTypeInfo getFormattedPlaceType(String type) {
