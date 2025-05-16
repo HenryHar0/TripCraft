@@ -1,4 +1,4 @@
-package com. example. tripcraft000;
+package com.example.tripcraft000;
 
 import android.content.Intent;
 import android.net.Uri;
@@ -14,10 +14,6 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.bumptech.glide.Glide;
-import com.google.android.gms.maps.model.LatLng;
-
-import java.util.ArrayList;
 import java.util.List;
 
 public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewHolder> {
@@ -45,6 +41,10 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
         holder.placeName.setText(place.getName());
         holder.placeAddress.setText(place.getAddress());
         holder.placeRating.setRating(place.getRating());
+
+        // Display number of ratings
+        int count = place.getUserRatingsTotal();
+        holder.placeRatingCount.setText("(" + count + ")");
 
         // Set up images recycler view
         PlaceImagesAdapter imagesAdapter = new PlaceImagesAdapter(place.getPhotoReferences(), apiKey);
@@ -83,6 +83,7 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
         TextView placeName;
         TextView placeAddress;
         RatingBar placeRating;
+        TextView placeRatingCount;
         RecyclerView placeImagesRecyclerView;
         ImageView scrollIndicator;
         Button viewOnMapsButton;
@@ -92,6 +93,7 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
             placeName = itemView.findViewById(R.id.placeName);
             placeAddress = itemView.findViewById(R.id.placeAddress);
             placeRating = itemView.findViewById(R.id.placeRating);
+            placeRatingCount = itemView.findViewById(R.id.placeRatingCount);
             placeImagesRecyclerView = itemView.findViewById(R.id.placeImagesRecyclerView);
             scrollIndicator = itemView.findViewById(R.id.scroll_indicator);
             viewOnMapsButton = itemView.findViewById(R.id.viewOnMapsButton);

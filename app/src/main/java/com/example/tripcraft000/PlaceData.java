@@ -13,19 +13,41 @@ public class PlaceData {
     private List<String> photoReferences;
     private LatLng latLng;
     private String placeType;
+    private int userRatingsTotal;
+    private int timeSpent;
+    private float score;
+    private boolean isUserSelected = false;
 
-    public PlaceData(String placeId, String name, String address, float rating, LatLng latLng, String placeType) {
+
+    public PlaceData(String placeId, String name, String address, float rating, LatLng latLng, String placeType, int userRatingsTotal, int timeSpent) {
         this.placeId = placeId;
         this.name = name;
         this.address = address;
         this.rating = rating;
         this.latLng = latLng;
         this.placeType = placeType;
+        this.userRatingsTotal = userRatingsTotal;
         this.photoReferences = new ArrayList<>();
+        this.timeSpent = timeSpent;
     }
+
 
     public String getPlaceId() {
         return placeId;
+    }
+    public void setScore(float score) {
+        this.score = score;
+    }
+    public void setUserSelected(boolean selected) {
+        this.isUserSelected = selected;
+    }
+
+    public boolean isUserSelected() {
+        return isUserSelected;
+    }
+
+    public float getScore() {
+        return score;
     }
 
     public String getName() {
@@ -42,6 +64,10 @@ public class PlaceData {
 
     public List<String> getPhotoReferences() {
         return photoReferences;
+    }
+
+    public int getUserRatingsTotal() {
+        return userRatingsTotal;
     }
 
     public void setPhotoReferences(List<String> photoReferences) {
@@ -61,5 +87,9 @@ public class PlaceData {
 
     public String getPlaceType() {
         return placeType;
+    }
+
+    public int getTimeSpent() {
+        return timeSpent;
     }
 }

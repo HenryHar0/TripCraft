@@ -63,6 +63,17 @@
                     android:layout_marginTop="4dp"
                     android:isIndicator="true"
                     android:progressTint="#FFC107" />
+
+                <TextView
+                    android:id="@+id/placeRatingCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="()"
+                    android:textColor="@color/on_secondary"
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif" />
+
             </LinearLayout>
         </LinearLayout>
 
