@@ -68,6 +68,8 @@ dependencies {
     annotationProcessor 'com.github.bumptech.glide:compiler:4.15.1'
     implementation 'com.github.chrisbanes:PhotoView:2.3.0'
     implementation 'de.hdodenhof:circleimageview:3.1.0'
+    implementation 'com.tbuonomo:dotsindicator:4.3'
+
 
     // Utils
     implementation 'org.apache.commons:commons-math3:3.6.1'

@@ -72,7 +72,17 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
                 }
             }
         });
+
+        if (place.isUserSelected()) {
+            holder.itemView.setBackgroundColor(0xFFFFFACD);
+        } else {
+            holder.itemView.setBackgroundColor(
+                    androidx.core.content.ContextCompat.getColor(holder.itemView.getContext(), R.color.background)
+            );
+        }
+
     }
+
 
     @Override
     public int getItemCount() {

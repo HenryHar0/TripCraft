@@ -1,5 +1,7 @@
 package com.example.tripcraft000;
 
+import android.util.Log;
+
 import com.google.android.gms.maps.model.LatLng;
 
 import java.util.ArrayList;
@@ -43,8 +45,10 @@ public class PlaceData {
     }
 
     public boolean isUserSelected() {
+        Log.d("PlaceData", "isUserSelected() called for " + this.name);
         return isUserSelected;
     }
+
 
     public float getScore() {
         return score;

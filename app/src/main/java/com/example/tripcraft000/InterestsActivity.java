@@ -59,7 +59,6 @@ public class InterestsActivity extends AppCompatActivity {
 
     // Data
     private String selectedCityName;
-    private LatLng selectedCityCoordinates;
     private Set<String> selectedCategories = new HashSet<>();
     private final Set<String> selectedPlaceIds = new HashSet<>();
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -109,14 +108,7 @@ public class InterestsActivity extends AppCompatActivity {
         selectedCityName = getIntent().getStringExtra("city");
         if (selectedCityName == null) {
             selectedCityName = "Your destination";
-        }
-
-        // Get coordinates from intent
-        double lat = getIntent().getDoubleExtra("city_lat", 0);
-        double lng = getIntent().getDoubleExtra("city_lng", 0);
-
-        // If coordinates were passed, use them
-        selectedCityCoordinates = new LatLng(lat, lng);
+        };
     }
 
     private void setPageTitle() {
@@ -312,8 +304,6 @@ public class InterestsActivity extends AppCompatActivity {
                         // Original functionality preserved
                         Intent intent = new Intent(InterestsActivity.this, MapPlacesActivity.class);
                         intent.putExtra("city_name", selectedCityName);
-                        intent.putExtra("city_lat", selectedCityCoordinates.latitude);
-                        intent.putExtra("city_lng", selectedCityCoordinates.longitude);
                         intent.putExtra("start_date", getIntent().getStringExtra("start_date"));
                         intent.putExtra("end_date", getIntent().getStringExtra("end_date"));
                         intent.putExtra("category_name", category);
@@ -470,20 +460,14 @@ public class InterestsActivity extends AppCompatActivity {
         intent.putExtra("start_date", getIntent().getStringExtra("start_date"));
         intent.putExtra("end_date", getIntent().getStringExtra("end_date"));
 
-        // Pass city coordinates
-        intent.putExtra("city_lat", selectedCityCoordinates.latitude);
-        intent.putExtra("city_lng", selectedCityCoordinates.longitude);
-
-        Log.d(TAG, "City Coordinates: Latitude: " + selectedCityCoordinates.latitude +
-                ", Longitude: " + selectedCityCoordinates.longitude);
 
         // Pass selected categories
         intent.putStringArrayListExtra("selected_categories", new ArrayList<>(selectedCategories));
 
         // Pass selected places
         ArrayList<String> selectedPlacesList = new ArrayList<>(selectedPlaceIds);
-        Log.d(TAG, "Passing " + selectedPlacesList.size() + " selected places to TimeActivity");
         intent.putStringArrayListExtra("selected_place_ids", selectedPlacesList);
+
 
         // Start TimeActivity
         startActivity(intent);

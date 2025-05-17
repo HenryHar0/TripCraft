@@ -90,7 +90,6 @@ public class MapPlacesActivity extends AppCompatActivity implements
     private SearchView placeSearchView;
 
     private String selectedCityName;
-    private LatLng selectedCityCoordinates;
     private String selectedCategoryName;
     private List<PlaceMarker> allPlaces = new ArrayList<>();
     private Map<String, Marker> placeMarkers = new HashMap<>();
@@ -109,7 +108,6 @@ public class MapPlacesActivity extends AppCompatActivity implements
         double cityLng = getIntent().getDoubleExtra("city_lng", 0);
         startDate = getIntent().getStringExtra("start_date");
         endDate = getIntent().getStringExtra("end_date");
-        selectedCityCoordinates = new LatLng(cityLat, cityLng);
         selectedCategoryName = getIntent().getStringExtra("category_name");
 
         // Generate cache key based on city and category
@@ -291,9 +289,6 @@ public class MapPlacesActivity extends AppCompatActivity implements
     public void onMapReady(GoogleMap map) {
         googleMap = map;
 
-        // Set initial camera position to the city
-        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(selectedCityCoordinates, 12));
-
         // Set up map click listener
         googleMap.setOnInfoWindowClickListener(marker -> {
             String placeId = (String) marker.getTag();
@@ -316,10 +311,6 @@ public class MapPlacesActivity extends AppCompatActivity implements
             }
         });
 
-        // If we already have city bounds, zoom to them
-        if (cityBounds != null) {
-            googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(cityBounds, 50));
-        }
 
         // If we already have places (from cache), update markers
         if (!allPlaces.isEmpty() && cityBounds != null) {
@@ -467,22 +458,10 @@ public class MapPlacesActivity extends AppCompatActivity implements
 
     // Method to check if a place is within city boundaries
     private boolean isWithinCityBoundaries(double placeLat, double placeLng, LatLngBounds cityBounds) {
-        // If we have boundaries from the API, use them
-        if (cityBounds != null) {
-            return cityBounds.contains(new LatLng(placeLat, placeLng));
-        }
-
-        // Fallback to radius-based approach if we couldn't get boundaries
-        LatLng cityCenter = selectedCityCoordinates;
-
-        double distance = calculateDistance(
-                cityCenter.latitude, cityCenter.longitude,
-                placeLat, placeLng
-        );
-
-        // Use a default radius of 7km if boundaries couldn't be fetched
-        return distance <= 7;
+        // Only use city bounds; no fallback logic
+        return cityBounds != null && cityBounds.contains(new LatLng(placeLat, placeLng));
     }
+
 
     // Calculate distance between two points using Haversine formula
     private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
@@ -834,8 +813,8 @@ private void finishWithSelectedPlaces() {
         selectedPlaceIds.add(place.getPlaceId());
         selectedPlaceNames.add(place.getName());
     }
-
     resultIntent.putStringArrayListExtra("selected_place_ids", selectedPlaceIds);
+
     resultIntent.putStringArrayListExtra("selected_place_names", selectedPlaceNames);
 
     setResult(RESULT_OK, resultIntent);

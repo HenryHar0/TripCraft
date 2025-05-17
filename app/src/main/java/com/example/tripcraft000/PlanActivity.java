@@ -165,8 +165,6 @@ public class PlanActivity extends AppCompatActivity {
         startDate = intent.getStringExtra("start_date");
         endDate = intent.getStringExtra("end_date");
         city = intent.getStringExtra("city");
-        latitude = intent.getDoubleExtra("city_lat", 0.0);
-        longitude = intent.getDoubleExtra("city_lng", 0.0);
         selectedCategories = intent.getStringArrayListExtra("selected_categories");
         selectedPlaceIds = intent.getStringArrayListExtra("selected_place_ids");
         hoursList = intent.getIntegerArrayListExtra("hours_per_day");
@@ -206,122 +204,126 @@ public class PlanActivity extends AppCompatActivity {
     }
 
     private void fetchPlaceById(String placeId) {
-        // Define the fields to return
-        List<Place.Field> placeFields = Arrays.asList(
-                Place.Field.ID,
-                Place.Field.NAME,
-                Place.Field.ADDRESS,
-                Place.Field.TYPES,
-                Place.Field.RATING,
-                Place.Field.LAT_LNG,
-                Place.Field.USER_RATINGS_TOTAL,
-                Place.Field.PHOTO_METADATAS
-        );
+        Log.d("PlaceDebug", "Starting fetchPlaceById with placeId: " + placeId);
 
-        // Create a fetch request
-        FetchPlaceRequest request = FetchPlaceRequest.builder(placeId, placeFields).build();
+        String apiKey = getString(R.string.google_api_key);
 
-        // Execute the request
-        placesClient.fetchPlace(request)
-                .addOnSuccessListener((response) -> {
-                    Place place = response.getPlace();
-                    String placeType = "";
+        // Updated: Include displayName field
+        String url = "https://places.googleapis.com/v1/places/" + placeId +
+                "?fields=displayName,formattedAddress,types,rating,location,userRatingCount,photos" +
+                "&key=" + apiKey;
 
-                    // Get the first place type and format it
-                    if (place.getPlaceTypes() != null) {
-                        List<String> placeTypes = place.getPlaceTypes();
-                        Log.d("PlaceTypes", "Place types: " + placeTypes.toString());
+        OkHttpClient client = new OkHttpClient();
 
-                        if (!placeTypes.isEmpty()) {
-                            for (String type : placeTypes) {
-                                placeType = getFormattedPlaceType(type).toString();
-                                if (placeType != null) {
-                                    break; // Exit loop when a valid formatted type is found
-                                }
-                            }
+        Request request = new Request.Builder()
+                .url(url)
+                .get()
+                .build();
 
-                            if (placeType == null) {
-                                placeType = "📍 Place"; // Default if none of the types are recognized
-                            }
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.e("PlaceDebug", "Places API call failed", e);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    Log.e("PlaceDebug", "Unexpected response code: " + response.code());
+                    if (response.body() != null) {
+                        String errorBody = response.body().string();
+                        Log.e("PlaceDebug", "Error response: " + errorBody);
+                    }
+                    return;
+                }
+
+                String responseBody = response.body().string();
+                Log.d("PlaceDebug", "Response body: " + responseBody);
+
+                try {
+                    JSONObject json = new JSONObject(responseBody);
+
+                    // ✅ Updated to extract displayName.text
+                    JSONObject displayName = json.optJSONObject("displayName");
+                    String name = (displayName != null) ? displayName.optString("text", "No name available") : "No name available";
+
+                    String address = json.optString("formattedAddress", "No address available");
+
+                    JSONArray typesJson = json.optJSONArray("types");
+                    String placeType = "📍 Place";
+                    if (typesJson != null && typesJson.length() > 0) {
+                        for (int i = 0; i < typesJson.length(); i++) {
+                            String type = typesJson.getString(i);
+                            String formatted = getFormattedPlaceType(type).toString();
+                            placeType = formatted;
+                            break;
                         }
                     }
 
-                    // Format the place information
-                    String placeInfo = placeType + ": " + place.getName();
-                    Log.d("PlaceDetails", "Successfully fetched: " + placeInfo);
+                    float rating = (float) json.optDouble("rating", 0.0);
+                    int userRatingsTotal = json.optInt("userRatingCount", 0);
 
-                    // Create a PlaceData object for the selected place
-                    // Assume a default time spent of 2 hours (adjust as needed)
-                    int defaultTimeSpent = 2;
+                    JSONObject location = json.optJSONObject("location");
+                    LatLng latLng = null;
+                    if (location != null) {
+                        latLng = new LatLng(location.optDouble("latitude", 0.0), location.optDouble("longitude", 0.0));
+                    }
+
                     PlaceData selectedPlace = new PlaceData(
-                            place.getId(),
-                            place.getName(),
-                            place.getAddress() != null ? place.getAddress() : "No address available",
-                            place.getRating() != null ? place.getRating().floatValue() : 0.0f,
-                            place.getLatLng(),
+                            placeId,
+                            name,
+                            address,
+                            rating,
+                            latLng,
                             placeType,
-                            place.getUserRatingsTotal() != null ? place.getUserRatingsTotal() : 0,
-                            defaultTimeSpent
+                            userRatingsTotal,
+                            2  // default time spent
                     );
 
-                    // Add photos if available
-                    if (place.getPhotoMetadatas() != null) {
-                        String apiKey = getString(R.string.google_api_key);
-                        for (PhotoMetadata photoMetadata : place.getPhotoMetadatas()) {
-                            // For Places SDK, use photo reference
-                            String photoUrl = "https://maps.googleapis.com/maps/api/place/photo"
-                                    + "?maxwidth=400"
-                                    + "&photo_reference=" + photoMetadata.getAttributions()
-                                    + "&key=" + apiKey;
-                            selectedPlace.addPhotoReference(photoUrl);
+                    JSONArray photos = json.optJSONArray("photos");
+                    if (photos != null) {
+                        for (int i = 0; i < photos.length(); i++) {
+                            JSONObject photo = photos.getJSONObject(i);
+                            String photoName = photo.optString("name");
+                            if (photoName != null && !photoName.isEmpty()) {
+                                String photoUrl = "https://places.googleapis.com/v1/" + photoName +
+                                        "/media?maxWidthPx=400&key=" + apiKey;
+                                selectedPlace.addPhotoReference(photoUrl);
+                            }
                         }
+                    } else {
+                        selectedPlace.addPhotoReference("default_placeholder");
                     }
 
-                    // Mark this place as user-selected
                     selectedPlace.setUserSelected(true);
 
-                    // Calculate score for consistency with other places
-                    float normalizedRating = selectedPlace.getRating() / 5.0f * 100.0f;
-                    float reviewScore = 0;
-                    if (selectedPlace.getUserRatingsTotal() > 0) {
-                        reviewScore = (float) (Math.log10(selectedPlace.getUserRatingsTotal()) / 4.0 * 100.0);
-                    }
-                    float score = (normalizedRating + reviewScore) / 2.0f;
-                    selectedPlace.setScore(score);
-
-                    // Update the UI with the selected place
+                    // Update UI on main thread
                     runOnUiThread(() -> {
                         synchronized (placeDataList) {
-                            // Check if the place is already in the list and remove it to avoid duplicates
-                            List<PlaceData> toRemove = new ArrayList<>();
-                            for (PlaceData existingPlace : placeDataList) {
-                                if (existingPlace.getPlaceId().equals(placeId)) {
-                                    toRemove.add(existingPlace);
-                                }
-                            }
-                            placeDataList.removeAll(toRemove);
-
-                            // Add the selected place at the beginning of the list
+                            placeDataList.removeIf(p -> p.getPlaceId().equals(placeId));
                             placeDataList.add(0, selectedPlace);
                         }
 
-                        // Update the adapter
                         if (placeAdapter1 == null) {
-                            placeAdapter1 = new PlaceAdapter1(placeDataList, getString(R.string.google_api_key));
+                            placeAdapter1 = new PlaceAdapter1(placeDataList, apiKey);
                             activitiesList.setAdapter(placeAdapter1);
                             activitiesList.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
                         } else {
                             placeAdapter1.updatePlaces(placeDataList);
                         }
                     });
-                })
-                .addOnFailureListener((exception) -> {
-                    if (exception instanceof ApiException) {
-                        ApiException apiException = (ApiException) exception;
-                        Log.e("PlaceDetails", "Place not found: " + apiException.getStatusCode());
-                    }
-                });
+
+                    Log.d("PlaceDebug", "Place fetched and UI updated: " + name);
+
+                } catch (JSONException e) {
+                    Log.e("PlaceDebug", "JSON parsing error", e);
+                }
+            }
+        });
     }
+
+
+
 
 
     private static final String TAG1 = "PlaceFetchDebug";
@@ -483,22 +485,34 @@ public class PlanActivity extends AppCompatActivity {
         // Step 1: Calculate a balanced score for each place
         // The score is based on both rating and number of ratings
         for (PlaceData place : allPlacesData) {
-            // Calculate a normalized score (0-100) that balances rating and user ratings count
-            // Places with both high ratings and many reviews get higher scores
-            float normalizedRating = place.getRating() / 5.0f * 100.0f; // Convert rating to 0-100 scale
+            // Normalize rating to 0–100
+            float rating = place.getRating();
+            float normalizedRating = Math.max(0, Math.min(100, (rating / 5.0f) * 100));
 
-            // Logarithmic scale for number of ratings to prevent places with extremely high
-            // number of ratings from completely dominating the score
+            // Log-scaled review score, normalized to 0–100
             float reviewScore = 0;
-            if (place.getUserRatingsTotal() > 0) {
-                reviewScore = (float) (Math.log10(place.getUserRatingsTotal()) / 4.0 * 100.0);
-                // Math.log10(10000) ≈ 4, so this scales logarithmically from 0-100
+            int userRatings = place.getUserRatingsTotal();
+            if (userRatings > 0) {
+                // log10(10000) ≈ 4; use that as upper bound for 100-point scaling
+                float logScale = (float) Math.log10(userRatings);
+                reviewScore = Math.max(0, Math.min(100, (logScale / 4.0f) * 100));
             }
 
-            // Calculate final score (equal weight to rating and user ratings count)
+            // Combine both equally
             float score = (normalizedRating + reviewScore) / 2.0f;
-            place.setScore(score); // Assuming you add a score field to PlaceData
+
+            // Priority boost if user-selected
+            if (place.isUserSelected()) {
+                score += 10000;
+            }
+
+            place.setScore(score);
+
+            // Log the calculated score
+            Log.d(TAG1, "Place: " + place.getName() + " | Score: " + score);
         }
+
+
 
         // Step 2: Sort places by their score in descending order
         Collections.sort(allPlacesData, (p1, p2) -> Float.compare(p2.getScore(), p1.getScore()));
@@ -512,7 +526,7 @@ public class PlanActivity extends AppCompatActivity {
                 filteredPlaces.add(place);
                 totalTime += place.getTimeSpent();
             } else {
-                // Optional: If we have remaining time and this place would exceed it only slightly,
+                //If we have remaining time and this place would exceed it only slightly,
                 // consider adding it anyway if it has a high score
                 int remainingTime = totalAvailableTime - totalTime;
                 if (remainingTime > 0 &&
