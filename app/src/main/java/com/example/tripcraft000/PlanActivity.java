@@ -40,11 +40,14 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -92,7 +95,7 @@ public class PlanActivity extends AppCompatActivity {
 
     private TextView planTitle, weatherInfo;
     private TextView destinationValue, durationValue;
-    private RecyclerView activitiesList, chosenActivitiesRecycler;
+    private RecyclerView activitiesList,filteredList, chosenActivitiesRecycler;
     private Button savePlanButton, editPlanButton, backToMainButton;
 
     private static final String TAG = "PlanActivity";
@@ -113,8 +116,14 @@ public class PlanActivity extends AppCompatActivity {
     // Add notification manager
     private TripNotificationManager notificationManager;
     private TripPlanStorageManager tripPlanStorageManager;
+
     private final AtomicInteger callcount = new AtomicInteger(0);
     private ArrayList<String> selectedCategories;
+    private List<PlaceData> filtered;
+
+    private PlaceAdapter1 placeAdapter1, filteredAdapter;
+
+    private DayByDayAdapter dayByDayAdapter;
 
     private int days;
 
@@ -140,6 +149,7 @@ public class PlanActivity extends AppCompatActivity {
         durationValue = findViewById(R.id.durationValue);
         weatherInfo = findViewById(R.id.weatherInfo);
         activitiesList = findViewById(R.id.activitiesList);
+        filteredList = findViewById(R.id.filteredPlacesList);
         chosenActivitiesRecycler = findViewById(R.id.chosenActivitiesRecycler);
         savePlanButton = findViewById(R.id.savePlanButton);
         editPlanButton = findViewById(R.id.editPlanButton);
@@ -201,7 +211,31 @@ public class PlanActivity extends AppCompatActivity {
         // Check if first time user using notification manager
         notificationManager.checkFirstTimeUser(city, startDate);
 
+
     }
+
+    private void DayByDayPlan() {
+        // 1) Distribute places across days
+        List<List<PlaceData>> schedule = distributePlaces(filtered, days, hoursList);
+
+        // 2) Prepare your RecyclerView
+        RecyclerView recycler = findViewById(R.id.dayByDayPlanList);
+        recycler.setLayoutManager(new LinearLayoutManager(this));
+
+        // 3) Get your API key
+        String apiKey = getString(R.string.google_api_key);
+
+        // 4) Set or update the DayByDayAdapter
+        runOnUiThread(() -> {
+            if (dayByDayAdapter == null) {
+                dayByDayAdapter = new DayByDayAdapter(schedule, apiKey);
+                recycler.setAdapter(dayByDayAdapter);
+            } else {
+                dayByDayAdapter.updateSchedule(schedule);
+            }
+        });
+    }
+
 
     private void fetchPlaceById(String placeId) {
         Log.d("PlaceDebug", "Starting fetchPlaceById with placeId: " + placeId);
@@ -297,21 +331,11 @@ public class PlanActivity extends AppCompatActivity {
 
                     selectedPlace.setUserSelected(true);
 
-                    // Update UI on main thread
-                    runOnUiThread(() -> {
+
                         synchronized (placeDataList) {
                             placeDataList.removeIf(p -> p.getPlaceId().equals(placeId));
                             placeDataList.add(0, selectedPlace);
                         }
-
-                        if (placeAdapter1 == null) {
-                            placeAdapter1 = new PlaceAdapter1(placeDataList, apiKey);
-                            activitiesList.setAdapter(placeAdapter1);
-                            activitiesList.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
-                        } else {
-                            placeAdapter1.updatePlaces(placeDataList);
-                        }
-                    });
 
                     Log.d("PlaceDebug", "Place fetched and UI updated: " + name);
 
@@ -330,7 +354,6 @@ public class PlanActivity extends AppCompatActivity {
     private static final int MAX_RESULTS_PER_TYPE = 20;
 
     private List<PlaceData> placeDataList = new ArrayList<>();
-    private PlaceAdapter1 placeAdapter1;
 
     private void fetchPlacesOfType(String placeType, int timeSpent) {
         Log.d(TAG1, "Fetching places for type: " + placeType);
@@ -444,20 +467,35 @@ public class PlanActivity extends AppCompatActivity {
                             placeDataList.addAll(newPlaces);
                         }
 
+                        runOnUiThread(() -> {
+                            if (placeAdapter1 == null) {
+                                placeAdapter1 = new PlaceAdapter1(placeDataList, apiKey);
+                                activitiesList.setAdapter(placeAdapter1);
+                                activitiesList.setLayoutManager(new LinearLayoutManager(getApplicationContext()));  // set once here
+                            } else {
+                                placeAdapter1.updatePlaces(placeDataList);
+                            }
+                        });
+
                         if (currentCall == selectedCategories.size()) {
                             int totalTime = TotalTime(days, hoursList);
-                            List<PlaceData> filtered = filterPlacesByRatingAndTime(placeDataList, totalTime);
+                            filtered = filterPlacesByRatingAndTime(placeDataList, totalTime);
 
                             runOnUiThread(() -> {
-                                if (placeAdapter1 == null) {
-                                    placeAdapter1 = new PlaceAdapter1(filtered, apiKey);
-                                    activitiesList.setAdapter(placeAdapter1);
-                                    activitiesList.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
+                                if (filteredAdapter == null) {  // new adapter instance for filteredList
+                                    filteredAdapter = new PlaceAdapter1(filtered, apiKey);
+                                    filteredList.setAdapter(filteredAdapter);
+                                    filteredList.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
                                 } else {
-                                    placeAdapter1.updatePlaces(filtered);
+                                    filteredAdapter.updatePlaces(filtered);
                                 }
                             });
+
+                            if(days > 0){
+                                DayByDayPlan();
+                            }
                         }
+
 
                     } catch (JSONException e) {
                         Log.e(TAG1, "JSON parse error", e);
@@ -544,6 +582,169 @@ public class PlanActivity extends AppCompatActivity {
         return filteredPlaces;
     }
 
+
+    /**
+     * Distributes a list of PlaceData objects into daily itineraries, respecting spatial clustering,
+     * place-type diversity, and daily time constraints.
+     *
+     * @param places    List of all places to schedule
+     * @param days      Number of days to plan
+     * @param hoursList Available hours per day (size must equal "days")
+     * @return          A List of days, each day itself a List<PlaceData>
+     */
+    public static List<List<PlaceData>> distributePlaces(
+            List<PlaceData> places,
+            int days,
+            List<Integer> hoursList) {
+        if (days <= 0 || places == null || hoursList == null || hoursList.size() != days) {
+            throw new IllegalArgumentException("Invalid input parameters");
+        }
+
+        int n = places.size();
+        // 1. Prepare geographic points
+        double[][] points = new double[n][2];
+        for (int i = 0; i < n; i++) {
+            LatLng latLng = places.get(i).getLatLng();
+            points[i][0] = latLng.latitude;
+            points[i][1] = latLng.longitude;
+        }
+
+
+        // 2. Cluster by location into 'days' clusters
+        int[] assignment = kMeans(points, days, 100);
+
+        // 3. Build initial day lists
+        List<List<PlaceData>> schedule = new ArrayList<>();
+        for (int d = 0; d < days; d++) schedule.add(new ArrayList<>());
+        for (int i = 0; i < n; i++) {
+            schedule.get(assignment[i]).add(places.get(i));
+        }
+
+        // 4. Enforce no duplicate place types per day
+        enforceTypeDiversity(schedule);
+
+        // 5. Fit each day into available hours
+        balanceDailyTime(schedule, hoursList);
+
+        return schedule;
+    }
+
+// ---- Helper functions below ----
+
+    // KMeans on 2D points
+    private static int[] kMeans(double[][] pts, int k, int maxIter) {
+        int n = pts.length;
+        int[] labels = new int[n];
+        double[][] centroids = new double[k][2];
+        Random rnd = new Random();
+        for (int c = 0; c < k; c++) centroids[c] = pts[rnd.nextInt(n)].clone();
+
+        for (int iter = 0; iter < maxIter; iter++) {
+            boolean changed = false;
+            // assignment step
+            for (int i = 0; i < n; i++) {
+                int best = 0;
+                double bestDist = dist(pts[i], centroids[0]);
+                for (int c = 1; c < k; c++) {
+                    double d = dist(pts[i], centroids[c]);
+                    if (d < bestDist) { bestDist = d; best = c; }
+                }
+                if (labels[i] != best) { labels[i] = best; changed = true; }
+            }
+            if (!changed) break;
+            // update centroids
+            double[][] sum = new double[k][2];
+            int[] count = new int[k];
+            for (int i = 0; i < n; i++) {
+                int c = labels[i];
+                sum[c][0] += pts[i][0];
+                sum[c][1] += pts[i][1];
+                count[c]++;
+            }
+            for (int c = 0; c < k; c++) {
+                if (count[c] > 0) {
+                    centroids[c][0] = sum[c][0] / count[c];
+                    centroids[c][1] = sum[c][1] / count[c];
+                }
+            }
+        }
+        return labels;
+    }
+
+    // squared Euclidean distance
+    private static double dist(double[] a, double[] b) {
+        double dx = a[0] - b[0], dy = a[1] - b[1];
+        return dx*dx + dy*dy;
+    }
+
+    // Move duplicates so each day has unique place types
+    private static void enforceTypeDiversity(List<List<PlaceData>> days) {
+        int dCount = days.size();
+        for (int d = 0; d < dCount; d++) {
+            Set<String> seen = new HashSet<>();
+            Iterator<PlaceData> iter = days.get(d).iterator();
+            while (iter.hasNext()) {
+                PlaceData p = iter.next();
+                String type = p.getPlaceType();
+                if (seen.contains(type)) {
+                    // find another day lacking this type
+                    for (int od = 0; od < dCount; od++) {
+                        if (od == d) continue;
+                        boolean has = days.get(od).stream()
+                                .anyMatch(x -> x.getPlaceType().equals(type));
+                        if (!has) {
+                            days.get(od).add(p);
+                            iter.remove();
+                            break;
+                        }
+                    }
+                } else {
+                    seen.add(type);
+                }
+            }
+        }
+    }
+
+    // Adjust days so total visit time <= available hours
+    private static void balanceDailyTime(
+            List<List<PlaceData>> days,
+            List<Integer> hoursList) {
+        boolean moved;
+        do {
+            moved = false;
+            for (int d = 0; d < days.size(); d++) {
+                double total = days.get(d).stream()
+                        .mapToDouble(PlaceData::getTimeSpent).sum();
+                double limit = hoursList.get(d);
+                if (total > limit) {
+                    // pick smallest-time place to move
+                    PlaceData candidate = Collections.min(
+                            days.get(d), Comparator.comparingDouble(PlaceData::getTimeSpent));
+                    // find best target day
+                    int bestDay = -1;
+                    double bestSpace = -1;
+                    for (int od = 0; od < days.size(); od++) {
+                        if (od == d) continue;
+                        double used = days.get(od).stream()
+                                .mapToDouble(PlaceData::getTimeSpent).sum();
+                        double space = hoursList.get(od) - used;
+                        if (space >= candidate.getTimeSpent()
+                                && days.get(od).stream()
+                                .noneMatch(x -> x.getPlaceType().equals(candidate.getPlaceType()))
+                                && space > bestSpace) {
+                            bestSpace = space;
+                            bestDay = od;
+                        }
+                    }
+                    if (bestDay >= 0) {
+                        days.get(d).remove(candidate);
+                        days.get(bestDay).add(candidate);
+                        moved = true;
+                    }
+                }
+            }
+        } while (moved);
+    }
 
 
 
