@@ -3,19 +3,19 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="8dp"
-    android:layout_marginTop="4dp"
-    android:layout_marginEnd="8dp"
-    android:layout_marginBottom="4dp"
+    android:layout_marginStart="12dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginEnd="12dp"
+    android:layout_marginBottom="8dp"
     app:cardBackgroundColor="@color/background"
-    app:cardCornerRadius="8dp"
-    app:cardElevation="2dp">
+    app:cardCornerRadius="12dp"
+    app:cardElevation="3dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:padding="16dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -31,7 +31,8 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
                     <TextView
                         android:id="@+id/placeName"
@@ -41,41 +42,69 @@
                         android:fontFamily="sans-serif-medium"
                         android:text="Place Name"
                         android:textColor="@color/on_background"
-                        android:textSize="16sp"
+                        android:textSize="18sp"
                         android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/placeType"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/pill_background"
+                        android:fontFamily="sans-serif"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingTop="2dp"
+                        android:paddingBottom="2dp"
+                        android:text="Restaurant"
+                        android:textColor="@color/on_primary"
+                        android:textSize="12sp"
+                        android:layout_marginStart="8dp" />
                 </LinearLayout>
 
                 <TextView
                     android:id="@+id/placeAddress"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
+                    android:layout_marginTop="4dp"
                     android:fontFamily="sans-serif"
                     android:text="Place Address"
                     android:textColor="@color/on_secondary"
                     android:textSize="14sp" />
 
-                <RatingBar
-                    android:id="@+id/placeRating"
-                    style="?android:attr/ratingBarStyleSmall"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:isIndicator="true"
-                    android:progressTint="#FFC107" />
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_vertical">
 
-                <TextView
-                    android:id="@+id/placeRatingCount"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="()"
-                    android:textColor="@color/on_secondary"
-                    android:textSize="12sp"
-                    android:fontFamily="sans-serif" />
+                    <RatingBar
+                        android:id="@+id/placeRating"
+                        style="?android:attr/ratingBarStyleSmall"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:isIndicator="true"
+                        android:progressTint="#FFC107" />
 
+                    <TextView
+                        android:id="@+id/placeRatingCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="()"
+                        android:textColor="@color/on_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -85,23 +114,23 @@
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/placeImagesRecyclerView"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="160dp"
                 android:clipToPadding="false"
                 android:paddingStart="0dp"
-                android:paddingEnd="0dp"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp" />
+                android:paddingEnd="0dp" />
 
             <!-- Scroll indicator -->
             <ImageView
                 android:id="@+id/scroll_indicator"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
                 android:layout_marginEnd="8dp"
+                android:background="@drawable/circle_background"
+                android:padding="4dp"
                 android:src="@drawable/ic_chevron_right"
-                android:alpha="0.7"
+                android:alpha="0.9"
                 android:visibility="gone"
                 android:contentDescription="Scroll for more images" />
         </RelativeLayout>
@@ -112,11 +141,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="end"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="8dp"
             android:text="View on Maps"
             android:textAllCaps="false"
-            android:textColor="@color/primary" />
+            android:textColor="@color/primary"
+            android:drawableEnd="@drawable/ic_open_in_new"
+            android:drawablePadding="4dp" />
     </LinearLayout>
-
-
 </androidx.cardview.widget.CardView>

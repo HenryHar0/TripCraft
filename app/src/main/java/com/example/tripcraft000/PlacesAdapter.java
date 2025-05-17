@@ -133,6 +133,7 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
         private final Button viewOnMapsButton;
         private final ImageView scrollIndicator;
 
+
         public PlaceViewHolder(@NonNull View itemView) {
             super(itemView);
             nameTextView = itemView.findViewById(R.id.placeName);
@@ -142,6 +143,7 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
             placeCheckbox = itemView.findViewById(R.id.placeCheckbox);
             viewOnMapsButton = itemView.findViewById(R.id.viewOnMapsButton);
             scrollIndicator = itemView.findViewById(R.id.scroll_indicator);
+
         }
 
         public void bind(final MapPlacesActivity.PlaceMarker place,

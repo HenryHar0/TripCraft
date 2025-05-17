@@ -520,67 +520,59 @@ public class PlanActivity extends AppCompatActivity {
             return new ArrayList<>();
         }
 
-        // Step 1: Calculate a balanced score for each place
-        // The score is based on both rating and number of ratings
+        // Step 1: Score computation
         for (PlaceData place : allPlacesData) {
-            // Normalize rating to 0–100
             float rating = place.getRating();
             float normalizedRating = Math.max(0, Math.min(100, (rating / 5.0f) * 100));
-
-            // Log-scaled review score, normalized to 0–100
             float reviewScore = 0;
             int userRatings = place.getUserRatingsTotal();
             if (userRatings > 0) {
-                // log10(10000) ≈ 4; use that as upper bound for 100-point scaling
                 float logScale = (float) Math.log10(userRatings);
                 reviewScore = Math.max(0, Math.min(100, (logScale / 4.0f) * 100));
             }
-
-            // Combine both equally
             float score = (normalizedRating + reviewScore) / 2.0f;
-
-            // Priority boost if user-selected
             if (place.isUserSelected()) {
                 score += 10000;
             }
-
             place.setScore(score);
-
-            // Log the calculated score
-            Log.d(TAG1, "Place: " + place.getName() + " | Score: " + score);
         }
 
+        // Step 2: Group places by type
+        Map<String, List<PlaceData>> placesByType = new HashMap<>();
+        for (PlaceData place : allPlacesData) {
+            String type = place.getPlaceType(); // Assumes each place has a getType() method
+            placesByType.computeIfAbsent(type, k -> new ArrayList<>()).add(place);
+        }
 
+        int typeCount = placesByType.size();
+        int timePerType = totalAvailableTime / typeCount;
 
-        // Step 2: Sort places by their score in descending order
-        Collections.sort(allPlacesData, (p1, p2) -> Float.compare(p2.getScore(), p1.getScore()));
-
-        // Step 3: Keep adding places until we exceed the time limit
-        List<PlaceData> filteredPlaces = new ArrayList<>();
+        List<PlaceData> finalSelection = new ArrayList<>();
         int totalTime = 0;
 
-        for (PlaceData place : allPlacesData) {
-            if (totalTime + place.getTimeSpent() <= totalAvailableTime) {
-                filteredPlaces.add(place);
-                totalTime += place.getTimeSpent();
-            } else {
-                //If we have remaining time and this place would exceed it only slightly,
-                // consider adding it anyway if it has a high score
-                int remainingTime = totalAvailableTime - totalTime;
-                if (remainingTime > 0 &&
-                        place.getTimeSpent() - remainingTime <= 1 && // Only exceed by at most 1 hour
-                        place.getScore() > 80) {                     // Only if it's a high-scoring place
-                    filteredPlaces.add(place);
+        for (Map.Entry<String, List<PlaceData>> entry : placesByType.entrySet()) {
+            List<PlaceData> places = entry.getValue();
+
+            // Sort by score descending
+            places.sort((p1, p2) -> Float.compare(p2.getScore(), p1.getScore()));
+
+            int timeUsedForType = 0;
+            for (PlaceData place : places) {
+                if (timeUsedForType + place.getTimeSpent() <= timePerType &&
+                        totalTime + place.getTimeSpent() <= totalAvailableTime) {
+                    finalSelection.add(place);
+                    timeUsedForType += place.getTimeSpent();
                     totalTime += place.getTimeSpent();
                 }
             }
         }
 
-        Log.d(TAG1, "Places filtered: " + filteredPlaces.size() +
+        Log.d(TAG1, "Places filtered: " + finalSelection.size() +
                 " places selected, Total time: " + totalTime + " hours");
 
-        return filteredPlaces;
+        return finalSelection;
     }
+
 
 
     /**

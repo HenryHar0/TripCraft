@@ -11,6 +11,7 @@ import android.widget.RatingBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -40,6 +41,16 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
 
         holder.placeName.setText(place.getName());
         holder.placeAddress.setText(place.getAddress());
+
+        // Format and display type text only
+        String formattedType = getFormattedPlaceType(place.getPlaceType());
+        if (formattedType != null) {
+            holder.placeType.setText(formattedType);
+            holder.placeType.setVisibility(View.VISIBLE);
+        } else {
+            holder.placeType.setVisibility(View.GONE);
+        }
+
         holder.placeRating.setRating(place.getRating());
 
         // Display number of ratings
@@ -73,16 +84,15 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
             }
         });
 
+        // Highlight selected items
         if (place.isUserSelected()) {
             holder.itemView.setBackgroundColor(0xFFFFFACD);
         } else {
             holder.itemView.setBackgroundColor(
-                    androidx.core.content.ContextCompat.getColor(holder.itemView.getContext(), R.color.background)
+                    ContextCompat.getColor(holder.itemView.getContext(), R.color.background)
             );
         }
-
     }
-
 
     @Override
     public int getItemCount() {
@@ -92,6 +102,7 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
     public static class PlaceViewHolder extends RecyclerView.ViewHolder {
         TextView placeName;
         TextView placeAddress;
+        TextView placeType;
         RatingBar placeRating;
         TextView placeRatingCount;
         RecyclerView placeImagesRecyclerView;
@@ -102,6 +113,7 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
             super(itemView);
             placeName = itemView.findViewById(R.id.placeName);
             placeAddress = itemView.findViewById(R.id.placeAddress);
+            placeType = itemView.findViewById(R.id.placeType);
             placeRating = itemView.findViewById(R.id.placeRating);
             placeRatingCount = itemView.findViewById(R.id.placeRatingCount);
             placeImagesRecyclerView = itemView.findViewById(R.id.placeImagesRecyclerView);
@@ -114,4 +126,59 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
         this.placesList = newPlaces;
         notifyDataSetChanged();
     }
+
+
+    /**
+     * Maps raw place type strings to user-friendly display names.
+     */
+    private String getFormattedPlaceType(String type) {
+        switch (type) {
+            case "museum":
+                return "Museum";
+            case "tourist_attraction":
+                return "Tourist Attraction";
+            case "art_gallery":
+                return "Art Gallery";
+            case "church":
+            case "hindu_temple":
+            case "mosque":
+            case "synagogue":
+                return "Place of Worship";
+
+            case "restaurant":
+                return "Restaurant";
+            case "cafe":
+            case "bakery":
+                return "Cafe";
+            case "bar":
+                return "Bar";
+
+            case "shopping_mall":
+                return "Shopping Mall";
+            case "concert_hall":
+            case "performing_arts_theater":
+                return "Theater";
+            case "movie_theater":
+                return "Cinema";
+            case "night_club":
+                return "Night Club";
+            case "amusement_park":
+            case "bowling_alley":
+                return "Amusement Park";
+
+            case "park":
+                return "Park";
+            case "beach":
+                return "Beach";
+
+            case "zoo":
+                return "Zoo";
+            case "aquarium":
+                return "Aquarium";
+
+            default:
+                return null;
+        }
+    }
 }
+
