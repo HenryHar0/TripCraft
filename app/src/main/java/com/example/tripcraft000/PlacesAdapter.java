@@ -3,6 +3,7 @@ package com.example.tripcraft000;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,8 +24,11 @@ import androidx.recyclerview.widget.SnapHelper;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 
+import org.w3c.dom.Text;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewHolder> implements Filterable {
 
@@ -126,31 +130,29 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
 
     static class PlaceViewHolder extends RecyclerView.ViewHolder {
         private final TextView nameTextView;
-        private final TextView addressTextView;
         private final RatingBar ratingBar;
         private final RecyclerView imagesRecyclerView;
         private final CheckBox placeCheckbox;
         private final Button viewOnMapsButton;
         private final ImageView scrollIndicator;
+        private final TextView ratingcount;
 
 
         public PlaceViewHolder(@NonNull View itemView) {
             super(itemView);
             nameTextView = itemView.findViewById(R.id.placeName);
-            addressTextView = itemView.findViewById(R.id.placeAddress);
             ratingBar = itemView.findViewById(R.id.placeRating);
             imagesRecyclerView = itemView.findViewById(R.id.placeImagesRecyclerView);
             placeCheckbox = itemView.findViewById(R.id.placeCheckbox);
             viewOnMapsButton = itemView.findViewById(R.id.viewOnMapsButton);
             scrollIndicator = itemView.findViewById(R.id.scroll_indicator);
-
+            ratingcount = itemView.findViewById(R.id.placeRatingCount);
         }
 
         public void bind(final MapPlacesActivity.PlaceMarker place,
                          final OnPlaceClickListener listener,
                          final OnPlaceSelectionChangedListener selectionListener) {
             nameTextView.setText(place.getName());
-            addressTextView.setText(place.getVicinity());
 
             // Set checkbox state
             placeCheckbox.setChecked(place.isSelected());
@@ -161,6 +163,15 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.PlaceViewH
             } else {
                 ratingBar.setVisibility(View.GONE);
             }
+
+            int count = place.getUserRatingsTotal();
+            if (count > 0) {
+                ratingcount.setVisibility(View.VISIBLE);
+                ratingcount.setText(String.format(Locale.getDefault(), "(%d)", count));
+            } else {
+                ratingcount.setVisibility(View.GONE);
+            }
+
 
             // Setup horizontal image gallery
             List<String> photoUrls = place.getPhotoUrls();

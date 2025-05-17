@@ -45,6 +45,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
@@ -179,12 +180,6 @@ public class PlanActivity extends AppCompatActivity {
         selectedPlaceIds = intent.getStringArrayListExtra("selected_place_ids");
         hoursList = intent.getIntegerArrayListExtra("hours_per_day");
 
-        if (selectedPlaceIds != null && !selectedPlaceIds.isEmpty()) {
-            for (String id : selectedPlaceIds) {
-                fetchPlaceById(id);
-            }
-        }
-
         // Set up chosen activities
         if (selectedCategories != null && !selectedCategories.isEmpty()) {
             setupChosenActivities(selectedCategories);
@@ -237,7 +232,7 @@ public class PlanActivity extends AppCompatActivity {
     }
 
 
-    private void fetchPlaceById(String placeId) {
+    private void fetchPlaceById(String placeId,int timeSpent) {
         Log.d("PlaceDebug", "Starting fetchPlaceById with placeId: " + placeId);
 
         String apiKey = getString(R.string.google_api_key);
@@ -246,6 +241,8 @@ public class PlanActivity extends AppCompatActivity {
         String url = "https://places.googleapis.com/v1/places/" + placeId +
                 "?fields=displayName,formattedAddress,types,rating,location,userRatingCount,photos" +
                 "&key=" + apiKey;
+
+
 
         OkHttpClient client = new OkHttpClient();
 
@@ -284,15 +281,16 @@ public class PlanActivity extends AppCompatActivity {
                     String address = json.optString("formattedAddress", "No address available");
 
                     JSONArray typesJson = json.optJSONArray("types");
-                    String placeType = "📍 Place";
+                    String placeType = "Place";
                     if (typesJson != null && typesJson.length() > 0) {
                         for (int i = 0; i < typesJson.length(); i++) {
                             String type = typesJson.getString(i);
-                            String formatted = getFormattedPlaceType(type).toString();
-                            placeType = formatted;
+                            placeType = getFormattedPlaceType(type).toString();
                             break;
                         }
                     }
+
+
 
                     float rating = (float) json.optDouble("rating", 0.0);
                     int userRatingsTotal = json.optInt("userRatingCount", 0);
@@ -303,6 +301,8 @@ public class PlanActivity extends AppCompatActivity {
                         latLng = new LatLng(location.optDouble("latitude", 0.0), location.optDouble("longitude", 0.0));
                     }
 
+                    //PlaceData pd = new PlaceData(placeId, name, address, rating, placeLatLng, placeType, userRatingsTotal, timeSpent);
+
                     PlaceData selectedPlace = new PlaceData(
                             placeId,
                             name,
@@ -311,7 +311,7 @@ public class PlanActivity extends AppCompatActivity {
                             latLng,
                             placeType,
                             userRatingsTotal,
-                            2  // default time spent
+                            timeSpent
                     );
 
                     JSONArray photos = json.optJSONArray("photos");
@@ -332,10 +332,16 @@ public class PlanActivity extends AppCompatActivity {
                     selectedPlace.setUserSelected(true);
 
 
-                        synchronized (placeDataList) {
-                            placeDataList.removeIf(p -> p.getPlaceId().equals(placeId));
-                            placeDataList.add(0, selectedPlace);
+                    synchronized (placeDataList) {
+                        placeDataList.removeIf(p -> p.getPlaceId().equals(placeId));
+                        placeDataList.add(0, selectedPlace);
+                    }
+
+                    runOnUiThread(() -> {
+                        if (placeAdapter1 != null) {
+                            placeAdapter1.updatePlaces(placeDataList);
                         }
+                    });
 
                     Log.d("PlaceDebug", "Place fetched and UI updated: " + name);
 
@@ -465,7 +471,16 @@ public class PlanActivity extends AppCompatActivity {
 
                         synchronized (placeDataList) {
                             placeDataList.addAll(newPlaces);
+
+                            // Use a LinkedHashMap to keep insertion order but remove duplicates by placeId
+                            Map<String, PlaceData> uniqueMap = new LinkedHashMap<>();
+                            for (PlaceData pd : placeDataList) {
+                                uniqueMap.put(pd.getPlaceId(), pd); // overwrite duplicates, keeps last occurrence
+                            }
+                            placeDataList.clear();
+                            placeDataList.addAll(uniqueMap.values());
                         }
+
 
                         runOnUiThread(() -> {
                             if (placeAdapter1 == null) {
@@ -941,25 +956,9 @@ public class PlanActivity extends AppCompatActivity {
                 case "Tourist Attraction":
                     typesToSearch.put("tourist_attraction", 2);
                     break;
-                case "Restaurant":
-                    typesToSearch.put("restaurant", 1);
-                    break;
-                case "Cafe":
-                    typesToSearch.put("cafe", 1);
-                    typesToSearch.put("bakery", 1);
-                    break;
-                case "Bar":
-                    typesToSearch.put("bar", 2);
-                    break;
-                case "Shopping Mall":
-                    typesToSearch.put("shopping_mall", 3);
-                    break;
                 case "Theater":
                     typesToSearch.put("concert_hall", 2);
                     typesToSearch.put("performing_arts_theater", 2);
-                    break;
-                case "Cinema":
-                    typesToSearch.put("movie_theater", 2);
                     break;
                 case "Night Club":
                     typesToSearch.put("night_club", 3);
@@ -995,6 +994,11 @@ public class PlanActivity extends AppCompatActivity {
         for (Map.Entry<String, Integer> entry : typesToSearch.entrySet()) {
             String placeType = entry.getKey();
             int timeSpent = entry.getValue();
+            if (selectedPlaceIds != null && !selectedPlaceIds.isEmpty()) {
+                for (String id : selectedPlaceIds) {
+                    fetchPlaceById(id,timeSpent);
+                }
+            }
             fetchPlacesOfType(placeType, timeSpent);
         }
     }
@@ -1016,23 +1020,11 @@ public class PlanActivity extends AppCompatActivity {
             case "synagogue":
                 return new PlaceTypeInfo("Place of Worship", R.drawable.ic_place_of_worship);
 
-            // Food and drink
-            case "restaurant":
-                return new PlaceTypeInfo("Restaurant", R.drawable.ic_restaurant);
-            case "cafe":
-            case "bakery":
-                return new PlaceTypeInfo("Cafe", R.drawable.ic_cafe);
-            case "bar":
-                return new PlaceTypeInfo("Bar", R.drawable.ic_bar);
 
-            // Entertainment & leisure
-            case "shopping_mall":
-                return new PlaceTypeInfo("Shopping Mall", R.drawable.ic_shopping_mall);
+
             case "concert_hall":
             case "performing_arts_theater":
                 return new PlaceTypeInfo("Theater", R.drawable.ic_theater);
-            case "movie_theater":
-                return new PlaceTypeInfo("Cinema", R.drawable.ic_cinema);
             case "night_club":
                 return new PlaceTypeInfo("Night Club", R.drawable.ic_night_club);
             case "amusement_park":

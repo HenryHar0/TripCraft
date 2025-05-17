@@ -40,7 +40,6 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
         PlaceData place = placesList.get(position);
 
         holder.placeName.setText(place.getName());
-        holder.placeAddress.setText(place.getAddress());
 
         // Format and display type text only
         String formattedType = getFormattedPlaceType(place.getPlaceType());
@@ -101,7 +100,6 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
 
     public static class PlaceViewHolder extends RecyclerView.ViewHolder {
         TextView placeName;
-        TextView placeAddress;
         TextView placeType;
         RatingBar placeRating;
         TextView placeRatingCount;
@@ -112,7 +110,6 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
         public PlaceViewHolder(@NonNull View itemView) {
             super(itemView);
             placeName = itemView.findViewById(R.id.placeName);
-            placeAddress = itemView.findViewById(R.id.placeAddress);
             placeType = itemView.findViewById(R.id.placeType);
             placeRating = itemView.findViewById(R.id.placeRating);
             placeRatingCount = itemView.findViewById(R.id.placeRatingCount);
@@ -145,21 +142,10 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
             case "synagogue":
                 return "Place of Worship";
 
-            case "restaurant":
-                return "Restaurant";
-            case "cafe":
-            case "bakery":
-                return "Cafe";
-            case "bar":
-                return "Bar";
 
-            case "shopping_mall":
-                return "Shopping Mall";
             case "concert_hall":
             case "performing_arts_theater":
                 return "Theater";
-            case "movie_theater":
-                return "Cinema";
             case "night_club":
                 return "Night Club";
             case "amusement_park":

@@ -49,7 +49,6 @@ public class InterestsActivity extends AppCompatActivity {
 
     // UI Components
     private LinearLayout interestsLayout;
-    private ProgressBar progressBar;
     private TextView statusText;
     private ChipGroup categoriesChipGroup;
     private MaterialButton nextButton;
@@ -95,7 +94,6 @@ public class InterestsActivity extends AppCompatActivity {
 
     private void initializeUI() {
         interestsLayout = findViewById(R.id.interestsLayout);
-        progressBar = findViewById(R.id.progressBar);
         statusText = findViewById(R.id.statusText);
         categoriesChipGroup = findViewById(R.id.categoriesLayout);
         nextButton = findViewById(R.id.next_button);
@@ -174,12 +172,7 @@ public class InterestsActivity extends AppCompatActivity {
         // Add each chip ID and its corresponding category name
         categoryNamesList.add("Museum");
         categoryNamesList.add("Tourist Attraction");
-        categoryNamesList.add("Restaurant");
-        categoryNamesList.add("Cafe");
-        categoryNamesList.add("Bar");
-        categoryNamesList.add("Shopping Mall");
         categoryNamesList.add("Theater");
-        categoryNamesList.add("Cinema");
         categoryNamesList.add("Night Club");
         categoryNamesList.add("Park");
         categoryNamesList.add("Beach");
@@ -196,7 +189,7 @@ public class InterestsActivity extends AppCompatActivity {
 
         if (selectedCategories.isEmpty()) {
             TextView emptyView = new TextView(this);
-            emptyView.setText("Select categories from above");
+            emptyView.setText("Select categories from the bottom");
             emptyView.setTextSize(16);
             emptyView.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
             emptyView.setPadding(16, 16, 16, 16);
@@ -390,26 +383,14 @@ public class InterestsActivity extends AppCompatActivity {
                 return R.drawable.ic_museum;
             case "Tourist Attraction":
                 return R.drawable.ic_tourist_attraction;
-            case "Restaurant":
-                return R.drawable.ic_restaurant;
-            case "Cafe":
-                return R.drawable.ic_cafe;
-            case "Bar":
-                return R.drawable.ic_bar;
-            case "Shopping Mall":
-                return R.drawable.ic_shopping_mall;
             case "Theater":
                 return R.drawable.ic_theater;
-            case "Cinema":
-                return R.drawable.ic_cinema;
             case "Night Club":
                 return R.drawable.ic_night_club;
             case "Park":
                 return R.drawable.ic_park;
             case "Beach":
                 return R.drawable.ic_beach;
-            case "Nature Spot":
-                return R.drawable.ic_nature_spot;
             case "Art Gallery":
                 return R.drawable.ic_art_gallery;
             case "Place of Worship":

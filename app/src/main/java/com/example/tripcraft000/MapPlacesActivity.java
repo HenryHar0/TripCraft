@@ -21,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.appcompat.widget.SearchView;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 
@@ -33,6 +34,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.libraries.places.api.model.RectangularBounds;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -60,8 +62,10 @@ import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class MapPlacesActivity extends AppCompatActivity implements
@@ -95,6 +99,8 @@ public class MapPlacesActivity extends AppCompatActivity implements
     private Map<String, Marker> placeMarkers = new HashMap<>();
     private LatLngBounds cityBounds;
     private String cacheKey;
+
+    private RectangularBounds rectangularBounds;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -187,25 +193,9 @@ public class MapPlacesActivity extends AppCompatActivity implements
             case "Tourist Attraction":
                 typesToSearch.add("tourist_attraction");
                 break;
-            case "Restaurant":
-                typesToSearch.add("restaurant");
-                break;
-            case "Cafe":
-                typesToSearch.add("cafe");
-                typesToSearch.add("bakery");
-                break;
-            case "Bar":
-                typesToSearch.add("bar");
-                break;
-            case "Shopping Mall":
-                typesToSearch.add("shopping_mall");
-                break;
             case "Theater":
                 typesToSearch.add("concert_hall");
                 typesToSearch.add("performing_arts_theater");
-                break;
-            case "Cinema":
-                typesToSearch.add("movie_theater");
                 break;
             case "Night Club":
                 typesToSearch.add("night_club");
@@ -238,7 +228,7 @@ public class MapPlacesActivity extends AppCompatActivity implements
         }
 
         for (String type : typesToSearch) {
-            fetchPlacesForCategory(selectedCityName, type);
+            fetchPlacesForCategory(type);
         }
     }
 
@@ -314,7 +304,7 @@ public class MapPlacesActivity extends AppCompatActivity implements
 
         // If we already have places (from cache), update markers
         if (!allPlaces.isEmpty() && cityBounds != null) {
-            List<PlaceMarker> cityPlaces = filterPlacesToCityOnly(allPlaces, cityBounds);
+            List<PlaceMarker> cityPlaces = allPlaces;
             updateMapMarkers(cityPlaces);
         }
     }
@@ -428,7 +418,9 @@ public class MapPlacesActivity extends AppCompatActivity implements
                                 // Create LatLngBounds similar to Google Maps viewport
                                 LatLng southwest = new LatLng(south, west);
                                 LatLng northeast = new LatLng(north, east);
-                                LatLngBounds cityBounds = new LatLngBounds(southwest, northeast);
+                                rectangularBounds = RectangularBounds.newInstance(southwest, northeast);
+
+
 
                                 Log.d("MapPlacesActivity", "City bounds created successfully");
 
@@ -456,132 +448,9 @@ public class MapPlacesActivity extends AppCompatActivity implements
         void onBoundariesFetched(LatLngBounds bounds);
     }
 
-    // Method to check if a place is within city boundaries
-    private boolean isWithinCityBoundaries(double placeLat, double placeLng, LatLngBounds cityBounds) {
-        // Only use city bounds; no fallback logic
-        return cityBounds != null && cityBounds.contains(new LatLng(placeLat, placeLng));
-    }
-
-
-    // Calculate distance between two points using Haversine formula
-    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-        int radiusEarth = 6371; // Radius of the earth in km
-        double latDistance = Math.toRadians(lat2 - lat1);
-        double lonDistance = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return radiusEarth * c;
-    }
-
-    // Update filtering method to use boundaries
-    private List<PlaceMarker> filterPlacesToCityOnly(List<PlaceMarker> allPlaces, LatLngBounds cityBounds) {
-        List<PlaceMarker> cityPlaces = new ArrayList<>();
-
-        for (PlaceMarker place : allPlaces) {
-            if (isWithinCityBoundaries(place.getLatitude(), place.getLongitude(), cityBounds)) {
-                cityPlaces.add(place);
-            }
-        }
-
-        Log.d("MapPlacesActivity", "Filtered " + allPlaces.size() +
-                " places down to " + cityPlaces.size() + " in city");
-
-        return cityPlaces;
-    }
-
-    private void fetchPlacesForCategory(String cityName, String categoryName) {
-        new Thread(() -> {
-            try {
-                String apiKey = getString(R.string.google_api_key);
-                String baseUrl = "https://places.googleapis.com/v1/places:searchNearby";
-                URL url = new URL(baseUrl);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("POST");
-                connection.setRequestProperty("Content-Type", "application/json");
-                connection.setRequestProperty("X-Goog-Api-Key", apiKey);
-                connection.setRequestProperty("X-Goog-FieldMask", "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.photos");
-                connection.setDoOutput(true);
-
-                // Extract pure category (without emoji or prefix)
-                String category = categoryName;
-                if (category.contains(" ")) {
-                    category = category.substring(category.indexOf(" ") + 1);
-                }
-
-                // Calculate center of cityBounds
-                double centerLat = (cityBounds.northeast.latitude + cityBounds.southwest.latitude) / 2;
-                double centerLng = (cityBounds.northeast.longitude + cityBounds.southwest.longitude) / 2;
-
-                // Calculate radius using Haversine distance from center to NE corner
-                double radius = haversineDistance(
-                        centerLat, centerLng,
-                        cityBounds.northeast.latitude, cityBounds.northeast.longitude
-                );
-
-                // Construct JSON request body
-                JSONObject requestBody = new JSONObject();
-                JSONObject locationRestriction = new JSONObject();
-                JSONObject circle = new JSONObject();
-                circle.put("center", new JSONObject()
-                        .put("latitude", centerLat)
-                        .put("longitude", centerLng));
-                circle.put("radius", radius); // in meters
-                locationRestriction.put("circle", circle);
-                requestBody.put("locationRestriction", locationRestriction);
-
-                // Use includedTypes instead of textQuery (Google-supported type only!)
-                JSONArray includedTypes = new JSONArray();
-                includedTypes.put(category.toLowerCase().replace(" ", "_")); // e.g., "restaurant", "museum"
-                requestBody.put("includedTypes", includedTypes);
-
-                requestBody.put("rankPreference", "DISTANCE");
-                requestBody.put("maxResultCount", MAX_PLACES);
-
-                // Send request
-                try (OutputStream os = connection.getOutputStream()) {
-                    byte[] input = requestBody.toString().getBytes(StandardCharsets.UTF_8);
-                    os.write(input, 0, input.length);
-                }
-
-                allPlaces.clear();
-
-                int responseCode = connection.getResponseCode();
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    try (BufferedReader br = new BufferedReader(
-                            new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-                        StringBuilder response = new StringBuilder();
-                        String responseLine;
-                        while ((responseLine = br.readLine()) != null) {
-                            response.append(responseLine.trim());
-                        }
-                        JSONObject jsonResponse = new JSONObject(response.toString());
-                        runOnUiThread(() -> handlePlacesApiResponse(jsonResponse));
-                    }
-                } else {
-                    try (BufferedReader br = new BufferedReader(
-                            new InputStreamReader(connection.getErrorStream(), StandardCharsets.UTF_8))) {
-                        StringBuilder response = new StringBuilder();
-                        String responseLine;
-                        while ((responseLine = br.readLine()) != null) {
-                            response.append(responseLine.trim());
-                        }
-                        Log.e("MapPlacesActivity", "API Error: " + response.toString());
-                        runOnUiThread(() -> Toast.makeText(MapPlacesActivity.this,
-                                "Error fetching places: " + responseCode, Toast.LENGTH_SHORT).show());
-                    }
-                }
-            } catch (Exception e) {
-                Log.e("MapPlacesActivity", "Error fetching places", e);
-                runOnUiThread(() -> Toast.makeText(MapPlacesActivity.this,
-                        "Error fetching places: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            }
-        }).start();
-    }
 
     // Haversine distance in meters
-    private double haversineDistance(double lat1, double lng1, double lat2, double lng2) {
+    private double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
         final int R = 6371000; // Radius of Earth in meters
         double dLat = Math.toRadians(lat2 - lat1);
         double dLng = Math.toRadians(lng2 - lng1);
@@ -590,6 +459,141 @@ public class MapPlacesActivity extends AppCompatActivity implements
                         Math.sin(dLng / 2) * Math.sin(dLng / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
+    }
+
+    private int calculateRadiusFromBounds(RectangularBounds bounds) {
+        LatLng center = getCenterFromBounds(bounds);
+        LatLng northeast = bounds.getNortheast();
+        LatLng southwest = bounds.getSouthwest();
+
+        // Calculate distance to all four corners and find the maximum
+        double[] distances = new double[4];
+
+        // Distance to northeast corner
+        distances[0] = calculateDistance(center.latitude, center.longitude,
+                northeast.latitude, northeast.longitude);
+
+        // Distance to northwest corner
+        distances[1] = calculateDistance(center.latitude, center.longitude,
+                northeast.latitude, southwest.longitude);
+
+        // Distance to southeast corner
+        distances[2] = calculateDistance(center.latitude, center.longitude,
+                southwest.latitude, northeast.longitude);
+
+        // Distance to southwest corner
+        distances[3] = calculateDistance(center.latitude, center.longitude,
+                southwest.latitude, southwest.longitude);
+
+        // Find the maximum distance
+        double maxDistance = distances[0];
+        for (int i = 1; i < distances.length; i++) {
+            if (distances[i] > maxDistance) {
+                maxDistance = distances[i];
+            }
+        }
+
+        // Round up to the nearest meter and ensure minimum radius
+        int radius = (int) Math.ceil(maxDistance);
+
+        // Ensure radius doesn't exceed Google Places API limit of 50,000 meters
+        return Math.min(radius, 50000);
+    }
+
+    private LatLng getCenterFromBounds(RectangularBounds bounds) {
+        double lat = (bounds.getSouthwest().latitude + bounds.getNortheast().latitude) / 2.0;
+        double lng = (bounds.getSouthwest().longitude + bounds.getNortheast().longitude) / 2.0;
+        return new LatLng(lat, lng);
+    }
+
+
+    private void fetchPlacesForCategory(String categoryName) {
+        if (rectangularBounds == null) {
+            Toast.makeText(this, "Bounds not available yet!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String apiKey = getString(R.string.google_api_key);
+        String baseUrl = "https://places.googleapis.com/v1/places:searchNearby";
+
+        // Format category name
+        String category = categoryName.trim().toLowerCase().replace(" ", "_");
+
+        LatLng center = getCenterFromBounds(rectangularBounds);
+        double centerLat = center.latitude;
+        double centerLng = center.longitude;
+        double radius = calculateRadiusFromBounds(rectangularBounds);
+
+        // Build JSON body
+        JSONObject requestBody = new JSONObject();
+        try {
+            JSONObject centerObj = new JSONObject();
+            centerObj.put("latitude", centerLat);
+            centerObj.put("longitude", centerLng);
+
+            JSONObject circle = new JSONObject();
+            circle.put("center", centerObj);
+            circle.put("radius", radius);
+
+            JSONObject locationRestriction = new JSONObject();
+            locationRestriction.put("circle", circle);
+
+            JSONArray includedTypes = new JSONArray();
+            includedTypes.put(category);
+
+            requestBody.put("locationRestriction", locationRestriction);
+            requestBody.put("includedTypes", includedTypes);
+            requestBody.put("maxResultCount", MAX_PLACES);
+        } catch (JSONException e) {
+            Log.e("MapPlacesActivity", "JSON build error", e);
+            return;
+        }
+
+        OkHttpClient client = new OkHttpClient();
+
+        RequestBody body = RequestBody.create(
+                requestBody.toString(),
+                MediaType.parse("application/json; charset=utf-8")
+        );
+
+        Request request = new Request.Builder()
+                .url(baseUrl)
+                .post(body)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("X-Goog-Api-Key", apiKey)
+                .addHeader("X-Goog-FieldMask",
+                        "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.photos,places.types")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.e("MapPlacesActivity", "Network request failed", e);
+                runOnUiThread(() -> Toast.makeText(MapPlacesActivity.this,
+                        "Network error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    String errorBody = response.body() != null ? response.body().string() : "Unknown error";
+                    Log.e("MapPlacesActivity", "API error: " + errorBody);
+                    runOnUiThread(() -> Toast.makeText(MapPlacesActivity.this,
+                            "Error fetching places: " + response.code(), Toast.LENGTH_SHORT).show());
+                    return;
+                }
+
+                String responseBody = response.body().string();
+                try {
+                    JSONObject jsonResponse = new JSONObject(responseBody);
+                    runOnUiThread(() -> handlePlacesApiResponse(jsonResponse));
+                } catch (JSONException e) {
+                    Log.e("MapPlacesActivity", "JSON parsing error", e);
+                    runOnUiThread(() -> Toast.makeText(MapPlacesActivity.this,
+                            "Failed to parse response", Toast.LENGTH_SHORT).show());
+                }
+            }
+        });
     }
 
 
@@ -623,7 +627,7 @@ public class MapPlacesActivity extends AppCompatActivity implements
             placeIdsCache.put(cacheKey, placeIds);
             Log.d("MapPlacesActivity", "Saved " + placeIds.size() + " place IDs to cache for " + cacheKey);
 
-            List<PlaceMarker> cityPlaces = filterPlacesToCityOnly(allPlaces, cityBounds);
+            List<PlaceMarker> cityPlaces = allPlaces;
             updatePlacesDisplay(cityPlaces);
 
             // Update title with count
@@ -667,28 +671,33 @@ public class MapPlacesActivity extends AppCompatActivity implements
         // Extract rating
         double rating = placeJson.optDouble("rating", 0);
 
-        // Extract photos (we need to modify our API request to include photos)
+        // Extract user ratings total
+        int userRatingsTotal = placeJson.optInt("userRatingCount", 0); // or "user_ratings_total" if field name differs
+
+        // Extract photos
         List<String> photoUrls = new ArrayList<>();
         if (placeJson.has("photos")) {
             JSONArray photosArray = placeJson.getJSONArray("photos");
             for (int i = 0; i < photosArray.length(); i++) {
                 JSONObject photo = photosArray.getJSONObject(i);
                 if (photo.has("name")) {
-                    // In Places API v1, we need to construct the photo URL differently
                     String photoReference = photo.getString("name");
                     String apiKey = getString(R.string.google_api_key);
-                    String photoUrl = "https://places.googleapis.com/v1/" + photoReference + "/media?key=" + apiKey + "&maxHeightPx=400&maxWidthPx=400";
+                    String photoUrl = "https://places.googleapis.com/v1/" + photoReference
+                            + "/media?key=" + apiKey + "&maxHeightPx=400&maxWidthPx=400";
                     photoUrls.add(photoUrl);
                 }
             }
         }
 
-        // Create and return the PlaceMarker with the constructor
-        return new PlaceMarker(placeId, name, vicinity, lat, lng, rating, photoUrls);
+        return new PlaceMarker(placeId, name, vicinity, lat, lng, rating, userRatingsTotal, photoUrls);
+
     }
 
 
-private void updatePlacesDisplay(List<PlaceMarker> places) {
+
+
+    private void updatePlacesDisplay(List<PlaceMarker> places) {
     // Update RecyclerView
     placesAdapter = new PlacesAdapter(places, this, this);
     recyclerView.setAdapter(placesAdapter);
@@ -854,37 +863,50 @@ public static void clearCache() {
     selectedPlacesCache.clear();
 }
 
-public static class PlaceMarker {
-    private final String placeId;
-    private final String name;
-    private final String vicinity;
-    private final double latitude;
-    private final double longitude;
-    private final double rating;
-    private final List<String> photoUrls;
-    private boolean selected;
+    public static class PlaceMarker {
+        private final String placeId;
+        private final String name;
+        private final String vicinity;
+        private final double latitude;
+        private final double longitude;
+        private final double rating;
+        private final int userRatingsTotal;
+        private final List<String> photoUrls;
+        private boolean selected;
 
-    public PlaceMarker(String placeId, String name, String vicinity, double latitude, double longitude,
-                       double rating, List<String> photoUrls) {
-        this.placeId = placeId;
-        this.name = name;
-        this.vicinity = vicinity;
-        this.latitude = latitude;
-        this.longitude = longitude;
-        this.rating = rating;
-        this.photoUrls = photoUrls;
-        this.selected = false;
+        public PlaceMarker(String placeId, String name, String vicinity, double latitude, double longitude,
+                           double rating, int userRatingsTotal, List<String> photoUrls) {
+            this.placeId = placeId;
+            this.name = name;
+            this.vicinity = vicinity;
+            this.latitude = latitude;
+            this.longitude = longitude;
+            this.rating = rating;
+            this.userRatingsTotal = userRatingsTotal;
+            this.photoUrls = photoUrls != null ? photoUrls : new ArrayList<>();
+            this.selected = false;
+        }
+
+        public String getPlaceId() { return placeId; }
+
+        public String getName() { return name; }
+
+        public String getVicinity() { return vicinity; }
+
+        public double getLatitude() { return latitude; }
+
+        public double getLongitude() { return longitude; }
+
+        public float getRating() { return (float) rating; }
+
+        public int getUserRatingsTotal() { return userRatingsTotal; }
+
+        public List<String> getPhotoUrls() { return photoUrls; }
+
+
+        public boolean isSelected() { return selected; }
+
+        public void setSelected(boolean selected) { this.selected = selected; }
     }
 
-
-    public String getPlaceId() { return placeId; }
-    public String getName() { return name; }
-    public String getVicinity() { return vicinity; }
-    public double getLatitude() { return latitude; }
-    public double getLongitude() { return longitude; }
-    public float getRating() { return (float) rating; }
-    public List<String> getPhotoUrls() { return photoUrls; }
-    public boolean isSelected() { return selected; }
-    public void setSelected(boolean selected) { this.selected = selected; }
-}
 }
