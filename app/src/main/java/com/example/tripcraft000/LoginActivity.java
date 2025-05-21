@@ -3,6 +3,8 @@ package com.example.tripcraft000;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -35,6 +37,8 @@ public class LoginActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private DatabaseReference mDatabase;
     private GoogleSignInClient mGoogleSignInClient;
+
+    private MaterialButton buttonTestUser;
     private static final int RC_SIGN_IN = 9001;
 
     @Override
@@ -59,6 +63,7 @@ public class LoginActivity extends AppCompatActivity {
         buttonGoogleLogin = findViewById(R.id.buttonGoogleLogin);
         textViewSignUpTopRight = findViewById(R.id.textViewSignUpTopRight);
         textViewForgotPassword = findViewById(R.id.textViewForgotPassword);
+        buttonTestUser = findViewById(R.id.buttonTestUser);
 
         // Configure Google Sign In
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -73,6 +78,22 @@ public class LoginActivity extends AppCompatActivity {
         textViewSignUpTopRight.setOnClickListener(v -> goToSignUp());
         textViewForgotPassword.setOnClickListener(v -> handleForgotPassword());
         buttonGoogleLogin.setOnClickListener(v -> handleGoogleSignIn());
+
+        // Add click listener for the test user button
+        buttonTestUser.setOnClickListener(v -> loginWithTestUser());
+    }
+
+    private void loginWithTestUser() {
+        // Use predefined test user credentials
+        String testEmail = "individualproject2025@gmail.com";
+        String testPassword = "Samsung2025";
+
+        // Display the credentials in the input fields
+        editTextEmail.setText(testEmail);
+        editTextPassword.setText(testPassword);
+
+        // Login with the test credentials
+        loginWithEmail(testEmail, testPassword);
     }
 
     private void loginUser() {
@@ -112,10 +133,13 @@ public class LoginActivity extends AppCompatActivity {
                             }
                         }
                     } else {
+                        Exception exception = task.getException();
+                        Log.e("LoginActivity", "Authentication failed", exception);
                         Toast.makeText(LoginActivity.this, "Authentication failed: " +
-                                        (task.getException() != null ? task.getException().getMessage() : "Unknown error"),
+                                        (exception != null ? exception.getMessage() : "Unknown error"),
                                 Toast.LENGTH_SHORT).show();
                     }
+
                 });
     }
 

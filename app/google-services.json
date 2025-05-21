@@ -1,27 +1,37 @@
 {
   "project_info": {
-    "project_number": "578855284295",
-	"firebase_url": "https://tripcraft-715ba-default-rtdb.europe-west1.firebasedatabase.app/",
-    "project_id": "tripcraft-715ba",
-    "storage_bucket": "tripcraft-715ba.firebasestorage.app"
+    "project_number": "1030600971404",
+    "firebase_url": "https://tripcraft-73935-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "tripcraft-73935",
+    "storage_bucket": "tripcraft-73935.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:578855284295:android:c9d5e013f027d7445c0b62",
+        "mobilesdk_app_id": "1:1030600971404:android:d8fe6141b081f4af6f17a9",
         "android_client_info": {
           "package_name": "com.example.tripcraft000"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1030600971404-08o26kgkv7s1628ckbmcgdq0gvtmj8n4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyAsvWvvAs1b1HWVzVKDkvVGdEFbeRzN50E"
+          "current_key": "AIzaSyDeS1iCY6v_VznlAT8xWPUrMtBPNBaYz3E"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1030600971404-08o26kgkv7s1628ckbmcgdq0gvtmj8n4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

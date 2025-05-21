@@ -224,4 +224,23 @@
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonTestUser"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Test User"
+        android:textAllCaps="false"
+        android:textSize="16sp"
+        android:textColor="@color/on_primary"
+        app:cornerRadius="10dp"
+        app:backgroundTint="@color/secondary"
+        app:rippleColor="@color/ripple_light"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="16dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
