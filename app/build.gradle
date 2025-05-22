@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.tripcraft000'
+    namespace 'com.henry.tripcraft'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.tripcraft000"
+        applicationId "com.henry.tripcraft"
         minSdk 28
         targetSdk 34
         versionCode 1

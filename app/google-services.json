@@ -1,34 +1,42 @@
 {
   "project_info": {
-    "project_number": "1030600971404",
-    "firebase_url": "https://tripcraft-73935-default-rtdb.europe-west1.firebasedatabase.app",
-    "project_id": "tripcraft-73935",
-    "storage_bucket": "tripcraft-73935.firebasestorage.app"
+    "project_number": "901872539229",
+    "firebase_url": "https://tripcraft-628a6-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "tripcraft-628a6",
+    "storage_bucket": "tripcraft-628a6.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1030600971404:android:d8fe6141b081f4af6f17a9",
+        "mobilesdk_app_id": "1:901872539229:android:7897afaa171c864bca9fb4",
         "android_client_info": {
-          "package_name": "com.example.tripcraft000"
+          "package_name": "com.henry.tripcraft"
         }
       },
       "oauth_client": [
         {
-          "client_id": "1030600971404-08o26kgkv7s1628ckbmcgdq0gvtmj8n4.apps.googleusercontent.com",
+          "client_id": "901872539229-b5h4ochbh413ku8el9jnl8aqtaqqd591.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.henry.tripcraft",
+            "certificate_hash": "1bf30216ba240d603400b8b0ff6510468565f20b"
+          }
+        },
+        {
+          "client_id": "901872539229-e2rt9c3ka7tgolgasqj1ci96ios9cph7.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyDeS1iCY6v_VznlAT8xWPUrMtBPNBaYz3E"
+          "current_key": "AIzaSyA8q3OeahZUub9pNpxl8_2XNBFEZNXe6wU"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "1030600971404-08o26kgkv7s1628ckbmcgdq0gvtmj8n4.apps.googleusercontent.com",
+              "client_id": "901872539229-e2rt9c3ka7tgolgasqj1ci96ios9cph7.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

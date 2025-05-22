@@ -1,0 +1,46 @@
+[33mc74bf97[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m HEAD@{0}: reset: moving to HEAD~1
+[33m9a690ac[m HEAD@{1}: commit: images now show under the places
+[33mc74bf97[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m HEAD@{2}: commit: new
+[33m8d29508[m HEAD@{3}: reset: moving to HEAD
+[33m8d29508[m HEAD@{4}: commit: changes to MapPlacesActivity.java and PlanActivity.java
+[33mef1c893[m HEAD@{5}: reset: moving to HEAD
+[33mef1c893[m HEAD@{6}: reset: moving to HEAD
+[33mef1c893[m HEAD@{7}: commit: .
+[33mc13c02f[m HEAD@{8}: reset: moving to HEAD
+[33mc13c02f[m HEAD@{9}: commit: .
+[33mc1be40d[m HEAD@{10}: commit: .
+[33m5e87295[m HEAD@{11}: reset: moving to HEAD
+[33m5e87295[m HEAD@{12}: commit: changes to ui
+[33m24f6f49[m HEAD@{13}: commit: TimeActivity changes
+[33mfb178ac[m HEAD@{14}: reset: moving to HEAD
+[33mfb178ac[m HEAD@{15}: commit: TimeActivity
+[33mce69eb9[m HEAD@{16}: commit: changes to InterestsActivity and MapPlacesActivity
+[33m60f3bd5[m HEAD@{17}: commit: changes to InterestsActivity and MapPlacesActivity
+[33m6e08f8d[m HEAD@{18}: commit: selectedplaces now shows the category type
+[33md87fa70[m HEAD@{19}: commit: fixed selected places not showing
+[33m3ab409c[m HEAD@{20}: commit: activity_profile.xml changes
+[33mcc5cee8[m HEAD@{21}: reset: moving to origin/main
+[33mcc5cee8[m HEAD@{22}: commit: changes to activity_main.xml and activity_city.xml
+[33mb271dad[m HEAD@{23}: commit: new SignUpActivity/LoginActivity, new ProfileActivity/ new SettingsActivity
+[33mcbb9042[m HEAD@{24}: commit: logo, changes to CalendarActivity.java, PlanActivity.java
+[33m895f90e[m HEAD@{25}: pull origin main: Fast-forward
+[33mc7494cf[m HEAD@{26}: reset: moving to origin/main
+[33mc7494cf[m HEAD@{27}: commit: .
+[33mbad96de[m HEAD@{28}: commit: New Ui, changes to CalendarActivity.java, changes to MapPlacesActivity.java
+[33m36a1f60[m HEAD@{29}: reset: moving to Head
+[33m36a1f60[m HEAD@{30}: pull origin main: Fast-forward
+[33mb13b785[m HEAD@{31}: commit: New Ui, Interests Activity
+[33me30ae58[m HEAD@{32}: commit: Google Maps
+[33m1c0e7de[m HEAD@{33}: pull origin main: Fast-forward
+[33m22515df[m HEAD@{34}: commit: new
+[33m2da2a33[m HEAD@{35}: commit: fixes
+[33m617ee09[m HEAD@{36}: commit: New
+[33mb464d04[m HEAD@{37}: commit: New
+[33m12d1b2d[m HEAD@{38}: reset: moving to HEAD
+[33m12d1b2d[m HEAD@{39}: commit (merge): SignUp
+[33m4067a75[m HEAD@{40}: rebase (abort): returning to refs/heads/main
+[33m165e072[m HEAD@{41}: pull origin main --rebase (start): checkout 165e07266e57daefc3b4372e96d14c5a03868053
+[33m4067a75[m HEAD@{42}: commit (amend): SignUp
+[33m33bd795[m HEAD@{43}: commit: Your commit message here
+[33m26e50c8[m HEAD@{44}: checkout: moving from master to main
+[33m26e50c8[m HEAD@{45}: commit (initial): Implement authentication flow, app navigation, and sign-up/login handling

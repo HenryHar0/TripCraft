@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">Tripcraft000</string>
-    <string name="default_web_client_id">578855284295-216irem4i3ugdk3ghi9f930d6598seju.apps.googleusercontent.com</string>
+    <string name="app_name">Tripcraft</string>
+    <string name="default_web_client_id">901872539229-b5h4ochbh413ku8el9jnl8aqtaqqd591.apps.googleusercontent.com</string>
     <!-- Verify Email Screen -->
     <string name="email_verification">Verify Your Email</string>
     <string name="verification_instructions">We\'ve sent a verification link to your email. Please check your inbox and click the link to verify your account.</string>
