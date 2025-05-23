@@ -71,7 +71,6 @@ public class PlanActivity extends AppCompatActivity {
 
     private String startDate, endDate, city;
     private double latitude, longitude;
-    private ArrayList<String> activitiesListData;
     private ExecutorService executorService;
     private OkHttpClient httpClient;
     private ActivityResultLauncher<String> requestPermissionLauncher;
@@ -93,6 +92,8 @@ public class PlanActivity extends AppCompatActivity {
     private PlaceAdapter1 placeAdapter1, filteredAdapter;
 
     private DayByDayAdapter dayByDayAdapter;
+
+    private List<List<PlaceData>> schedule;
 
     private int days;
 
@@ -178,18 +179,18 @@ public class PlanActivity extends AppCompatActivity {
     }
 
     private void DayByDayPlan() {
-        // 1) Distribute places across days
-        List<List<PlaceData>> schedule = distributePlaces(filtered, days, hoursList);
-
-        // 2) Prepare your RecyclerView
-        RecyclerView recycler = findViewById(R.id.dayByDayPlanList);
-        recycler.setLayoutManager(new LinearLayoutManager(this));
-
-        // 3) Get your API key
-        String apiKey = getString(R.string.google_api_key);
-
-        // 4) Set or update the DayByDayAdapter
         runOnUiThread(() -> {
+            // 1) Distribute places across days
+            schedule = distributePlaces(filtered, days, hoursList);
+
+            // 2) Prepare your RecyclerView
+            RecyclerView recycler = findViewById(R.id.dayByDayPlanList);
+            recycler.setLayoutManager(new LinearLayoutManager(this));
+
+            // 3) Get your API key
+            String apiKey = getString(R.string.google_api_key);
+
+            // 4) Set or update the DayByDayAdapter
             if (dayByDayAdapter == null) {
                 dayByDayAdapter = new DayByDayAdapter(schedule, apiKey);
                 recycler.setAdapter(dayByDayAdapter);
@@ -200,17 +201,16 @@ public class PlanActivity extends AppCompatActivity {
     }
 
 
-    private void fetchPlaceById(String placeId,int timeSpent) {
+
+    private void fetchPlaceById(String placeId, int timeSpent) {
         Log.d("PlaceDebug", "Starting fetchPlaceById with placeId: " + placeId);
 
         String apiKey = getString(R.string.google_api_key);
 
-        // Updated: Include displayName field
+        // Updated: Include priceLevel and regularOpeningHours fields
         String url = "https://places.googleapis.com/v1/places/" + placeId +
-                "?fields=displayName,formattedAddress,types,rating,location,userRatingCount,photos" +
+                "?fields=displayName,formattedAddress,types,rating,location,userRatingCount,photos,priceLevel,regularOpeningHours" +
                 "&key=" + apiKey;
-
-
 
         OkHttpClient client = new OkHttpClient();
 
@@ -242,7 +242,7 @@ public class PlanActivity extends AppCompatActivity {
                 try {
                     JSONObject json = new JSONObject(responseBody);
 
-                    // ✅ Updated to extract displayName.text
+                    // Extract displayName.text
                     JSONObject displayName = json.optJSONObject("displayName");
                     String name = (displayName != null) ? displayName.optString("text", "No name available") : "No name available";
 
@@ -252,24 +252,40 @@ public class PlanActivity extends AppCompatActivity {
                     String placeType = "Place";
                     if (typesJson != null && typesJson.length() > 0) {
                         for (int i = 0; i < typesJson.length(); i++) {
-                            String type = typesJson.getString(i);
-                            placeType = getFormattedPlaceType(type).toString();
-                            break;
+                            if (!typesJson.isNull(i)) {
+                                String type = typesJson.getString(i);
+                                placeType = getFormattedPlaceType(type).toString();
+                                break;
+                            }
                         }
                     }
 
-
-
                     float rating = (float) json.optDouble("rating", 0.0);
                     int userRatingsTotal = json.optInt("userRatingCount", 0);
+
+                    // Extract price level
+                    int priceLevel = json.optInt("priceLevel", -1);
+
+                    // Extract opening hours
+                    String openingHours = "N/A";
+                    JSONObject regularOpeningHours = json.optJSONObject("regularOpeningHours");
+                    if (regularOpeningHours != null) {
+                        JSONArray weekdayDescriptions = regularOpeningHours.optJSONArray("weekdayDescriptions");
+                        if (weekdayDescriptions != null && weekdayDescriptions.length() > 0) {
+                            StringBuilder hoursBuilder = new StringBuilder();
+                            for (int i = 0; i < weekdayDescriptions.length(); i++) {
+                                if (i > 0) hoursBuilder.append("\n");
+                                hoursBuilder.append(weekdayDescriptions.getString(i));
+                            }
+                            openingHours = hoursBuilder.toString();
+                        }
+                    }
 
                     JSONObject location = json.optJSONObject("location");
                     LatLng latLng = null;
                     if (location != null) {
                         latLng = new LatLng(location.optDouble("latitude", 0.0), location.optDouble("longitude", 0.0));
                     }
-
-                    //PlaceData pd = new PlaceData(placeId, name, address, rating, placeLatLng, placeType, userRatingsTotal, timeSpent);
 
                     PlaceData selectedPlace = new PlaceData(
                             placeId,
@@ -281,6 +297,10 @@ public class PlanActivity extends AppCompatActivity {
                             userRatingsTotal,
                             timeSpent
                     );
+
+                    // Set price level and opening hours
+                    selectedPlace.setPriceLevel(priceLevel);
+                    selectedPlace.setOpeningHours(openingHours);
 
                     JSONArray photos = json.optJSONArray("photos");
                     if (photos != null) {
@@ -298,7 +318,6 @@ public class PlanActivity extends AppCompatActivity {
                     }
 
                     selectedPlace.setUserSelected(true);
-
 
                     synchronized (placeDataList) {
                         placeDataList.removeIf(p -> p.getPlaceId().equals(placeId));
@@ -319,10 +338,6 @@ public class PlanActivity extends AppCompatActivity {
             }
         });
     }
-
-
-
-
 
     private static final String TAG1 = "PlaceFetchDebug";
     private static final int MAX_RESULTS_PER_TYPE = 20;
@@ -345,7 +360,7 @@ public class PlanActivity extends AppCompatActivity {
             String apiKey = getString(R.string.google_api_key);
             String url = "https://places.googleapis.com/v1/places:searchNearby"
                     + "?key=" + apiKey
-                    + "&fields=places.id,places.displayName.text,places.formattedAddress,places.rating,places.location,places.photos,places.userRatingCount";
+                    + "&fields=places.id,places.displayName.text,places.formattedAddress,places.rating,places.location,places.photos,places.userRatingCount,places.priceLevel,places.regularOpeningHours";
 
             JSONObject bodyJson = new JSONObject();
             try {
@@ -417,10 +432,32 @@ public class PlanActivity extends AppCompatActivity {
                             float rating = (float) place.optDouble("rating", 0.0f);
                             int userRatingsTotal = place.optInt("userRatingCount", 0);
 
+                            // Extract price level
+                            int priceLevel = place.optInt("priceLevel", -1);
+
+                            // Extract opening hours
+                            String openingHours = "N/A";
+                            JSONObject regularOpeningHours = place.optJSONObject("regularOpeningHours");
+                            if (regularOpeningHours != null) {
+                                JSONArray weekdayDescriptions = regularOpeningHours.optJSONArray("weekdayDescriptions");
+                                if (weekdayDescriptions != null && weekdayDescriptions.length() > 0) {
+                                    StringBuilder hoursBuilder = new StringBuilder();
+                                    for (int j = 0; j < weekdayDescriptions.length(); j++) {
+                                        if (j > 0) hoursBuilder.append("\n");
+                                        hoursBuilder.append(weekdayDescriptions.getString(j));
+                                    }
+                                    openingHours = hoursBuilder.toString();
+                                }
+                            }
+
                             JSONObject loc = place.getJSONObject("location");
                             LatLng placeLatLng = new LatLng(loc.getDouble("latitude"), loc.getDouble("longitude"));
 
                             PlaceData pd = new PlaceData(placeId, name, address, rating, placeLatLng, placeType, userRatingsTotal, timeSpent);
+
+                            // Set price level and opening hours
+                            pd.setPriceLevel(priceLevel);
+                            pd.setOpeningHours(openingHours);
 
                             if (place.has("photos")) {
                                 JSONArray photos = place.getJSONArray("photos");
@@ -448,7 +485,6 @@ public class PlanActivity extends AppCompatActivity {
                             placeDataList.clear();
                             placeDataList.addAll(uniqueMap.values());
                         }
-
 
                         runOnUiThread(() -> {
                             if (placeAdapter1 == null) {
@@ -478,7 +514,6 @@ public class PlanActivity extends AppCompatActivity {
                                 DayByDayPlan();
                             }
                         }
-
 
                     } catch (JSONException e) {
                         Log.e(TAG1, "JSON parse error", e);
@@ -859,7 +894,7 @@ public class PlanActivity extends AppCompatActivity {
         tripPlanStorageManager.showSaveTripPlanDialog(
                 destination,
                 duration,
-                activitiesListData,
+                schedule,  // This should be your activitiesListData (List<List<PlaceData>>)
                 weather,
                 city,
                 startDate

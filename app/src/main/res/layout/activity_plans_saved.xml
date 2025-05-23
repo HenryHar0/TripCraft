@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -25,6 +26,24 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- Hidden section for PlaceAdapter1 compatibility -->
+    <LinearLayout
+        android:id="@+id/allPlacesSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/headerBackground">
+
+        <TextView
+            android:id="@+id/activitiesLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Activities"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/savedPlansList"
         android:layout_width="0dp"
@@ -32,36 +51,14 @@
         android:layout_marginTop="16dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="80dp"
+        android:layout_marginBottom="8dp"
         android:background="#FFFFFF"
         android:padding="8dp"
         android:clipToPadding="false"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/bottomNavigation"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/headerBackground" />
-
-    <FrameLayout
-        android:id="@+id/bottomButtonContainer"
-        android:layout_width="match_parent"
-        android:layout_height="64dp"
-        android:background="#2196F3"
-        app:layout_constraintBottom_toBottomOf="parent">
-
-        <Button
-            android:id="@+id/backButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:backgroundTint="#FFFFFF"
-            android:fontFamily="sans-serif"
-            android:paddingStart="24dp"
-            android:paddingEnd="24dp"
-            android:text="Back"
-            android:textAllCaps="false"
-            android:textColor="#2196F3"
-            app:cornerRadius="4dp" />
-    </FrameLayout>
 
     <View
         android:id="@+id/leftAccent"
@@ -69,7 +66,35 @@
         android:layout_height="0dp"
         android:background="#2196F3"
         app:layout_constraintTop_toBottomOf="@id/headerBackground"
-        app:layout_constraintBottom_toTopOf="@id/bottomButtonContainer"
+        app:layout_constraintBottom_toTopOf="@id/bottomNavigation"
         app:layout_constraintStart_toStartOf="@id/savedPlansList" />
+
+    <!-- Bottom Navigation Bar -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNavigation"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:background="@color/surface"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:itemIconTint="@color/bottom_nav_selector"
+        app:itemTextColor="@color/bottom_nav_selector"
+        app:itemActiveIndicatorStyle="@color/on_surface"
+        app:menu="@menu/bottom_navigation_menu"
+        app:labelVisibilityMode="unlabeled"
+        android:elevation="8dp" />
+
+    <include
+        layout="@layout/dialog_trip_plan_like"
+        />
+
+    <FrameLayout
+        android:id="@+id/fragment_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:background="#FFFFFF"
+        android:elevation="16dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

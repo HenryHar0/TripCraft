@@ -292,26 +292,12 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:itemIconTint="@color/primary"
-            app:itemTextColor="@color/primary"
+            app:itemIconTint="@color/bottom_nav_selector"
+            app:itemTextColor="@color/bottom_nav_selector"
+            app:itemActiveIndicatorStyle="@color/on_surface"
             app:menu="@menu/bottom_navigation_menu"
+            app:labelVisibilityMode="unlabeled"
             android:elevation="8dp" />
-
-        <!-- Floating Action Button for Generate New Plan -->
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/generateNewPlanButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="25dp"
-            android:src="@drawable/ic_plus"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:fabSize="normal"
-            app:backgroundTint="@color/primary"
-            app:tint="@android:color/white"
-            app:elevation="12dp"
-            android:contentDescription="Generate New Plan" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

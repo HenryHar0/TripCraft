@@ -7,10 +7,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
-import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -20,12 +20,12 @@ import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import android.util.Log;
 import java.util.List;
 
-public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewHolder> {
+public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceViewHolder> {
 
     private List<PlaceData> placesList;
     private String apiKey;
 
-    public PlaceAdapter1(List<PlaceData> placesList, String apiKey) {
+    public PlaceAdapter11(List<PlaceData> placesList, String apiKey) {
         this.placesList = placesList;
         this.apiKey = apiKey;
     }
@@ -34,7 +34,7 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
     @Override
     public PlaceViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_place1, parent, false);
+                .inflate(R.layout.item_place11, parent, false);
         return new PlaceViewHolder(view);
     }
 
@@ -45,13 +45,16 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
         // Set place name
         holder.placeName.setText(place.getName());
 
-        // Set place type
+        // Set place type in the main card
         String formattedType = getFormattedPlaceType(place.getPlaceType());
         if (formattedType != null) {
             holder.placeType.setText(formattedType);
             holder.placeType.setVisibility(View.VISIBLE);
+            // Also set it in the info squares section
+            holder.placeTypeValue.setText(formattedType);
         } else {
             holder.placeType.setVisibility(View.GONE);
+            holder.placeTypeValue.setText("N/A");
         }
 
         // Set rating
@@ -63,39 +66,17 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
             holder.placeRating.setVisibility(View.GONE);
         }
 
+        // Set price level (if available in PlaceData)
+        setPriceLevel(holder, place);
+
+        // Set opening hours (if available in PlaceData)
+        setOpeningHours(holder, place);
+
         // Load the main image
         loadPlaceImage(holder, place);
 
-        // Set click listener for the image to open detailed view
-        holder.placeImage.setOnClickListener(v -> {
-            if (holder.itemView.getContext() instanceof FragmentActivity) {
-                FragmentActivity activity = (FragmentActivity) holder.itemView.getContext();
-
-                PlaceDetailFragment detailFragment = PlaceDetailFragment.newInstance(place, apiKey);
-
-                View allPlacesSection = activity.findViewById(R.id.activitiesLabel).getParent() instanceof View ?
-                        (View) activity.findViewById(R.id.activitiesLabel).getParent() : null;
-                if (allPlacesSection != null) {
-                    allPlacesSection.setVisibility(View.GONE);
-                }
-
-                View fragmentContainer = activity.findViewById(R.id.fragment_container);
-                if (fragmentContainer != null) {
-                    fragmentContainer.setVisibility(View.VISIBLE);
-                    fragmentContainer.bringToFront();
-                }
-
-                activity.getSupportFragmentManager()
-                        .beginTransaction()
-                        .replace(R.id.fragment_container, detailFragment)
-                        .addToBackStack(null)
-                        .commit();
-            }
-        });
-
-
-        // Set click listener for the entire card to open in Maps (optional - you can remove this)
-        holder.itemView.setOnClickListener(v -> {
+        // Set click listener for "View on Maps" button only
+        holder.viewMapsButton.setOnClickListener(v -> {
             if (place.getLatLng() != null) {
                 Uri gmmIntentUri = Uri.parse("geo:" + place.getLatLng().latitude +
                         "," + place.getLatLng().longitude + "?q=" + Uri.encode(place.getName()));
@@ -107,11 +88,64 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
             }
         });
 
+        // Remove the main card click listener - no navigation on image/card click
+        holder.itemView.setOnClickListener(null);
+
         // Highlight selected items (optional - you can remove this if not needed)
         if (place.isUserSelected()) {
             holder.itemView.setAlpha(0.8f);
         } else {
             holder.itemView.setAlpha(1.0f);
+        }
+    }
+
+    private void setPriceLevel(PlaceViewHolder holder, PlaceData place) {
+        // Assuming PlaceData has a getPriceLevel() method that returns an integer (0-4)
+        // If not available, you'll need to add this to your PlaceData class
+        try {
+            int priceLevel = place.getPriceLevel(); // You may need to add this method to PlaceData
+            String priceText;
+            switch (priceLevel) {
+                case 0:
+                    priceText = "Free";
+                    break;
+                case 1:
+                    priceText = "$";
+                    break;
+                case 2:
+                    priceText = "$$";
+                    break;
+                case 3:
+                    priceText = "$$$";
+                    break;
+                case 4:
+                    priceText = "$$$$";
+                    break;
+                default:
+                    priceText = "N/A";
+                    break;
+            }
+            holder.priceLevelValue.setText(priceText);
+        } catch (Exception e) {
+            // If price level is not available, show N/A
+            holder.priceLevelValue.setText("N/A");
+        }
+    }
+
+    private void setOpeningHours(PlaceViewHolder holder, PlaceData place) {
+        // Assuming PlaceData has opening hours information
+        // You may need to add methods like isOpenNow(), getCurrentOpeningHours(), etc.
+        try {
+            // This is a placeholder - implement based on your PlaceData structure
+            String openingHours = place.getOpeningHours(); // You may need to add this method
+            if (openingHours != null && !openingHours.isEmpty()) {
+                holder.openingHoursValue.setText(openingHours);
+            } else {
+                holder.openingHoursValue.setText("N/A");
+            }
+        } catch (Exception e) {
+            // If opening hours are not available
+            holder.openingHoursValue.setText("N/A");
         }
     }
 
@@ -155,17 +189,41 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
     }
 
     public static class PlaceViewHolder extends RecyclerView.ViewHolder {
+        // Main card elements
         ImageView placeImage;
         TextView placeName;
         TextView placeType;
         TextView placeRating;
 
+        // Info squares elements
+        TextView placeTypeValue;
+        TextView priceLevelValue;
+        TextView openingHoursValue;
+
+        // About section (if you want to populate it dynamically)
+        TextView aboutText;
+
+        // View Maps button
+        LinearLayout viewMapsButton;
+
         public PlaceViewHolder(@NonNull View itemView) {
             super(itemView);
+            // Main card elements
             placeImage = itemView.findViewById(R.id.placeImage);
             placeName = itemView.findViewById(R.id.placeName);
             placeType = itemView.findViewById(R.id.placeType);
             placeRating = itemView.findViewById(R.id.placeRating);
+
+            // Info squares elements
+            placeTypeValue = itemView.findViewById(R.id.placeTypeValue);
+            priceLevelValue = itemView.findViewById(R.id.priceLevelValue);
+            openingHoursValue = itemView.findViewById(R.id.openingHoursValue);
+
+            // About section
+            aboutText = itemView.findViewById(R.id.aboutText);
+
+            // View Maps button
+            viewMapsButton = itemView.findViewById(R.id.viewMapsButton);
         }
     }
 
@@ -206,8 +264,18 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
                 return "Zoo";
             case "aquarium":
                 return "Aquarium";
+            case "restaurant":
+                return "Restaurant";
+            case "cafe":
+                return "Cafe";
+            case "bar":
+                return "Bar";
+            case "shopping_mall":
+                return "Shopping Mall";
+            case "store":
+                return "Store";
             default:
-                return null;
+                return type != null ? type.replace("_", " ").toUpperCase() : null;
         }
     }
 }

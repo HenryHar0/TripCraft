@@ -43,7 +43,6 @@ public class ProfileActivity extends AppCompatActivity implements BottomNavigati
     private ImageButton settingsButton;
     private Toolbar toolbar;
     private BottomNavigationView bottomNavigationView;
-    private FloatingActionButton generateNewPlanButton;
 
     // Firebase components
     private FirebaseAuth mAuth;
@@ -90,7 +89,6 @@ public class ProfileActivity extends AppCompatActivity implements BottomNavigati
         settingsButton = findViewById(R.id.settingsButton);
         toolbar = findViewById(R.id.toolbar);
         bottomNavigationView = findViewById(R.id.bottomNavigation);
-        generateNewPlanButton = findViewById(R.id.generateNewPlanButton);
     }
 
     private void setupToolbar() {
@@ -107,9 +105,7 @@ public class ProfileActivity extends AppCompatActivity implements BottomNavigati
         bottomNavigationView.setSelectedItemId(R.id.profileButton);
 
         // Set up FAB
-        generateNewPlanButton.setOnClickListener(v ->
-                startActivity(new Intent(ProfileActivity.this, CityActivity.class))
-        );
+
 
 
         settingsButton.setOnClickListener(v ->
@@ -279,7 +275,14 @@ public class ProfileActivity extends AppCompatActivity implements BottomNavigati
         if (itemId == R.id.navigation_home) {
             startActivity(new Intent(this, MainActivity.class));
             return true;
-        } else if (itemId == R.id.profileButton) {
+        }
+        else if(itemId == R.id.navigation_plus) {
+            startActivity(new Intent(ProfileActivity.this, CityActivity.class));
+        }
+        else if(itemId == R.id.navigation_saved_plan){
+            startActivity(new Intent(this, SavedPlansActivity.class));
+            return true;
+        }else if (itemId == R.id.profileButton) {
             // Already on profile screen
             return true;
         }

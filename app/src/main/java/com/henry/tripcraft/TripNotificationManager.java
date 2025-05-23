@@ -32,9 +32,17 @@ public class TripNotificationManager {
     private final Context context;
     private final ActivityResultLauncher<String> requestPermissionLauncher;
 
+    // Constructor for activities that need permission handling
     public TripNotificationManager(Context context, ActivityResultLauncher<String> requestPermissionLauncher) {
         this.context = context;
         this.requestPermissionLauncher = requestPermissionLauncher;
+        createNotificationChannel();
+    }
+
+    // Constructor for activities that don't need permission handling (like SavedPlansActivity)
+    public TripNotificationManager(Context context) {
+        this.context = context;
+        this.requestPermissionLauncher = null;
         createNotificationChannel();
     }
 
@@ -53,6 +61,12 @@ public class TripNotificationManager {
     }
 
     private void showNotificationExplanationDialog(String city, String startDate) {
+        // Only show dialog if we have permission launcher available
+        if (requestPermissionLauncher == null) {
+            Log.w(TAG, "Cannot show notification dialog - no permission launcher available");
+            return;
+        }
+
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle("Trip Reminders");
 
@@ -81,21 +95,35 @@ public class TripNotificationManager {
     }
 
     public void requestNotificationPermission(String city, String startDate) {
+        // Check if permission launcher is available
+        if (requestPermissionLauncher == null) {
+            Log.w(TAG, "Cannot request notification permission - no permission launcher available");
+            // Still enable notifications if on older Android versions
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                enableNotificationsDirectly(city, startDate);
+            }
+            return;
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS);
         } else {
             // For older versions, no runtime permission needed
-            SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            SharedPreferences.Editor editor = sharedPreferences.edit();
-            editor.putBoolean(NOTIFICATION_PREF, true);
-            editor.apply();
-
-            if (startDate != null && !startDate.isEmpty()) {
-                scheduleNotifications(startDate, city);
-            }
-
-            Toast.makeText(context, "Trip reminders enabled!", Toast.LENGTH_SHORT).show();
+            enableNotificationsDirectly(city, startDate);
         }
+    }
+
+    private void enableNotificationsDirectly(String city, String startDate) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(NOTIFICATION_PREF, true);
+        editor.apply();
+
+        if (startDate != null && !startDate.isEmpty()) {
+            scheduleNotifications(startDate, city);
+        }
+
+        Toast.makeText(context, "Trip reminders enabled!", Toast.LENGTH_SHORT).show();
     }
 
     private void createNotificationChannel() {
@@ -112,6 +140,15 @@ public class TripNotificationManager {
     }
 
     public void scheduleNotifications(String tripDate, String city) {
+        // Check if notifications are enabled
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        boolean notificationsEnabled = sharedPreferences.getBoolean(NOTIFICATION_PREF, false);
+
+        if (!notificationsEnabled) {
+            Log.d(TAG, "Notifications are disabled, skipping scheduling");
+            return;
+        }
+
         try {
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
             Date tripStartDate = dateFormat.parse(tripDate);
@@ -124,6 +161,8 @@ public class TripNotificationManager {
                 scheduleNotification(tripStartDate, 1, ONE_DAY_NOTIFICATION_ID,
                         "Your trip to " + city + " is tomorrow!",
                         "Final preparations for your journey to " + city + ".");
+
+                Log.d(TAG, "Notifications scheduled for trip to " + city + " on " + tripDate);
             }
         } catch (ParseException e) {
             Log.e(TAG, "Error scheduling notifications", e);
@@ -150,30 +189,40 @@ public class TripNotificationManager {
         calendar.set(Calendar.MINUTE, 0);
         calendar.set(Calendar.SECOND, 0);
 
-        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        // Only schedule if the notification time is in the future
+        if (calendar.getTimeInMillis() > System.currentTimeMillis()) {
+            AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
 
-        if (alarmManager != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                            AlarmManager.RTC_WAKEUP,
-                            calendar.getTimeInMillis(),
-                            pendingIntent
-                    );
-                } else {
-                    alarmManager.set(
-                            AlarmManager.RTC_WAKEUP,
-                            calendar.getTimeInMillis(),
-                            pendingIntent
-                    );
+            if (alarmManager != null) {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        if (alarmManager.canScheduleExactAlarms()) {
+                            alarmManager.setExactAndAllowWhileIdle(
+                                    AlarmManager.RTC_WAKEUP,
+                                    calendar.getTimeInMillis(),
+                                    pendingIntent
+                            );
+                        } else {
+                            alarmManager.set(
+                                    AlarmManager.RTC_WAKEUP,
+                                    calendar.getTimeInMillis(),
+                                    pendingIntent
+                            );
+                        }
+                    } else {
+                        alarmManager.setExactAndAllowWhileIdle(
+                                AlarmManager.RTC_WAKEUP,
+                                calendar.getTimeInMillis(),
+                                pendingIntent
+                        );
+                    }
+                    Log.d(TAG, "Scheduled notification for " + calendar.getTime());
+                } catch (SecurityException e) {
+                    Log.e(TAG, "Security exception when scheduling alarm", e);
                 }
-            } else {
-                alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
-                        pendingIntent
-                );
             }
+        } else {
+            Log.d(TAG, "Notification time is in the past, skipping scheduling");
         }
     }
 
@@ -197,6 +246,41 @@ public class TripNotificationManager {
             editor.apply();
 
             Toast.makeText(context, "Notifications disabled. You can enable them later in settings.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // Utility method to check if notifications are enabled
+    public boolean areNotificationsEnabled() {
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return sharedPreferences.getBoolean(NOTIFICATION_PREF, false);
+    }
+
+    // Cancel scheduled notifications (useful when deleting trip plans)
+    public void cancelNotifications() {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+
+        if (alarmManager != null) {
+            // Cancel one week notification
+            Intent intent1 = new Intent(context, NotificationReceiver.class);
+            PendingIntent pendingIntent1 = PendingIntent.getBroadcast(
+                    context,
+                    ONE_WEEK_NOTIFICATION_ID,
+                    intent1,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+            alarmManager.cancel(pendingIntent1);
+
+            // Cancel one day notification
+            Intent intent2 = new Intent(context, NotificationReceiver.class);
+            PendingIntent pendingIntent2 = PendingIntent.getBroadcast(
+                    context,
+                    ONE_DAY_NOTIFICATION_ID,
+                    intent2,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+            alarmManager.cancel(pendingIntent2);
+
+            Log.d(TAG, "Cancelled scheduled notifications");
         }
     }
 }

@@ -4,22 +4,17 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.TextView;
-import android.app.ActivityOptions;
-import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 public class MainActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener {
 
-    private FloatingActionButton generateNewPlanButton;
     private TextView usernameText;
     private TextView sloganText;
     private BottomNavigationView bottomNavigationView;
@@ -36,8 +31,6 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         // Initialize views
         usernameText = findViewById(R.id.usernameText);
         sloganText = findViewById(R.id.sloganText);
-        generateNewPlanButton = findViewById(R.id.generateNewPlanButton);
-        View yourPlansButton = findViewById(R.id.yourPlansButton);
         bottomNavigationView = findViewById(R.id.bottomNavigation);
 
         // Set username from Firebase or SharedPreferences
@@ -46,26 +39,8 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         // Setup bottom navigation
         bottomNavigationView.setOnNavigationItemSelectedListener(this);
 
-        // Hide center item to make room for FAB
-        bottomNavigationView.getMenu().findItem(R.id.navigation_placeholder).setEnabled(false);
-
-        // Setup click listeners
-        generateNewPlanButton.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, CityActivity.class);
-
-            // Create the zoom animation using ActivityOptions
-            ActivityOptions options = ActivityOptions.makeSceneTransitionAnimation(
-                    MainActivity.this,
-                    Pair.create(generateNewPlanButton, "transitionButton")
-            );
-
-            startActivityForResult(intent, 1, options.toBundle());
-        });
-
-        yourPlansButton.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, SavedPlansActivity.class);
-            startActivity(intent);
-        });
+        // Set home as selected by default
+        bottomNavigationView.setSelectedItemId(R.id.navigation_home);
     }
 
     @Override
@@ -75,7 +50,23 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         if (id == R.id.navigation_home) {
             // Already on home, do nothing or refresh
             return true;
+        } else if (id == R.id.navigation_saved_plan) {
+            // Navigate to SavedPlansActivity (formerly yourPlansButton functionality)
+            Intent intent = new Intent(MainActivity.this, SavedPlansActivity.class);
+            startActivity(intent);
+            return true;
+        } else if (id == R.id.navigation_plus) {
+            // Navigate to CityActivity (formerly generateNewPlanButton functionality)
+            Intent intent = new Intent(MainActivity.this, CityActivity.class);
+            startActivityForResult(intent, 1);
+            return true;
+        } else if (id == R.id.navigation_ai) {
+            // Navigate to ChatActivity
+            Intent intent = new Intent(MainActivity.this, ChatActivity.class);
+            startActivity(intent);
+            return true;
         } else if (id == R.id.profileButton) {
+            // Navigate to ProfileActivity
             Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
             startActivity(intent);
             return true;
@@ -93,6 +84,13 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             startActivity(intent);
             finish();
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Ensure home is selected when returning to MainActivity
+        bottomNavigationView.setSelectedItemId(R.id.navigation_home);
     }
 
     @Override

@@ -54,4 +54,10 @@
     <color name="chip_selected_background">#E0F2FE</color>
     <color name="chip_text_color">#333333</color>
     <color name="chip_selected_text_color">#0077CC</color>
+
+    <color name="dialog_background">#FFFFFF</color>
+    <color name="dialog_border">#E0E0E0</color>
+
+    <color name="transparent">#00000000</color>
+
 </resources>

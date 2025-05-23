@@ -1,27 +1,27 @@
 package com.henry.tripcraft;
 
-import android.util.Log;
-
 import com.google.android.gms.maps.model.LatLng;
-
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PlaceData {
+public class PlaceData implements Serializable {
     private String placeId;
     private String name;
     private String address;
     private float rating;
-    private List<String> photoReferences;
     private LatLng latLng;
     private String placeType;
     private int userRatingsTotal;
     private int timeSpent;
-    private float score;
-    private boolean isUserSelected = false;
+    private List<String> photoReferences;
+    private boolean userSelected;
+    private int priceLevel;
+    private String openingHours;
+    private float score; // Added score field
 
-
-    public PlaceData(String placeId, String name, String address, float rating, LatLng latLng, String placeType, int userRatingsTotal, int timeSpent) {
+    public PlaceData(String placeId, String name, String address, float rating,
+                     LatLng latLng, String placeType, int userRatingsTotal, int timeSpent) {
         this.placeId = placeId;
         this.name = name;
         this.address = address;
@@ -29,71 +29,49 @@ public class PlaceData {
         this.latLng = latLng;
         this.placeType = placeType;
         this.userRatingsTotal = userRatingsTotal;
-        this.photoReferences = new ArrayList<>();
         this.timeSpent = timeSpent;
+        this.photoReferences = new ArrayList<>();
+        this.userSelected = false;
+        this.priceLevel = -1;
+        this.openingHours = "N/A";
+        this.score = 0f; // Default score
     }
 
+    public String getPlaceId() { return placeId; }
+    public String getName() { return name; }
+    public String getAddress() { return address; }
+    public float getRating() { return rating; }
+    public LatLng getLatLng() { return latLng; }
+    public String getPlaceType() { return placeType; }
+    public int getUserRatingsTotal() { return userRatingsTotal; }
+    public int getTimeSpent() { return timeSpent; }
+    public List<String> getPhotoReferences() { return photoReferences; }
+    public boolean isUserSelected() { return userSelected; }
+    public int getPriceLevel() { return priceLevel; }
+    public String getOpeningHours() { return openingHours; }
+    public float getScore() { return score; } // Getter for score
 
-    public String getPlaceId() {
-        return placeId;
-    }
-    public void setScore(float score) {
-        this.score = score;
-    }
-    public void setUserSelected(boolean selected) {
-        this.isUserSelected = selected;
-    }
+    public void setPlaceId(String placeId) { this.placeId = placeId; }
+    public void setName(String name) { this.name = name; }
+    public void setAddress(String address) { this.address = address; }
+    public void setRating(float rating) { this.rating = rating; }
+    public void setLatLng(LatLng latLng) { this.latLng = latLng; }
+    public void setPlaceType(String placeType) { this.placeType = placeType; }
+    public void setUserRatingsTotal(int userRatingsTotal) { this.userRatingsTotal = userRatingsTotal; }
+    public void setTimeSpent(int timeSpent) { this.timeSpent = timeSpent; }
+    public void setUserSelected(boolean userSelected) { this.userSelected = userSelected; }
+    public void setPriceLevel(int priceLevel) { this.priceLevel = priceLevel; }
+    public void setOpeningHours(String openingHours) { this.openingHours = openingHours; }
+    public void setScore(float score) { this.score = score; } // Setter for score
 
-    public boolean isUserSelected() {
-        Log.d("PlaceData", "isUserSelected() called for " + this.name);
-        return isUserSelected;
-    }
-
-
-    public float getScore() {
-        return score;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public float getRating() {
-        return rating;
-    }
-
-    public List<String> getPhotoReferences() {
-        return photoReferences;
-    }
-
-    public int getUserRatingsTotal() {
-        return userRatingsTotal;
+    public void addPhotoReference(String photoReference) {
+        if (photoReferences == null) {
+            photoReferences = new ArrayList<>();
+        }
+        photoReferences.add(photoReference);
     }
 
     public void setPhotoReferences(List<String> photoReferences) {
         this.photoReferences = photoReferences;
-    }
-
-    public void addPhotoReference(String photoReference) {
-        if (this.photoReferences == null) {
-            this.photoReferences = new ArrayList<>();
-        }
-        this.photoReferences.add(photoReference);
-    }
-
-    public LatLng getLatLng() {
-        return latLng;
-    }
-
-    public String getPlaceType() {
-        return placeType;
-    }
-
-    public int getTimeSpent() {
-        return timeSpent;
     }
 }

@@ -2,140 +2,90 @@
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="200dp"
     android:layout_marginStart="12dp"
     android:layout_marginTop="8dp"
     android:layout_marginEnd="12dp"
     android:layout_marginBottom="8dp"
-    app:cardBackgroundColor="@color/background"
     app:cardCornerRadius="12dp"
     app:cardElevation="3dp">
 
-    <LinearLayout
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_height="match_parent">
 
+        <ImageView
+            android:id="@+id/placeImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@drawable/placeholder_image"
+            android:contentDescription="Place image" />
+
+        <!-- Place name and type - bottom left -->
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:id="@+id/placeName"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="Place Name"
-                        android:textColor="@color/on_background"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/placeType"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/pill_background"
-                        android:fontFamily="sans-serif"
-                        android:paddingStart="8dp"
-                        android:paddingEnd="8dp"
-                        android:paddingTop="2dp"
-                        android:paddingBottom="2dp"
-                        android:text="PlaceType"
-                        android:textColor="@color/on_primary"
-                        android:textSize="12sp"
-                        android:layout_marginStart="8dp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical">
-
-                    <RatingBar
-                        android:id="@+id/placeRating"
-                        style="?android:attr/ratingBarStyleSmall"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:isIndicator="true"
-                        android:progressTint="#FFC107" />
-
-                    <TextView
-                        android:id="@+id/placeRatingCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
-                        android:text="()"
-                        android:textColor="@color/on_secondary"
-                        android:textSize="13sp"
-                        android:fontFamily="sans-serif" />
-                </LinearLayout>
-            </LinearLayout>
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/divider"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="12dp" />
-
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <!-- Your RecyclerView -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/placeImagesRecyclerView"
-                android:layout_width="match_parent"
-                android:layout_height="160dp"
-                android:clipToPadding="false"
-                android:paddingStart="0dp"
-                android:paddingEnd="0dp" />
-
-            <!-- Scroll indicator -->
-            <ImageView
-                android:id="@+id/scroll_indicator"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/circle_background"
-                android:padding="4dp"
-                android:src="@drawable/ic_chevron_right"
-                android:alpha="0.9"
-                android:visibility="gone"
-                android:contentDescription="Scroll for more images" />
-        </RelativeLayout>
-
-        <Button
-            android:id="@+id/viewOnMapsButton"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginTop="8dp"
-            android:text="View on Maps"
-            android:textAllCaps="false"
-            android:textColor="@color/primary"
-            android:drawableEnd="@drawable/ic_open_in_new"
-            android:drawablePadding="4dp" />
-    </LinearLayout>
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentStart="true"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="16dp"
+            android:layout_toStartOf="@+id/ratingContainer"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/placeName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:text="Place Name"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/placeType"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="sans-serif"
+                android:text="PlaceType"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <!-- Rating container - bottom right -->
+        <LinearLayout
+            android:id="@+id/ratingContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/placeRating"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="4.7"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-medium" />
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:src="@drawable/ic_star"
+                android:contentDescription="Star rating" />
+
+        </LinearLayout>
+
+    </RelativeLayout>
+
 </androidx.cardview.widget.CardView>

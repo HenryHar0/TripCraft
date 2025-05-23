@@ -3,15 +3,25 @@
     <item
         android:id="@+id/navigation_home"
         android:icon="@drawable/ic_home"
-        android:title="Home" />
+        android:title="" />
 
     <item
-        android:id="@+id/navigation_placeholder"
-        android:title=""
-        android:enabled="false" />
+        android:id="@+id/navigation_saved_plan"
+        android:icon="@drawable/ic_saved"
+        android:title="" />
+
+    <item
+        android:id="@+id/navigation_plus"
+        android:icon="@drawable/ic_plus"
+        android:title="" />
+
+    <item
+        android:id="@+id/navigation_ai"
+        android:icon="@drawable/ic_restaurant"
+        android:title="" />
 
     <item
         android:id="@+id/profileButton"
         android:icon="@drawable/ic_profile"
-        android:title="Profile" />
+        android:title="" />
 </menu>

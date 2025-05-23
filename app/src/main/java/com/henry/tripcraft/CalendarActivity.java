@@ -57,6 +57,9 @@ public class CalendarActivity extends AppCompatActivity {
         initViews();
         extractIntentData();
 
+        // Set week to start with Monday
+        calendarView.setFirstDayOfWeek(Calendar.MONDAY);
+
         calendarView.setMinDate(today.getTimeInMillis());
         calendarView.setDate(today.getTimeInMillis(), false, true);
         Date todayDate = new Date(today.getTimeInMillis());
@@ -94,26 +97,28 @@ public class CalendarActivity extends AppCompatActivity {
                 isArrivalTab = (tab.getPosition() == 0);
                 long targetDate = today.getTimeInMillis();
 
+                suppressListener = true;
+
                 if (isArrivalTab) {
                     calendarView.setMinDate(today.getTimeInMillis());
                     if (startDateStorage != null) {
-                        targetDate = parseStorageToMillis(startDateStorage);
+                        targetDate = parseStorageToMillisCorrect(startDateStorage);
                     }
                 } else {
                     if (startDateStorage != null) {
-                        Date start = parseStorageDate(startDateStorage);
-                        if (start != null) {
-                            calendarView.setMinDate(start.getTime());
-                            targetDate = (endDateStorage != null)
-                                    ? parseStorageToMillis(endDateStorage)
-                                    : start.getTime();
+                        long startMillis = parseStorageToMillisCorrect(startDateStorage);
+                        calendarView.setMinDate(startMillis);
+
+                        if (endDateStorage != null) {
+                            targetDate = parseStorageToMillisCorrect(endDateStorage);
+                        } else {
+                            targetDate = startMillis;
                         }
                     } else {
                         calendarView.setMinDate(today.getTimeInMillis());
                     }
                 }
 
-                suppressListener = true;
                 calendarView.setDate(targetDate, false, true);
                 suppressListener = false;
             }
@@ -136,6 +141,7 @@ public class CalendarActivity extends AppCompatActivity {
                 startDateStorage = storageDate;
                 arrivalDateText.setText(displayDate);
 
+                // Clear departure date if it becomes invalid
                 if (endDateStorage != null && isEndBeforeStart(startDateStorage, endDateStorage)) {
                     endDateStorage = null;
                     departureDateText.setText("--");
@@ -144,6 +150,15 @@ public class CalendarActivity extends AppCompatActivity {
             } else {
                 if (startDateStorage == null || isEndBeforeStart(startDateStorage, storageDate)) {
                     Toast.makeText(this, "Departure date cannot be before arrival date", Toast.LENGTH_SHORT).show();
+
+                    // Reset to previous valid date or arrival date
+                    suppressListener = true;
+                    if (endDateStorage != null) {
+                        calendarView.setDate(parseStorageToMillisCorrect(endDateStorage), false, true);
+                    } else if (startDateStorage != null) {
+                        calendarView.setDate(parseStorageToMillisCorrect(startDateStorage), false, true);
+                    }
+                    suppressListener = false;
                     return;
                 }
 
@@ -205,6 +220,27 @@ public class CalendarActivity extends AppCompatActivity {
     private long parseStorageToMillis(String storageDate) {
         Date date = parseStorageDate(storageDate);
         return (date != null) ? date.getTime() : System.currentTimeMillis();
+    }
+
+    // Fixed method to handle date parsing correctly
+    private long parseStorageToMillisCorrect(String storageDate) {
+        try {
+            Date date = storageFormat.parse(storageDate);
+            if (date != null) {
+                // Create calendar and set the parsed date to avoid timezone issues
+                Calendar cal = Calendar.getInstance();
+                cal.setTime(date);
+                // Ensure we're using the correct date at midnight
+                cal.set(Calendar.HOUR_OF_DAY, 0);
+                cal.set(Calendar.MINUTE, 0);
+                cal.set(Calendar.SECOND, 0);
+                cal.set(Calendar.MILLISECOND, 0);
+                return cal.getTimeInMillis();
+            }
+        } catch (ParseException e) {
+            Log.e("CalendarActivity", "Date parsing failed", e);
+        }
+        return System.currentTimeMillis();
     }
 
     private boolean isEndBeforeStart(String start, String end) {
