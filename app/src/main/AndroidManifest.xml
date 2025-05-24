@@ -45,7 +45,7 @@
         <activity android:name=".MapPlacesActivity" android:exported="false" />
         <activity android:name=".InterestsActivity" android:exported="false" />
         <activity android:name=".SettingsActivity" android:exported="false" />
-        <activity android:name=".EditProfileActivity" android:exported="false" />
+        <activity android:name=".RestaurantActivity" android:exported="false" />
         <activity android:name=".TimeActivity" android:exported="false" />
         <receiver android:name=".NotificationReceiver" android:exported="false" />
 

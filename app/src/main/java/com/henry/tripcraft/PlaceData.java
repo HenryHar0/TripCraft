@@ -19,6 +19,7 @@ public class PlaceData implements Serializable {
     private int priceLevel;
     private String openingHours;
     private float score; // Added score field
+    private String website; // Added website field
 
     public PlaceData(String placeId, String name, String address, float rating,
                      LatLng latLng, String placeType, int userRatingsTotal, int timeSpent) {
@@ -35,6 +36,7 @@ public class PlaceData implements Serializable {
         this.priceLevel = -1;
         this.openingHours = "N/A";
         this.score = 0f; // Default score
+        this.website = null; // Default website
     }
 
     public String getPlaceId() { return placeId; }
@@ -50,6 +52,7 @@ public class PlaceData implements Serializable {
     public int getPriceLevel() { return priceLevel; }
     public String getOpeningHours() { return openingHours; }
     public float getScore() { return score; } // Getter for score
+    public String getWebsite() { return website; } // Getter for website
 
     public void setPlaceId(String placeId) { this.placeId = placeId; }
     public void setName(String name) { this.name = name; }
@@ -63,6 +66,7 @@ public class PlaceData implements Serializable {
     public void setPriceLevel(int priceLevel) { this.priceLevel = priceLevel; }
     public void setOpeningHours(String openingHours) { this.openingHours = openingHours; }
     public void setScore(float score) { this.score = score; } // Setter for score
+    public void setWebsite(String website) { this.website = website; } // Setter for website
 
     public void addPhotoReference(String photoReference) {
         if (photoReferences == null) {

@@ -61,8 +61,8 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             startActivityForResult(intent, 1);
             return true;
         } else if (id == R.id.navigation_ai) {
-            // Navigate to ChatActivity
-            Intent intent = new Intent(MainActivity.this, ChatActivity.class);
+            // Navigate to RestaurantActivity
+            Intent intent = new Intent(MainActivity.this, RestaurantActivity.class);
             startActivity(intent);
             return true;
         } else if (id == R.id.profileButton) {

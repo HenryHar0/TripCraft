@@ -188,7 +188,7 @@ public class PlanActivity extends AppCompatActivity {
             recycler.setLayoutManager(new LinearLayoutManager(this));
 
             // 3) Get your API key
-            String apiKey = getString(R.string.google_api_key);
+            String apiKey = getString(R.string.google_api_key1);
 
             // 4) Set or update the DayByDayAdapter
             if (dayByDayAdapter == null) {
@@ -205,11 +205,10 @@ public class PlanActivity extends AppCompatActivity {
     private void fetchPlaceById(String placeId, int timeSpent) {
         Log.d("PlaceDebug", "Starting fetchPlaceById with placeId: " + placeId);
 
-        String apiKey = getString(R.string.google_api_key);
+        String apiKey = getString(R.string.google_api_key1);
 
-        // Updated: Include priceLevel and regularOpeningHours fields
         String url = "https://places.googleapis.com/v1/places/" + placeId +
-                "?fields=displayName,formattedAddress,types,rating,location,userRatingCount,photos,priceLevel,regularOpeningHours" +
+                "?fields=displayName,formattedAddress,types,rating,location,userRatingCount,photos,regularOpeningHours,websiteUri" +
                 "&key=" + apiKey;
 
         OkHttpClient client = new OkHttpClient();
@@ -264,7 +263,11 @@ public class PlanActivity extends AppCompatActivity {
                     int userRatingsTotal = json.optInt("userRatingCount", 0);
 
                     // Extract price level
-                    int priceLevel = json.optInt("priceLevel", -1);
+                    // Extract website
+                    String website = json.optString("websiteUri", null);
+                    if (website != null && website.trim().isEmpty()) {
+                        website = null;
+                    }
 
                     // Extract opening hours
                     String openingHours = "N/A";
@@ -298,9 +301,9 @@ public class PlanActivity extends AppCompatActivity {
                             timeSpent
                     );
 
-                    // Set price level and opening hours
-                    selectedPlace.setPriceLevel(priceLevel);
+                    // Set price level, opening hours, and website
                     selectedPlace.setOpeningHours(openingHours);
+                    selectedPlace.setWebsite(website);
 
                     JSONArray photos = json.optJSONArray("photos");
                     if (photos != null) {
@@ -330,7 +333,7 @@ public class PlanActivity extends AppCompatActivity {
                         }
                     });
 
-                    Log.d("PlaceDebug", "Place fetched and UI updated: " + name);
+                    Log.d("PlaceDebug", "Place fetched and UI updated: " + name + ", Website: " + website);
 
                 } catch (JSONException e) {
                     Log.e("PlaceDebug", "JSON parsing error", e);
@@ -357,10 +360,11 @@ public class PlanActivity extends AppCompatActivity {
             radius = Math.min(radius, 50000);
             Log.d(TAG1, "Calculated radius: " + radius + " meters");
 
-            String apiKey = getString(R.string.google_api_key);
+            String apiKey = getString(R.string.google_api_key1);
+            // Updated: Added websiteUri to the fields
             String url = "https://places.googleapis.com/v1/places:searchNearby"
                     + "?key=" + apiKey
-                    + "&fields=places.id,places.displayName.text,places.formattedAddress,places.rating,places.location,places.photos,places.userRatingCount,places.priceLevel,places.regularOpeningHours";
+                    + "&fields=places.id,places.displayName.text,places.formattedAddress,places.rating,places.location,places.photos,places.userRatingCount,places.regularOpeningHours,places.websiteUri";
 
             JSONObject bodyJson = new JSONObject();
             try {
@@ -432,8 +436,11 @@ public class PlanActivity extends AppCompatActivity {
                             float rating = (float) place.optDouble("rating", 0.0f);
                             int userRatingsTotal = place.optInt("userRatingCount", 0);
 
-                            // Extract price level
-                            int priceLevel = place.optInt("priceLevel", -1);
+                            // Extract website
+                            String website = place.optString("websiteUri", null);
+                            if (website != null && website.trim().isEmpty()) {
+                                website = null;
+                            }
 
                             // Extract opening hours
                             String openingHours = "N/A";
@@ -455,9 +462,8 @@ public class PlanActivity extends AppCompatActivity {
 
                             PlaceData pd = new PlaceData(placeId, name, address, rating, placeLatLng, placeType, userRatingsTotal, timeSpent);
 
-                            // Set price level and opening hours
-                            pd.setPriceLevel(priceLevel);
                             pd.setOpeningHours(openingHours);
+                            pd.setWebsite(website);
 
                             if (place.has("photos")) {
                                 JSONArray photos = place.getJSONArray("photos");
@@ -472,6 +478,8 @@ public class PlanActivity extends AppCompatActivity {
 
                             newPlaces.add(pd);
                             count++;
+
+                            Log.d(TAG1, "Added place: " + name + ", Website: " + website);
                         }
 
                         synchronized (placeDataList) {

@@ -2,28 +2,24 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:layout_height="match_parent">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="vertical"
         android:paddingBottom="16dp">
 
-        <!-- Original Card at the top -->
         <androidx.cardview.widget.CardView
             android:id="@+id/topCard"
             android:layout_width="match_parent"
-            android:layout_height="200dp"
+            android:layout_height="300dp"
             android:layout_marginStart="12dp"
             android:layout_marginTop="8dp"
             android:layout_marginEnd="12dp"
             android:layout_marginBottom="8dp"
             app:cardCornerRadius="12dp"
-            app:cardElevation="3dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+            app:cardElevation="3dp">
 
             <RelativeLayout
                 android:layout_width="match_parent"
@@ -37,7 +33,6 @@
                     android:scaleType="centerCrop"
                     android:src="@drawable/placeholder_image" />
 
-                <!-- Place name and type - bottom left -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -70,7 +65,6 @@
 
                 </LinearLayout>
 
-                <!-- Rating container - bottom right -->
                 <LinearLayout
                     android:id="@+id/ratingContainer"
                     android:layout_width="wrap_content"
@@ -105,7 +99,6 @@
 
         </androidx.cardview.widget.CardView>
 
-        <!-- Three blue squares container -->
         <LinearLayout
             android:id="@+id/infoSquaresContainer"
             android:layout_width="match_parent"
@@ -114,12 +107,8 @@
             android:layout_marginTop="16dp"
             android:layout_marginEnd="12dp"
             android:orientation="horizontal"
-            android:weightSum="3"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/topCard">
+            android:weightSum="3">
 
-            <!-- Place Type Square -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -137,6 +126,7 @@
                     app:cardElevation="2dp">
 
                     <ImageView
+                        android:id="@+id/typeDrawable"
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:layout_gravity="center"
@@ -167,7 +157,6 @@
 
             </LinearLayout>
 
-            <!-- Price Level Square -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -186,21 +175,23 @@
                     app:cardElevation="2dp">
 
                     <ImageView
+                        android:id="@+id/ticketDrawable"
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:layout_gravity="center"
-                        android:contentDescription="Price level icon"
-                        android:src="@drawable/ic_money"
+                        android:contentDescription="Ticket icon"
+                        android:src="@drawable/ic_ticket"
                         app:tint="#FFFFFF" />
 
                 </androidx.cardview.widget.CardView>
 
                 <TextView
+                    android:id="@+id/priceLevelText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="4dp"
                     android:fontFamily="sans-serif-medium"
-                    android:text="Price Level"
+                    android:text="Ticket Price"
                     android:textColor="#666666"
                     android:textSize="12sp" />
 
@@ -209,14 +200,13 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif"
-                    android:text="$$"
+                    android:text="0$"
                     android:textColor="#333333"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
             </LinearLayout>
 
-            <!-- Opening Hours Square -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -266,7 +256,6 @@
 
         </LinearLayout>
 
-        <!-- About Section -->
         <TextView
             android:id="@+id/aboutTitle"
             android:layout_width="wrap_content"
@@ -277,9 +266,7 @@
             android:text="About"
             android:textColor="#333333"
             android:textSize="18sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/infoSquaresContainer" />
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/aboutText"
@@ -290,14 +277,10 @@
             android:layout_marginEnd="12dp"
             android:fontFamily="sans-serif"
             android:lineSpacingExtra="4dp"
-            android:text="Located in the heart of the city, this charming establishment offers a delightful experience for visitors of all ages. With its warm atmosphere and friendly staff, it has become a favorite destination for both locals and tourists. The venue features modern amenities while maintaining its traditional charm, making it the perfect place to relax and enjoy quality time with friends and family."
+            android:text="Located in the heart of the city, this charming establishment offers a delightful experience. With its warm atmosphere and excellent service, visitors can enjoy a memorable time. The venue features beautiful architecture and provides various amenities for guests. Whether you're looking for a quick visit or planning to spend the entire day, this place caters to all preferences. The staff is friendly and knowledgeable, always ready to help with any questions or recommendations."
             android:textColor="#666666"
-            android:textSize="14sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/aboutTitle" />
+            android:textSize="14sp" />
 
-        <!-- View on Maps Button -->
         <LinearLayout
             android:id="@+id/viewMapsButton"
             android:layout_width="wrap_content"
@@ -309,9 +292,7 @@
             android:focusable="true"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:padding="8dp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/aboutText">
+            android:padding="8dp">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -332,6 +313,6 @@
 
         </LinearLayout>
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
 
 </ScrollView>

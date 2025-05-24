@@ -496,7 +496,7 @@ public class MapPlacesActivity extends AppCompatActivity implements
             return;
         }
 
-        String apiKey = getString(R.string.google_api_key);
+        String apiKey = getString(R.string.google_api_key1);
         String baseUrl = "https://places.googleapis.com/v1/places:searchNearby";
 
         // Format category name
@@ -665,7 +665,7 @@ public class MapPlacesActivity extends AppCompatActivity implements
                 JSONObject photo = photosArray.getJSONObject(i);
                 if (photo.has("name")) {
                     String photoReference = photo.getString("name");
-                    String apiKey = getString(R.string.google_api_key);
+                    String apiKey = getString(R.string.google_api_key1);
                     String photoUrl = "https://places.googleapis.com/v1/" + photoReference
                             + "/media?key=" + apiKey + "&maxHeightPx=400&maxWidthPx=400";
                     photoUrls.add(photoUrl);

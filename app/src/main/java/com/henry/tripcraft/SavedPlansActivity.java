@@ -3,13 +3,11 @@ package com.henry.tripcraft;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -110,7 +108,7 @@ public class SavedPlansActivity extends AppCompatActivity implements BottomNavig
             startActivity(intent);
             return true;
         } else if (id == R.id.navigation_ai) {
-            Intent intent = new Intent(SavedPlansActivity.this, ChatActivity.class);
+            Intent intent = new Intent(SavedPlansActivity.this, RestaurantActivity.class);
             startActivity(intent);
             return true;
         } else if (id == R.id.profileButton) {
