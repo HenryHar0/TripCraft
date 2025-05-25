@@ -78,4 +78,24 @@ public class PlaceData implements Serializable {
     public void setPhotoReferences(List<String> photoReferences) {
         this.photoReferences = photoReferences;
     }
+
+    // Add this constructor to your PlaceData class
+
+    public PlaceData() {
+        // Default constructor for placeholder creation
+        this.placeId = "";
+        this.name = "Unknown Place";
+        this.address = "";
+        this.rating = 0f;
+        this.latLng = null;
+        this.placeType = "tourist_attraction";
+        this.userRatingsTotal = 0;
+        this.timeSpent = 60;
+        this.photoReferences = new ArrayList<>();
+        this.userSelected = false;
+        this.priceLevel = -1;
+        this.openingHours = "N/A";
+        this.score = 0f;
+        this.website = null;
+    }
 }

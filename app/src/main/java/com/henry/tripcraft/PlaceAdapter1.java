@@ -24,10 +24,25 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
 
     private List<PlaceData> placesList;
     private String apiKey;
+    private OnPlaceClickListener onPlaceClickListener; // Add this field
 
+    // Add this interface for handling place clicks
+    public interface OnPlaceClickListener {
+        void onPlaceClick(PlaceData placeData);
+    }
+
+    // Original constructor for backward compatibility
     public PlaceAdapter1(List<PlaceData> placesList, String apiKey) {
         this.placesList = placesList;
         this.apiKey = apiKey;
+        this.onPlaceClickListener = null;
+    }
+
+    // New constructor that accepts click listener (for SavedPlansActivity)
+    public PlaceAdapter1(List<PlaceData> placesList, String apiKey, OnPlaceClickListener listener) {
+        this.placesList = placesList;
+        this.apiKey = apiKey;
+        this.onPlaceClickListener = listener;
     }
 
     @NonNull
@@ -66,43 +81,32 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
         // Load the main image
         loadPlaceImage(holder, place);
 
-        // Set click listener for the image to open detailed view
+        // Modified click listener for the image to handle both scenarios
         holder.placeImage.setOnClickListener(v -> {
-            if (holder.itemView.getContext() instanceof FragmentActivity) {
-                FragmentActivity activity = (FragmentActivity) holder.itemView.getContext();
-
-                PlaceDetailFragment detailFragment = PlaceDetailFragment.newInstance(place, apiKey);
-
-                View allPlacesSection = activity.findViewById(R.id.activitiesLabel).getParent() instanceof View ?
-                        (View) activity.findViewById(R.id.activitiesLabel).getParent() : null;
-                if (allPlacesSection != null) {
-                    allPlacesSection.setVisibility(View.GONE);
-                }
-
-                View fragmentContainer = activity.findViewById(R.id.fragment_container);
-                if (fragmentContainer != null) {
-                    fragmentContainer.setVisibility(View.VISIBLE);
-                    fragmentContainer.bringToFront();
-                }
-
-                activity.getSupportFragmentManager()
-                        .beginTransaction()
-                        .replace(R.id.fragment_container, detailFragment)
-                        .addToBackStack(null)
-                        .commit();
+            if (onPlaceClickListener != null) {
+                // Use the callback when called from SavedPlansActivity (with dialog)
+                onPlaceClickListener.onPlaceClick(place);
+            } else {
+                // Use existing logic for other activities
+                showPlaceDetailFragment(holder, place);
             }
         });
 
-
-        // Set click listener for the entire card to open in Maps (optional - you can remove this)
+        // Modified click listener for the entire card
         holder.itemView.setOnClickListener(v -> {
-            if (place.getLatLng() != null) {
-                Uri gmmIntentUri = Uri.parse("geo:" + place.getLatLng().latitude +
-                        "," + place.getLatLng().longitude + "?q=" + Uri.encode(place.getName()));
-                Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
-                mapIntent.setPackage("com.google.android.apps.maps");
-                if (mapIntent.resolveActivity(holder.itemView.getContext().getPackageManager()) != null) {
-                    holder.itemView.getContext().startActivity(mapIntent);
+            if (onPlaceClickListener != null) {
+                // If we have a click listener, use it instead of opening maps
+                onPlaceClickListener.onPlaceClick(place);
+            } else {
+                // Use existing logic - open in Maps
+                if (place.getLatLng() != null) {
+                    Uri gmmIntentUri = Uri.parse("geo:" + place.getLatLng().latitude +
+                            "," + place.getLatLng().longitude + "?q=" + Uri.encode(place.getName()));
+                    Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+                    mapIntent.setPackage("com.google.android.apps.maps");
+                    if (mapIntent.resolveActivity(holder.itemView.getContext().getPackageManager()) != null) {
+                        holder.itemView.getContext().startActivity(mapIntent);
+                    }
                 }
             }
         });
@@ -112,6 +116,33 @@ public class PlaceAdapter1 extends RecyclerView.Adapter<PlaceAdapter1.PlaceViewH
             holder.itemView.setAlpha(0.8f);
         } else {
             holder.itemView.setAlpha(1.0f);
+        }
+    }
+
+    // Extracted the fragment showing logic into a separate method
+    private void showPlaceDetailFragment(PlaceViewHolder holder, PlaceData place) {
+        if (holder.itemView.getContext() instanceof FragmentActivity) {
+            FragmentActivity activity = (FragmentActivity) holder.itemView.getContext();
+
+            PlaceDetailFragment detailFragment = PlaceDetailFragment.newInstance(place, apiKey);
+
+            View allPlacesSection = activity.findViewById(R.id.activitiesLabel).getParent() instanceof View ?
+                    (View) activity.findViewById(R.id.activitiesLabel).getParent() : null;
+            if (allPlacesSection != null) {
+                allPlacesSection.setVisibility(View.GONE);
+            }
+
+            View fragmentContainer = activity.findViewById(R.id.fragment_container);
+            if (fragmentContainer != null) {
+                fragmentContainer.setVisibility(View.VISIBLE);
+                fragmentContainer.bringToFront();
+            }
+
+            activity.getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragment_container, detailFragment)
+                    .addToBackStack(null)
+                    .commit();
         }
     }
 

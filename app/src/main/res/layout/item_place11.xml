@@ -180,7 +180,7 @@
                         android:layout_height="32dp"
                         android:layout_gravity="center"
                         android:contentDescription="Ticket icon"
-                        android:src="@drawable/ic_ticket"
+                        android:src="@drawable/ic_website"
                         app:tint="#FFFFFF" />
 
                 </androidx.cardview.widget.CardView>
@@ -191,7 +191,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="4dp"
                     android:fontFamily="sans-serif-medium"
-                    android:text="Ticket Price"
+                    android:text="Website"
                     android:textColor="#666666"
                     android:textSize="12sp" />
 
@@ -200,7 +200,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif"
-                    android:text="0$"
+                    android:text="Website"
                     android:textColor="#333333"
                     android:textSize="14sp"
                     android:textStyle="bold" />

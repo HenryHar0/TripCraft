@@ -14,17 +14,16 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.google.gson.Gson;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 public class SavedPlansActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener {
 
@@ -35,16 +34,10 @@ public class SavedPlansActivity extends AppCompatActivity implements BottomNavig
     private TripNotificationManager notificationManager;
     private BottomNavigationView bottomNavigationView;
 
-    // Dialog views
-    private View dialogContainer;
-    private TextView tripInfoText;
-    private RecyclerView tripPlanRecyclerView;
-    private Button closeButton;
-    private Button deleteButton;
-    private Button shareButton;
-
-    private static final String PREFS_NAME = "TripPlanPrefs";
     private static final String SLOT_NAMES_PREFS = "SlotNamesPrefs";
+
+    // Add this as a class variable
+    private AlertDialog currentTripDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,36 +52,18 @@ public class SavedPlansActivity extends AppCompatActivity implements BottomNavig
         savedPlansList.setLayoutManager(new LinearLayoutManager(this));
         bottomNavigationView = findViewById(R.id.bottomNavigation);
 
-        // Initialize dialog views from included layout
-        initializeDialogViews();
-
         savedPlans = new ArrayList<>();
         adapter = new SavedPlansAdapter(savedPlans, this::showPlanDetails, this::showRenameDialog);
         savedPlansList.setAdapter(adapter);
-
-        loadSavedPlans();
 
         // Setup bottom navigation
         bottomNavigationView.setOnNavigationItemSelectedListener(this);
 
         // Set saved plans as selected
         bottomNavigationView.setSelectedItemId(R.id.navigation_saved_plan);
-    }
 
-    private void initializeDialogViews() {
-        // Get the included dialog layout
-        dialogContainer = findViewById(R.id.customDialogContainer);
-
-        if (dialogContainer != null) {
-            tripInfoText = dialogContainer.findViewById(R.id.tripInfoText);
-            tripPlanRecyclerView = dialogContainer.findViewById(R.id.tripPlanRecyclerView);
-            closeButton = dialogContainer.findViewById(R.id.closeButton);
-            deleteButton = dialogContainer.findViewById(R.id.deleteButton);
-            shareButton = dialogContainer.findViewById(R.id.shareButton);
-
-            // Initially hide the dialog
-            dialogContainer.setVisibility(View.GONE);
-        }
+        // Load saved plans
+        loadSavedPlans();
     }
 
     @Override
@@ -121,40 +96,52 @@ public class SavedPlansActivity extends AppCompatActivity implements BottomNavig
     }
 
     private void loadSavedPlans() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) {
+            Toast.makeText(this, "Please sign in to view saved plans", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         savedPlans.clear();
 
+        // Create initial empty slots
         for (int i = 0; i < 5; i++) {
-            TripPlanStorageManager.TripPlan tripPlan = storageManager.getTripPlanFromSlot(i);
-
             SavedPlan plan = new SavedPlan();
             plan.setSlot(i);
 
             // Load custom slot name or use default
             String customName = getCustomSlotName(i);
             plan.setTitle(customName != null ? customName : "Slot " + (i + 1));
-
-            if (tripPlan != null) {
-                // Create a summary for display
-                String summary = createPlanSummary(tripPlan);
-                plan.setDetails(summary);
-                plan.setEmpty(false);
-                plan.setTripPlan(tripPlan);
-            } else {
-                // Check for legacy format
-                String legacyPlan = storageManager.getPlanFromSlot(i);
-                if (legacyPlan != null && !legacyPlan.equals("Empty Slot")) {
-                    plan.setDetails(legacyPlan);
-                    plan.setEmpty(false);
-                } else {
-                    plan.setDetails("Empty Slot");
-                    plan.setEmpty(true);
-                }
-            }
+            plan.setDetails("Loading...");
+            plan.setEmpty(true);
 
             savedPlans.add(plan);
         }
 
         adapter.notifyDataSetChanged();
+
+        // Load each slot asynchronously
+        for (int i = 0; i < 5; i++) {
+            final int slot = i;
+            storageManager.getTripPlanFromSlot(slot, tripPlan -> {
+                runOnUiThread(() -> {
+                    SavedPlan plan = savedPlans.get(slot);
+
+                    if (tripPlan != null) {
+                        String summary = createPlanSummary(tripPlan);
+                        plan.setDetails(summary);
+                        plan.setEmpty(false);
+                        plan.setTripPlan(tripPlan);
+                    } else {
+                        plan.setDetails("Empty Slot");
+                        plan.setEmpty(true);
+                        plan.setTripPlan(null);
+                    }
+
+                    adapter.notifyItemChanged(slot);
+                });
+            });
+        }
     }
 
     private String getCustomSlotName(int slot) {
@@ -206,10 +193,13 @@ public class SavedPlansActivity extends AppCompatActivity implements BottomNavig
             }
 
             saveCustomSlotName(slot, newName);
-            loadSavedPlans(); // Refresh the list
-            dialog.dismiss();
 
+            // Update the title in the list immediately
             String displayName = newName.isEmpty() ? "Slot " + (slot + 1) : newName;
+            savedPlans.get(slot).setTitle(displayName);
+            adapter.notifyItemChanged(slot);
+
+            dialog.dismiss();
             Toast.makeText(this, "Renamed to: " + displayName, Toast.LENGTH_SHORT).show();
         });
 
@@ -247,77 +237,125 @@ public class SavedPlansActivity extends AppCompatActivity implements BottomNavig
             return;
         }
 
-        // If it's a new format trip plan, show with DayByDayAdapter
-        if (savedPlan.getTripPlan() != null) {
-            showTripPlanWithAdapter(savedPlan.getTripPlan(), slot);
-        } else {
-            // Show legacy format
-            showLegacyPlanDetails(savedPlan, slot);
-        }
+        // Get the trip plan and show it in a proper dialog
+        storageManager.getTripPlanFromSlot(slot, tripPlan -> {
+            if (tripPlan != null) {
+                runOnUiThread(() -> showTripPlanDialog(tripPlan, slot));
+            } else {
+                runOnUiThread(() -> Toast.makeText(this, "Failed to load trip plan", Toast.LENGTH_SHORT).show());
+            }
+        });
     }
 
-    private void showTripPlanWithAdapter(TripPlanStorageManager.TripPlan tripPlan, final int slot) {
-        if (dialogContainer == null) {
-            Toast.makeText(this, "Dialog not available", Toast.LENGTH_SHORT).show();
-            return;
+    /**
+     * Shows the trip plan dialog using the new dialog_trip_plan_like layout
+     */
+    private void showTripPlanDialog(TripPlanStorageManager.TripPlan tripPlan, int slot) {
+        // Dismiss any existing dialog first
+        if (currentTripDialog != null && currentTripDialog.isShowing()) {
+            currentTripDialog.dismiss();
         }
 
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_trip_plan_like, null);
+
+        // Find views in the dialog
+        TextView tripTitle = dialogView.findViewById(R.id.tripTitle);
+        TextView tripInfoText = dialogView.findViewById(R.id.tripInfoText);
+        RecyclerView tripPlanRecyclerView = dialogView.findViewById(R.id.tripPlanRecyclerView);
+        Button closeButton = dialogView.findViewById(R.id.closeButton);
+        Button shareButton = dialogView.findViewById(R.id.shareButton);
+        Button deleteButton = dialogView.findViewById(R.id.deleteButton);
+
+        // Set trip title
+        tripTitle.setText("Trip to " + tripPlan.destination);
+
+        // Set trip information
         String tripInfo = "Destination: " + tripPlan.destination + "\n" +
                 "Duration: " + tripPlan.duration + "\n" +
-                "Weather: " + tripPlan.weather + "\n" +
-                "Start Date: " + tripPlan.startDate;
+                "Weather: " + (tripPlan.weather != null ? tripPlan.weather : "N/A") + "\n" +
+                "Start Date: " + (tripPlan.startDate != null ? tripPlan.startDate : "N/A");
 
-        if (tripInfoText != null) {
-            tripInfoText.setText(tripInfo);
-        }
+        tripInfoText.setText(tripInfo);
 
-        if (tripPlan.activitiesListData != null && !tripPlan.activitiesListData.isEmpty() && tripPlanRecyclerView != null) {
-            DayByDayAdapter adapter = new DayByDayAdapter(tripPlan.activitiesListData, tripPlan.apiKey);
+        // Set up RecyclerView with trip activities
+        if (tripPlan.activitiesListData != null && !tripPlan.activitiesListData.isEmpty()) {
+            // IMPORTANT: Pass 'this' as the context so the adapter can call dismissTripDialog()
+            DayByDayAdapter adapter = new DayByDayAdapter(tripPlan.activitiesListData, tripPlan.apiKey, this);
             tripPlanRecyclerView.setLayoutManager(new LinearLayoutManager(this));
             tripPlanRecyclerView.setAdapter(adapter);
         }
 
+        // Create dialog without default buttons since we're using custom ones
+        currentTripDialog = builder.setView(dialogView).create();
+
         // Set up button click listeners
-        if (closeButton != null) {
-            closeButton.setOnClickListener(v -> dialogContainer.setVisibility(View.GONE));
-        }
+        closeButton.setOnClickListener(v -> {
+            currentTripDialog.dismiss();
+            currentTripDialog = null;
+        });
 
-        if (deleteButton != null) {
-            deleteButton.setOnClickListener(v -> {
-                dialogContainer.setVisibility(View.GONE);
-                confirmDelete(slot);
-            });
-        }
+        shareButton.setOnClickListener(v -> {
+            sharePlan(tripPlan);
+        });
 
-        if (shareButton != null) {
-            shareButton.setOnClickListener(v -> {
-                // Implement share functionality
-                sharePlan(tripPlan);
-            });
-        }
+        deleteButton.setOnClickListener(v -> {
+            currentTripDialog.dismiss();
+            currentTripDialog = null;
+            confirmDelete(slot);
+        });
 
-        dialogContainer.setVisibility(View.VISIBLE);
+        currentTripDialog.show();
+    }
+
+    // Public method that can be called from DayByDayAdapter to dismiss dialog
+    public void dismissTripDialog() {
+        if (currentTripDialog != null && currentTripDialog.isShowing()) {
+            currentTripDialog.dismiss();
+            currentTripDialog = null;
+        }
+    }
+
+    // Updated method to show fragments - now public so DayByDayAdapter can call it
+    public void showFragment(Fragment fragment) {
+        dismissTripDialog(); // Dismiss dialog first
+
+        // Show the fragment
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .addToBackStack(null) // Add to back stack so user can navigate back
+                .commit();
+
+        findViewById(R.id.fragment_container).setVisibility(View.VISIBLE);
     }
 
     private void sharePlan(TripPlanStorageManager.TripPlan tripPlan) {
-        String shareText = "Check out my trip plan!\n\n" +
-                "Destination: " + tripPlan.destination + "\n" +
-                "Duration: " + tripPlan.duration + "\n" +
-                "Start Date: " + tripPlan.startDate;
+        StringBuilder shareText = new StringBuilder();
+        shareText.append("Check out my trip plan!\n\n");
+        shareText.append("Destination: ").append(tripPlan.destination).append("\n");
+        shareText.append("Duration: ").append(tripPlan.duration).append("\n");
+
+        if (tripPlan.startDate != null) {
+            shareText.append("Start Date: ").append(tripPlan.startDate).append("\n");
+        }
+
+        if (tripPlan.activitiesListData != null && !tripPlan.activitiesListData.isEmpty()) {
+            shareText.append("\nDaily Activities:\n");
+            for (int day = 0; day < tripPlan.activitiesListData.size(); day++) {
+                List<PlaceData> dayPlaces = tripPlan.activitiesListData.get(day);
+                shareText.append("Day ").append(day + 1).append(": ");
+                for (int i = 0; i < dayPlaces.size(); i++) {
+                    if (i > 0) shareText.append(", ");
+                    shareText.append(dayPlaces.get(i).getName());
+                }
+                shareText.append("\n");
+            }
+        }
 
         Intent shareIntent = new Intent(Intent.ACTION_SEND);
         shareIntent.setType("text/plain");
-        shareIntent.putExtra(Intent.EXTRA_TEXT, shareText);
+        shareIntent.putExtra(Intent.EXTRA_TEXT, shareText.toString());
         startActivity(Intent.createChooser(shareIntent, "Share Trip Plan"));
-    }
-
-    private void showLegacyPlanDetails(SavedPlan savedPlan, int slot) {
-        new AlertDialog.Builder(this)
-                .setTitle("Plan Details - " + savedPlan.getTitle())
-                .setMessage(savedPlan.getDetails())
-                .setPositiveButton("Close", null)
-                .setNegativeButton("Delete", (dialog, which) -> confirmDelete(slot))
-                .show();
     }
 
     private void confirmDelete(int slot) {
@@ -343,44 +381,6 @@ public class SavedPlansActivity extends AppCompatActivity implements BottomNavig
         Toast.makeText(this, "Plan deleted from " + plan.getTitle(), Toast.LENGTH_SHORT).show();
     }
 
-    public void savePlanToSlot(int slot) {
-        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        String selectedPlanKey = "PlanSlot_" + slot;
-
-        if (sharedPreferences.contains(selectedPlanKey) && !savedPlans.get(slot).isEmpty()) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Overwrite Slot")
-                    .setMessage("This slot already contains a plan. Do you want to overwrite it?")
-                    .setPositiveButton("Yes", (dialog, which) -> performSave(slot))
-                    .setNegativeButton("No", null)
-                    .show();
-        } else {
-            performSave(slot);
-        }
-    }
-
-    private void performSave(int slot) {
-        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        String selectedPlanKey = "PlanSlot_" + slot;
-
-        // Create sample trip plan (in real usage, this would come from actual data)
-        TripPlanStorageManager.TripPlan samplePlan = new TripPlanStorageManager.TripPlan();
-        samplePlan.destination = "Sample Destination";
-        samplePlan.duration = "3 Days";
-        samplePlan.weather = "Sunny";
-        samplePlan.city = "Sample City";
-        samplePlan.startDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
-
-        Gson gson = new Gson();
-        String planJson = gson.toJson(samplePlan);
-        sharedPreferences.edit().putString(selectedPlanKey, planJson).apply();
-
-        // Update the list
-        loadSavedPlans();
-
-        Toast.makeText(this, "Plan saved in " + savedPlans.get(slot).getTitle(), Toast.LENGTH_SHORT).show();
-    }
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -390,11 +390,15 @@ public class SavedPlansActivity extends AppCompatActivity implements BottomNavig
         bottomNavigationView.setSelectedItemId(R.id.navigation_saved_plan);
     }
 
+    // Handle back button press to hide fragments
     @Override
     public void onBackPressed() {
-        // If dialog is visible, hide it instead of closing activity
-        if (dialogContainer != null && dialogContainer.getVisibility() == View.VISIBLE) {
-            dialogContainer.setVisibility(View.GONE);
+        View fragmentContainer = findViewById(R.id.fragment_container);
+        if (fragmentContainer.getVisibility() == View.VISIBLE) {
+            // Hide fragment container and return to main view
+            fragmentContainer.setVisibility(View.GONE);
+            // Clear fragment back stack
+            getSupportFragmentManager().popBackStack();
         } else {
             super.onBackPressed();
         }

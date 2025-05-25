@@ -262,7 +262,6 @@ public class PlanActivity extends AppCompatActivity {
                     float rating = (float) json.optDouble("rating", 0.0);
                     int userRatingsTotal = json.optInt("userRatingCount", 0);
 
-                    // Extract price level
                     // Extract website
                     String website = json.optString("websiteUri", null);
                     if (website != null && website.trim().isEmpty()) {
@@ -331,6 +330,9 @@ public class PlanActivity extends AppCompatActivity {
                         if (placeAdapter1 != null) {
                             placeAdapter1.updatePlaces(placeDataList);
                         }
+
+                        // FIXED: Update filtered list immediately when a place is selected
+                        updateFilteredPlaces();
                     });
 
                     Log.d("PlaceDebug", "Place fetched and UI updated: " + name + ", Website: " + website);
@@ -531,6 +533,28 @@ public class PlanActivity extends AppCompatActivity {
         });
     }
 
+    // Helper method to update filtered places
+    private void updateFilteredPlaces() {
+        if (days > 0 && hoursList != null) {
+            int totalTime = TotalTime(days, hoursList);
+
+            synchronized (placeDataList) {
+                filtered = filterPlacesByRatingAndTime(placeDataList, totalTime);
+            }
+
+            runOnUiThread(() -> {
+                if (filteredAdapter == null) {
+                    String apiKey = getString(R.string.google_api_key1);
+                    filteredAdapter = new PlaceAdapter1(filtered, apiKey);
+                    filteredList.setAdapter(filteredAdapter);
+                    filteredList.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
+                } else {
+                    filteredAdapter.updatePlaces(filtered);
+                }
+            });
+        }
+    }
+
     private int TotalTime(int totalDays, ArrayList<Integer> dailyhours) {
         int totalTime = 0;
         for (int i = 0; i < totalDays && i < dailyhours.size(); i++) {
@@ -538,6 +562,7 @@ public class PlanActivity extends AppCompatActivity {
         }
         return totalTime;
     }
+
     private List<PlaceData> filterPlacesByRatingAndTime(List<PlaceData> allPlacesData, int totalAvailableTime) {
         Log.d(TAG1, "Filtering places. Total places: " + allPlacesData.size() +
                 ", Available time: " + totalAvailableTime + " hours");
@@ -558,43 +583,65 @@ public class PlanActivity extends AppCompatActivity {
             }
             float score = (normalizedRating + reviewScore) / 2.0f;
             if (place.isUserSelected()) {
-                score += 10000;
+                score += 10000; // This ensures selected places get highest priority
             }
             place.setScore(score);
         }
 
-        // Step 2: Group places by type
-        Map<String, List<PlaceData>> placesByType = new HashMap<>();
+        // Step 2: First, always include user-selected places
+        List<PlaceData> selectedPlaces = new ArrayList<>();
+        List<PlaceData> nonSelectedPlaces = new ArrayList<>();
+
         for (PlaceData place : allPlacesData) {
-            String type = place.getPlaceType(); // Assumes each place has a getType() method
+            if (place.isUserSelected()) {
+                selectedPlaces.add(place);
+            } else {
+                nonSelectedPlaces.add(place);
+            }
+        }
+
+        // Step 3: Group non-selected places by type for filtering
+        Map<String, List<PlaceData>> placesByType = new HashMap<>();
+        for (PlaceData place : nonSelectedPlaces) {
+            String type = place.getPlaceType();
             placesByType.computeIfAbsent(type, k -> new ArrayList<>()).add(place);
         }
 
-        int typeCount = placesByType.size();
-        int timePerType = totalAvailableTime / typeCount;
-
         List<PlaceData> finalSelection = new ArrayList<>();
+
+        // Add all selected places first
         int totalTime = 0;
+        for (PlaceData selectedPlace : selectedPlaces) {
+            finalSelection.add(selectedPlace);
+            totalTime += selectedPlace.getTimeSpent();
+        }
 
-        for (Map.Entry<String, List<PlaceData>> entry : placesByType.entrySet()) {
-            List<PlaceData> places = entry.getValue();
+        // Calculate remaining time and distribute among types
+        int remainingTime = totalAvailableTime - totalTime;
+        if (remainingTime > 0 && !placesByType.isEmpty()) {
+            int typeCount = placesByType.size();
+            int timePerType = Math.max(1, remainingTime / typeCount);
 
-            // Sort by score descending
-            places.sort((p1, p2) -> Float.compare(p2.getScore(), p1.getScore()));
+            for (Map.Entry<String, List<PlaceData>> entry : placesByType.entrySet()) {
+                List<PlaceData> places = entry.getValue();
 
-            int timeUsedForType = 0;
-            for (PlaceData place : places) {
-                if (timeUsedForType + place.getTimeSpent() <= timePerType &&
-                        totalTime + place.getTimeSpent() <= totalAvailableTime) {
-                    finalSelection.add(place);
-                    timeUsedForType += place.getTimeSpent();
-                    totalTime += place.getTimeSpent();
+                // Sort by score descending
+                places.sort((p1, p2) -> Float.compare(p2.getScore(), p1.getScore()));
+
+                int timeUsedForType = 0;
+                for (PlaceData place : places) {
+                    if (timeUsedForType + place.getTimeSpent() <= timePerType &&
+                            totalTime + place.getTimeSpent() <= totalAvailableTime) {
+                        finalSelection.add(place);
+                        timeUsedForType += place.getTimeSpent();
+                        totalTime += place.getTimeSpent();
+                    }
                 }
             }
         }
 
         Log.d(TAG1, "Places filtered: " + finalSelection.size() +
-                " places selected, Total time: " + totalTime + " hours");
+                " places selected (" + selectedPlaces.size() + " user-selected), Total time: " + totalTime + " hours");
 
         return finalSelection;
     }
