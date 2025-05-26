@@ -25,7 +25,13 @@ import com.bumptech.glide.load.resource.bitmap.CenterCrop;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 
 import android.util.Log;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceViewHolder> {
 
@@ -344,13 +350,101 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
         try {
             String rawHours = place.getOpeningHours();
             if (rawHours != null && !rawHours.trim().isEmpty()) {
-                String formattedHours = rawHours.replace(";", "\n");
-                holder.openingHoursValue.setText(formattedHours);
+                String todayStatus = parseTodayOpeningHours(rawHours);
+                if (todayStatus != null) {
+                    holder.openingHoursValue.setText(todayStatus);
+                } else {
+                    // Fallback to full schedule if parsing fails
+                    String formattedHours = rawHours.replace(";", "\n");
+                    holder.openingHoursValue.setText(formattedHours);
+                }
             } else {
                 holder.openingHoursValue.setText("Opening hours not available");
             }
         } catch (Exception e) {
             holder.openingHoursValue.setText("Opening hours not available");
+        }
+    }
+
+    private String parseTodayOpeningHours(String rawHours) {
+        try {
+            // Get current day of week
+            SimpleDateFormat dayFormat = new SimpleDateFormat("EEEE", Locale.getDefault());
+            String today = dayFormat.format(new Date());
+
+            // Split hours by semicolon or newline
+            String[] hourLines = rawHours.split("[;\n]");
+
+            for (String line : hourLines) {
+                line = line.trim();
+                if (line.toLowerCase().startsWith(today.toLowerCase())) {
+                    return formatTodayHours(line, today);
+                }
+            }
+
+            // If exact day not found, try abbreviated day names
+            String todayAbbrev = today.substring(0, 3); // Mon, Tue, etc.
+            for (String line : hourLines) {
+                line = line.trim();
+                if (line.toLowerCase().startsWith(todayAbbrev.toLowerCase())) {
+                    return formatTodayHours(line, today);
+                }
+            }
+
+            return null; // Parsing failed
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String formatTodayHours(String todayLine, String dayName) {
+        try {
+            // Remove day name from the beginning
+            String hoursOnly = todayLine.replaceFirst("(?i)" + dayName, "").trim();
+            hoursOnly = hoursOnly.replaceFirst("(?i)" + dayName.substring(0, 3), "").trim();
+
+            // Remove leading colon or dash if present
+            hoursOnly = hoursOnly.replaceFirst("^[:\\-]\\s*", "").trim();
+
+            if (hoursOnly.toLowerCase().contains("closed")) {
+                return "Closed today";
+            }
+
+            // Look for closing time pattern (like "9:00 AM - 6:00 PM")
+            Pattern timePattern = Pattern.compile("(\\d{1,2}:?\\d{0,2}\\s*(?:AM|PM|am|pm))\\s*[-–]\\s*(\\d{1,2}:?\\d{0,2}\\s*(?:AM|PM|am|pm))");
+            Matcher matcher = timePattern.matcher(hoursOnly);
+
+            if (matcher.find()) {
+                String closingTime = matcher.group(2);
+                return "Open today: closes " + closingTime.toLowerCase();
+            }
+
+            // Handle 24-hour format (like "09:00-18:00")
+            Pattern time24Pattern = Pattern.compile("(\\d{1,2}:?\\d{2})\\s*[-–]\\s*(\\d{1,2}:?\\d{2})");
+            Matcher matcher24 = time24Pattern.matcher(hoursOnly);
+
+            if (matcher24.find()) {
+                String closingTime24 = matcher24.group(2);
+                String closingTime12 = convertTo12Hour(closingTime24);
+                return "Open today: closes " + closingTime12;
+            }
+
+            // If we can't parse specific times, show the raw hours for today
+            return "Today: " + hoursOnly;
+
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String convertTo12Hour(String time24) {
+        try {
+            SimpleDateFormat format24 = new SimpleDateFormat("HH:mm");
+            SimpleDateFormat format12 = new SimpleDateFormat("h:mm a");
+            Date date = format24.parse(time24);
+            return format12.format(date).toLowerCase();
+        } catch (Exception e) {
+            return time24; // Return original if conversion fails
         }
     }
 
