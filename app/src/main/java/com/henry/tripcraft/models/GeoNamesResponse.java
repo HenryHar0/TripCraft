@@ -9,11 +9,10 @@ public class GeoNamesResponse {
     public static class City {
         public String name;
         public String countryName;
+        public String countryCode;
         public double lat;
         public double lng;
         public int geonameId;
         public int population;
     }
 }
-
-

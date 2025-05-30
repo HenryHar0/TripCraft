@@ -3,6 +3,7 @@ package com.henry.tripcraft;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -10,6 +11,7 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -192,12 +194,24 @@ public class PlanActivity extends AppCompatActivity {
 
             // 4) Set or update the DayByDayAdapter
             if (dayByDayAdapter == null) {
-                dayByDayAdapter = new DayByDayAdapter(schedule, apiKey);
+                // Pass 'this' (PlanActivity instance) to the adapter
+                dayByDayAdapter = new DayByDayAdapter(schedule, apiKey, this);
                 recycler.setAdapter(dayByDayAdapter);
             } else {
                 dayByDayAdapter.updateSchedule(schedule);
             }
         });
+    }
+
+    public void showFragment(Fragment fragment) {
+
+        // Show the fragment
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .addToBackStack(null) // Add to back stack so user can navigate back
+                .commit();
+
+        findViewById(R.id.fragment_container).setVisibility(View.VISIBLE);
     }
 
 

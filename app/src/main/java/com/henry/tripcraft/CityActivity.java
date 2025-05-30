@@ -31,7 +31,9 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
+import okhttp3.OkHttpClient;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -55,15 +57,13 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final int MIN_POPULATION = 1000;
 
     // Debounce delay for search (milliseconds)
-    private static final long SEARCH_DEBOUNCE_DELAY = 300;
+    private static final long SEARCH_DEBOUNCE_DELAY = 500; // Increased from 300
 
     // Cache for previous search results to improve responsiveness
     private final HashMap<String, HashMap<String, LatLng>> searchCache = new HashMap<>();
 
-    // Global set to track all city keys across queries to prevent duplicates
-    private final HashSet<String> allCityKeys = new HashSet<>();
-
-    // Global set to track all display names to prevent duplicates in the adapter
+    // Improved duplicate tracking - use normalized city+country as key
+    private final HashMap<String, String> cityCountryToDisplayName = new HashMap<>();
     private final HashSet<String> allDisplayNames = new HashSet<>();
 
     // Use an executor for background tasks
@@ -84,17 +84,20 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
     // Track the currently running API call
     private Call<GeoNamesResponse> currentApiCall;
 
-    // Retrofit client for API calls
+    // Retrofit client for API calls with improved networking
     private GeoNamesAPI geoNamesAPI;
 
     // NumberFormat for formatting population numbers
     private NumberFormat numberFormat;
 
+    // Retry mechanism
+    private static final int MAX_RETRIES = 3;
+    private int currentRetryCount = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_city);
-
 
         // Initialize the number formatter for population display
         numberFormat = NumberFormat.getNumberInstance(Locale.getDefault());
@@ -117,12 +120,8 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-        // Initialize Retrofit early
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://secure.geonames.org/")
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
-        geoNamesAPI = retrofit.create(GeoNamesAPI.class);
+        // Initialize Retrofit with improved networking configuration
+        initializeRetrofit();
 
         // Set up a custom adapter with better styling
         cityAdapter = new CityAdapter(this, android.R.layout.simple_dropdown_item_1line);
@@ -136,6 +135,28 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
             mapFragment.getMapAsync(this);
         }
 
+        setupSearchListeners();
+    }
+
+    private void initializeRetrofit() {
+        // Create OkHttpClient with improved networking settings
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .connectTimeout(15, TimeUnit.SECONDS)     // Increased from default 10s
+                .readTimeout(20, TimeUnit.SECONDS)        // Increased from default 10s
+                .writeTimeout(20, TimeUnit.SECONDS)       // Increased from default 10s
+                .retryOnConnectionFailure(true)           // Enable automatic retry
+                .build();
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://secure.geonames.org/")
+                .client(okHttpClient)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        geoNamesAPI = retrofit.create(GeoNamesAPI.class);
+    }
+
+    private void setupSearchListeners() {
         // Apply animations to the search field
         searchCity.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) {
@@ -172,6 +193,9 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (currentApiCall != null) {
                     currentApiCall.cancel();
                 }
+
+                // Reset retry count for new query
+                currentRetryCount = 0;
 
                 // Check cache and show immediate results
                 if (query.length() >= 2) {
@@ -254,7 +278,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // Check for precise cache hits
         if (searchCache.containsKey(query)) {
-            updateAdapterFromCache(query, searchCache.get(query));
+            updateAdapterFromCache(query, searchCache.get(query), true);
             return;
         }
 
@@ -264,7 +288,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                     query.toLowerCase().startsWith(cacheKey.toLowerCase())) {
                 // Found a prefix match in cache
                 HashMap<String, LatLng> cachedData = searchCache.get(cacheKey);
-                updateAdapterFromCache(query, cachedData);
+                updateAdapterFromCache(query, cachedData, true);
                 break;
             }
         }
@@ -281,6 +305,48 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
             return formattedCityName.substring(0, populationIndex);
         }
         return formattedCityName;
+    }
+
+    /**
+     * Creates a normalized key for duplicate detection
+     * @param cityName The city name
+     * @param countryName The country name
+     * @return A normalized key like "london,united kingdom"
+     */
+    private String createNormalizedKey(String cityName, String countryName) {
+        return (cityName + "," + countryName).toLowerCase().trim();
+    }
+
+    /**
+     * Check for duplicates before showing dropdown
+     */
+    private void checkForDuplicatesAndShowDropdown() {
+        // Create a temporary map to check for duplicates
+        HashMap<String, Integer> duplicateCount = new HashMap<>();
+
+        // Count occurrences of each city-country combination
+        for (int i = 0; i < cityAdapter.getCount(); i++) {
+            String displayName = cityAdapter.getItem(i);
+            String cityCountry = extractCityCountryName(displayName);
+            String normalizedKey = createNormalizedKey(
+                    cityCountry.split(",")[0].trim(),
+                    cityCountry.contains(",") ? cityCountry.split(",")[1].trim() : ""
+            );
+
+            duplicateCount.put(normalizedKey, duplicateCount.getOrDefault(normalizedKey, 0) + 1);
+        }
+
+        // Log duplicates found (for debugging)
+        for (String key : duplicateCount.keySet()) {
+            if (duplicateCount.get(key) > 1) {
+                System.out.println("Duplicate found: " + key + " appears " + duplicateCount.get(key) + " times");
+            }
+        }
+
+        // Show dropdown if we have cities and search field has focus
+        if (searchCity.hasFocus() && cityAdapter.getCount() > 0) {
+            searchCity.showDropDown();
+        }
     }
 
     @Override
@@ -308,7 +374,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private void updateAdapterFromCache(String query, HashMap<String, LatLng> cachedData) {
+    private void updateAdapterFromCache(String query, HashMap<String, LatLng> cachedData, boolean checkDuplicates) {
         if (cachedData == null || cachedData.isEmpty()) {
             return;
         }
@@ -321,35 +387,67 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                 // Preserve the city coordinates
                 cityCoordinates.putAll(cachedData);
 
-                // Initialize the adapter if this is the first time
-                if (cityAdapter.getCount() == 0) {
-                    for (String cityName : cachedData.keySet()) {
-                        // Add only if we haven't already added this display name
-                        if (!allDisplayNames.contains(cityName)) {
-                            allDisplayNames.add(cityName);
-                            cityAdapter.add(cityName);
-                        }
-                    }
-                } else {
-                    // Don't add cities that are already in the adapter
-                    boolean addedNewItems = false;
-                    for (String cityName : cachedData.keySet()) {
-                        if (!allDisplayNames.contains(cityName)) {
-                            allDisplayNames.add(cityName);
-                            cityAdapter.add(cityName);
-                            addedNewItems = true;
+                boolean addedNewItems = false;
+
+                for (String cityName : cachedData.keySet()) {
+                    // Extract city and country for duplicate checking
+                    String cityCountry = extractCityCountryName(cityName);
+                    String[] parts = cityCountry.split(",");
+                    String city = parts.length > 0 ? parts[0].trim() : "";
+                    String country = parts.length > 1 ? parts[1].trim() : "";
+                    String normalizedKey = createNormalizedKey(city, country);
+
+                    // Check for duplicates if requested
+                    if (checkDuplicates) {
+                        // If we already have this city-country combination, skip it
+                        if (cityCountryToDisplayName.containsKey(normalizedKey)) {
+                            // Keep the one with higher population if possible
+                            String existingDisplayName = cityCountryToDisplayName.get(normalizedKey);
+                            if (shouldReplaceExistingCity(existingDisplayName, cityName)) {
+                                // Remove the old one
+                                allDisplayNames.remove(existingDisplayName);
+                                cityCoordinates.remove(existingDisplayName);
+
+                                // Remove from adapter
+                                for (int i = 0; i < cityAdapter.getCount(); i++) {
+                                    if (cityAdapter.getItem(i).equals(existingDisplayName)) {
+                                        cityAdapter.remove(existingDisplayName);
+                                        break;
+                                    }
+                                }
+
+                                // Add the new one
+                                cityCountryToDisplayName.put(normalizedKey, cityName);
+                                allDisplayNames.add(cityName);
+                                cityAdapter.add(cityName);
+                                addedNewItems = true;
+                            }
+                            continue; // Skip adding if we're keeping the existing one
                         }
                     }
 
-                    // Only notify if we added anything new
-                    if (addedNewItems) {
-                        cityAdapter.notifyDataSetChanged();
+                    // Add only if we haven't already added this display name
+                    if (!allDisplayNames.contains(cityName)) {
+                        allDisplayNames.add(cityName);
+                        cityCountryToDisplayName.put(normalizedKey, cityName);
+                        cityAdapter.add(cityName);
+                        addedNewItems = true;
                     }
                 }
 
-                // Force the dropdown to show
-                if (searchCity.hasFocus() && cachedData.size() > 0) {
-                    searchCity.showDropDown();
+                // Only notify if we added anything new
+                if (addedNewItems) {
+                    cityAdapter.notifyDataSetChanged();
+                }
+
+                // Check for duplicates before showing dropdown
+                if (checkDuplicates) {
+                    checkForDuplicatesAndShowDropdown();
+                } else {
+                    // Force the dropdown to show
+                    if (searchCity.hasFocus() && cachedData.size() > 0) {
+                        searchCity.showDropDown();
+                    }
                 }
 
                 // Hide loading indicator
@@ -360,7 +458,45 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
+    /**
+     * Determines if we should replace an existing city with a new one
+     * (e.g., prefer higher population)
+     */
+    private boolean shouldReplaceExistingCity(String existingDisplayName, String newDisplayName) {
+        // Extract population from both display names
+        long existingPop = extractPopulationFromDisplayName(existingDisplayName);
+        long newPop = extractPopulationFromDisplayName(newDisplayName);
+
+        // Prefer the one with higher population
+        return newPop > existingPop;
+    }
+
+    /**
+     * Extracts population number from display name
+     */
+    private long extractPopulationFromDisplayName(String displayName) {
+        try {
+            int startIndex = displayName.indexOf("Population: ");
+            if (startIndex == -1) return 0;
+
+            startIndex += "Population: ".length();
+            int endIndex = displayName.indexOf(")", startIndex);
+            if (endIndex == -1) return 0;
+
+            String popStr = displayName.substring(startIndex, endIndex);
+            // Remove commas from population string
+            popStr = popStr.replaceAll(",", "");
+            return Long.parseLong(popStr);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     private void fetchCitySuggestions(String query) {
+        fetchCitySuggestionsWithRetry(query, 0);
+    }
+
+    private void fetchCitySuggestionsWithRetry(String query, int retryCount) {
         if (query.isEmpty()) return;
 
         // Store the query we're processing
@@ -378,6 +514,9 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onResponse(Call<GeoNamesResponse> call, Response<GeoNamesResponse> response) {
                 if (response.isSuccessful() && response.body() != null && !call.isCanceled()) {
+                    // Reset retry count on success
+                    currentRetryCount = 0;
+
                     // Process on a background thread
                     executorService.execute(() -> {
                         HashMap<String, LatLng> newCityData = new HashMap<>();
@@ -394,23 +533,18 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                                 String country = city.countryName != null ? city.countryName : "";
 
-                                // Create a truly unique key that combines all city attributes
-                                String cityKey = city.name + "," + country + "," + city.lat + "," + city.lng;
-
                                 // Format the display name
                                 String formattedPopulation = city.population > 0
                                         ? " (Population: " + numberFormat.format(city.population) + ")"
                                         : "";
                                 String cityName = city.name + ", " + country + formattedPopulation;
 
-                                // Only add if we haven't seen this exact city before
-                                if (!allCityKeys.contains(cityKey)) {
-                                    allCityKeys.add(cityKey);
+                                // Create normalized key for duplicate checking
+                                String normalizedKey = createNormalizedKey(city.name, country);
 
-                                    // Check if we already have this display name
-                                    if (!allDisplayNames.contains(cityName)) {
-                                        newCityData.put(cityName, new LatLng(city.lat, city.lng));
-                                    }
+                                // Only add if we don't already have this city-country combination
+                                if (!cityCountryToDisplayName.containsKey(normalizedKey)) {
+                                    newCityData.put(cityName, new LatLng(city.lat, city.lng));
                                 }
                             }
                         }
@@ -428,32 +562,53 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                         if (latestQuery.equals(currentQuery)
                                 || latestQuery.toLowerCase().startsWith(currentQuery.toLowerCase())
                                 || currentQuery.toLowerCase().startsWith(latestQuery.toLowerCase())) {
-                            updateAdapterFromCache(currentQuery, newCityData);
+                            updateAdapterFromCache(currentQuery, newCityData, true);
                         }
                     });
                 } else {
-                    runOnUiThread(() -> {
-                        if (loadingIndicator != null) {
-                            loadingIndicator.setVisibility(View.GONE);
-                        }
-                    });
+                    // Handle unsuccessful response
+                    handleApiError(currentQuery, retryCount, "Server error: " + response.code());
                 }
             }
 
             @Override
             public void onFailure(Call<GeoNamesResponse> call, Throwable t) {
                 if (!call.isCanceled()) {
-                    runOnUiThread(() -> {
-                        if (loadingIndicator != null) {
-                            loadingIndicator.setVisibility(View.GONE);
-                        }
-                        Toast.makeText(CityActivity.this,
-                                "Network error. Please try again.",
-                                Toast.LENGTH_SHORT).show();
-                    });
+                    handleApiError(currentQuery, retryCount, "Network error: " + t.getMessage());
                 }
             }
         });
+    }
+
+    private void handleApiError(String query, int retryCount, String errorMessage) {
+        if (retryCount < MAX_RETRIES) {
+            // Retry with exponential backoff
+            long delayMs = (long) Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+
+            searchHandler.postDelayed(() -> {
+                if (latestQuery.equals(query)) { // Only retry if still relevant
+                    fetchCitySuggestionsWithRetry(query, retryCount + 1);
+                }
+            }, delayMs);
+
+            runOnUiThread(() -> {
+                if (retryCount == 0) { // Only show message on first failure
+                    Toast.makeText(CityActivity.this,
+                            "Connection slow, retrying...",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            // Max retries reached
+            runOnUiThread(() -> {
+                if (loadingIndicator != null) {
+                    loadingIndicator.setVisibility(View.GONE);
+                }
+                Toast.makeText(CityActivity.this,
+                        "Unable to load cities. Please check your connection and try again.",
+                        Toast.LENGTH_LONG).show();
+            });
+        }
     }
 
     private void updateMap(LatLng cityLocation, String cityName) {

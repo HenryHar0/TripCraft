@@ -11,7 +11,6 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.tabs.TabLayout;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -28,14 +27,14 @@ public class CalendarActivity extends AppCompatActivity {
     public static final String EXTRA_LONGITUDE = "longitude";
 
     private CalendarView calendarView;
-    private TabLayout dateTabLayout;
     private MaterialButton nextButton;
-    private TextView arrivalDateText, departureDateText, daysCountText;
+    private MaterialButton decreaseDaysButton;
+    private MaterialButton increaseDaysButton;
+    private TextView arrivalDateText, departureDateText, daysCountText, daysCounterText;
 
     private String startDateStorage;
     private String endDateStorage;
-    private boolean isArrivalTab = true;
-    private boolean suppressListener = false;
+    private int durationDays = 1;
 
     private ImageButton backButton;
 
@@ -62,23 +61,30 @@ public class CalendarActivity extends AppCompatActivity {
 
         calendarView.setMinDate(today.getTimeInMillis());
         calendarView.setDate(today.getTimeInMillis(), false, true);
+
+        // Initialize with today's date
         Date todayDate = new Date(today.getTimeInMillis());
         startDateStorage = storageFormat.format(todayDate);
         arrivalDateText.setText(displayFormat.format(todayDate));
 
-        setupTabListener();
+        // Calculate and set initial departure date
+        updateDepartureDateFromDuration();
+
         setupDateChangeListener();
+        setupDurationControls();
         setupNextButton();
         setupBackButton();
     }
 
     private void initViews() {
         calendarView = findViewById(R.id.date_picker);
-        dateTabLayout = findViewById(R.id.date_tab_layout);
         nextButton = findViewById(R.id.next_button);
+        decreaseDaysButton = findViewById(R.id.decrease_days);
+        increaseDaysButton = findViewById(R.id.increase_days);
         arrivalDateText = findViewById(R.id.arrival_date);
         departureDateText = findViewById(R.id.departure_date);
         daysCountText = findViewById(R.id.days_count);
+        daysCounterText = findViewById(R.id.days_counter);
         backButton = findViewById(R.id.back_button);
     }
 
@@ -90,94 +96,69 @@ public class CalendarActivity extends AppCompatActivity {
         longitude = intent.getDoubleExtra(EXTRA_LONGITUDE, 0.0);
     }
 
-    private void setupTabListener() {
-        dateTabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-            @Override
-            public void onTabSelected(TabLayout.Tab tab) {
-                isArrivalTab = (tab.getPosition() == 0);
-                long targetDate = today.getTimeInMillis();
-
-                suppressListener = true;
-
-                if (isArrivalTab) {
-                    calendarView.setMinDate(today.getTimeInMillis());
-                    if (startDateStorage != null) {
-                        targetDate = parseStorageToMillisCorrect(startDateStorage);
-                    }
-                } else {
-                    if (startDateStorage != null) {
-                        long startMillis = parseStorageToMillisCorrect(startDateStorage);
-                        calendarView.setMinDate(startMillis);
-
-                        if (endDateStorage != null) {
-                            targetDate = parseStorageToMillisCorrect(endDateStorage);
-                        } else {
-                            targetDate = startMillis;
-                        }
-                    } else {
-                        calendarView.setMinDate(today.getTimeInMillis());
-                    }
-                }
-
-                calendarView.setDate(targetDate, false, true);
-                suppressListener = false;
-            }
-
-            @Override public void onTabUnselected(TabLayout.Tab tab) {}
-            @Override public void onTabReselected(TabLayout.Tab tab) {}
-        });
-    }
-
     private void setupDateChangeListener() {
         calendarView.setOnDateChangeListener((view, year, month, dayOfMonth) -> {
-            if (suppressListener) return;
-
             String storageDate = String.format(Locale.getDefault(), "%d-%02d-%02d", year, month + 1, dayOfMonth);
             Calendar cal = Calendar.getInstance();
             cal.set(year, month, dayOfMonth);
             String displayDate = displayFormat.format(cal.getTime());
 
-            if (isArrivalTab) {
-                startDateStorage = storageDate;
-                arrivalDateText.setText(displayDate);
+            startDateStorage = storageDate;
+            arrivalDateText.setText(displayDate);
 
-                // Clear departure date if it becomes invalid
-                if (endDateStorage != null && isEndBeforeStart(startDateStorage, endDateStorage)) {
-                    endDateStorage = null;
-                    departureDateText.setText("--");
-                    daysCountText.setText("-- nights");
-                }
-            } else {
-                if (startDateStorage == null || isEndBeforeStart(startDateStorage, storageDate)) {
-                    Toast.makeText(this, "Departure date cannot be before arrival date", Toast.LENGTH_SHORT).show();
+            // Update departure date based on current duration
+            updateDepartureDateFromDuration();
+        });
+    }
 
-                    // Reset to previous valid date or arrival date
-                    suppressListener = true;
-                    if (endDateStorage != null) {
-                        calendarView.setDate(parseStorageToMillisCorrect(endDateStorage), false, true);
-                    } else if (startDateStorage != null) {
-                        calendarView.setDate(parseStorageToMillisCorrect(startDateStorage), false, true);
-                    }
-                    suppressListener = false;
-                    return;
-                }
-
-                endDateStorage = storageDate;
-                departureDateText.setText(displayDate);
-                updateDuration();
+    private void setupDurationControls() {
+        decreaseDaysButton.setOnClickListener(v -> {
+            if (durationDays > 1) {
+                durationDays--;
+                updateDurationDisplay();
+                updateDepartureDateFromDuration();
             }
         });
+
+        increaseDaysButton.setOnClickListener(v -> {
+            if (durationDays < 30) { // Set a reasonable maximum
+                durationDays++;
+                updateDurationDisplay();
+                updateDepartureDateFromDuration();
+            }
+        });
+    }
+
+    private void updateDurationDisplay() {
+        daysCounterText.setText(String.valueOf(durationDays));
+        String durationText = durationDays + (durationDays == 1 ? " day" : " days");
+        daysCountText.setText(durationText);
+    }
+
+    private void updateDepartureDateFromDuration() {
+        if (startDateStorage != null) {
+            try {
+                Date startDate = storageFormat.parse(startDateStorage);
+                if (startDate != null) {
+                    Calendar cal = Calendar.getInstance();
+                    cal.setTime(startDate);
+                    cal.add(Calendar.DAY_OF_MONTH, durationDays - 1); // -1 because if staying 1 day, departure is same day
+
+                    Date departureDate = cal.getTime();
+                    endDateStorage = storageFormat.format(departureDate);
+                    departureDateText.setText(displayFormat.format(departureDate));
+                }
+            } catch (ParseException e) {
+                Log.e("CalendarActivity", "Date parsing failed", e);
+            }
+        }
+        updateDurationDisplay();
     }
 
     private void setupNextButton() {
         nextButton.setOnClickListener(v -> {
             if (startDateStorage == null || endDateStorage == null) {
-                Toast.makeText(this, "Please select both arrival and departure dates.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            if (isEndBeforeStart(startDateStorage, endDateStorage)) {
-                Toast.makeText(this, "Departure date cannot be before arrival date.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Please select your arrival date.", Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -200,7 +181,7 @@ public class CalendarActivity extends AppCompatActivity {
         Intent intent = new Intent(this, InterestsActivity.class);
         intent.putExtra("start_date", startDateStorage);
         intent.putExtra("end_date", endDateStorage);
-        intent.putExtra("duration_days", calculateDurationDays(startDateStorage, endDateStorage));
+        intent.putExtra("duration_days", durationDays);
         intent.putExtra(EXTRA_CITY, city);
         intent.putExtra(EXTRA_GEONAME_ID, geonameId);
         intent.putExtra(EXTRA_LATITUDE, latitude);
@@ -257,12 +238,5 @@ public class CalendarActivity extends AppCompatActivity {
             return (int) (diff / (1000 * 60 * 60 * 24) + 1);
         }
         return 0;
-    }
-
-    private void updateDuration() {
-        if (startDateStorage != null && endDateStorage != null) {
-            int days = calculateDurationDays(startDateStorage, endDateStorage);
-            daysCountText.setText(days + (days == 1 ? " night" : " nights"));
-        }
     }
 }
