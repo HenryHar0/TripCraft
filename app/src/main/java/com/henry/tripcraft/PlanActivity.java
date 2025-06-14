@@ -217,12 +217,10 @@ public class PlanActivity extends AppCompatActivity {
 
 
     private void fetchPlaceById(String placeId, int timeSpent) {
-        Log.d("PlaceDebug", "Starting fetchPlaceById with placeId: " + placeId);
-
         String apiKey = getString(R.string.google_api_key1);
 
         String url = "https://places.googleapis.com/v1/places/" + placeId +
-                "?fields=displayName,formattedAddress,types,rating,location,userRatingCount,photos,regularOpeningHours,websiteUri" +
+                "?fields=displayName,formattedAddress,types,rating,location,userRatingCount,photos,regularOpeningHours,websiteUri,primaryTypeDisplayName" +
                 "&key=" + apiKey;
 
         OkHttpClient client = new OkHttpClient();
@@ -235,22 +233,21 @@ public class PlanActivity extends AppCompatActivity {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                Log.e("PlaceDebug", "Places API call failed", e);
+                Log.e("SelectedPlacesDebug", "Places API call failed for placeId: " + placeId, e);
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 if (!response.isSuccessful()) {
-                    Log.e("PlaceDebug", "Unexpected response code: " + response.code());
+                    Log.e("SelectedPlacesDebug", "Unexpected response code: " + response.code());
                     if (response.body() != null) {
                         String errorBody = response.body().string();
-                        Log.e("PlaceDebug", "Error response: " + errorBody);
+                        Log.e("SelectedPlacesDebug", "Error response: " + errorBody);
                     }
                     return;
                 }
 
                 String responseBody = response.body().string();
-                Log.d("PlaceDebug", "Response body: " + responseBody);
 
                 try {
                     JSONObject json = new JSONObject(responseBody);
@@ -261,17 +258,10 @@ public class PlanActivity extends AppCompatActivity {
 
                     String address = json.optString("formattedAddress", "No address available");
 
-                    JSONArray typesJson = json.optJSONArray("types");
-                    String placeType = "Place";
-                    if (typesJson != null && typesJson.length() > 0) {
-                        for (int i = 0; i < typesJson.length(); i++) {
-                            if (!typesJson.isNull(i)) {
-                                String type = typesJson.getString(i);
-                                Object formatted = getFormattedPlaceType(type);
-                                placeType = (formatted != null) ? formatted.toString() : "";
-                                break;
-                            }
-                        }
+                    JSONObject primaryTypeDisplayName = json.optJSONObject("primaryTypeDisplayName");
+                    String placeType = "Place"; // Default fallback
+                    if (primaryTypeDisplayName != null) {
+                        placeType = primaryTypeDisplayName.optString("text", "Place");
                     }
 
                     float rating = (float) json.optDouble("rating", 0.0);
@@ -301,7 +291,9 @@ public class PlanActivity extends AppCompatActivity {
                     JSONObject location = json.optJSONObject("location");
                     LatLng latLng = null;
                     if (location != null) {
-                        latLng = new LatLng(location.optDouble("latitude", 0.0), location.optDouble("longitude", 0.0));
+                        double lat = location.optDouble("latitude", 0.0);
+                        double lng = location.optDouble("longitude", 0.0);
+                        latLng = new LatLng(lat, lng);
                     }
 
                     PlaceData selectedPlace = new PlaceData(
@@ -334,38 +326,58 @@ public class PlanActivity extends AppCompatActivity {
                         selectedPlace.addPhotoReference("default_placeholder");
                     }
 
+                    Log.d("SelectedPlacesDebug", "Setting userSelected to TRUE for place: " + name);
                     selectedPlace.setUserSelected(true);
+                    Log.d("SelectedPlacesDebug", "userSelected is now: " + selectedPlace.isUserSelected());
 
                     synchronized (placeDataList) {
-                        placeDataList.removeIf(p -> p.getPlaceId().equals(placeId));
+                        // Find and remove existing place with same ID if it exists
+                        PlaceData existingPlace = null;
+                        for (int i = 0; i < placeDataList.size(); i++) {
+                            PlaceData p = placeDataList.get(i);
+                            if (p.getPlaceId().equals(placeId)) {
+                                existingPlace = p;
+                                placeDataList.remove(i);
+                                Log.d("SelectedPlacesDebug", "REMOVED existing place: " + p.getName() + " (Selected: " + p.isUserSelected() + ")");
+                                break;
+                            }
+                        }
+
+                        // Add the new selected place at the beginning
                         placeDataList.add(0, selectedPlace);
+
+                        // Log selected places after update
+                        Log.d("SelectedPlacesDebug", "=== SELECTED PLACES AFTER UPDATE ===");
+                        for (int i = 0; i < placeDataList.size(); i++) {
+                            PlaceData p = placeDataList.get(i);
+                            if (p.isUserSelected()) {
+                                Log.d("SelectedPlacesDebug", "Selected place [" + i + "]: " + p.getName() +
+                                        " (ID: " + p.getPlaceId() +
+                                        ", TimeSpent: " + p.getTimeSpent() +
+                                        ", Type: " + p.getPlaceType() + ")");
+                            }
+                        }
+                        Log.d("SelectedPlacesDebug", "=== END SELECTED PLACES ===");
                     }
 
                     runOnUiThread(() -> {
                         if (placeAdapter1 != null) {
                             placeAdapter1.updatePlaces(placeDataList);
                         }
-
-                        // FIXED: Update filtered list immediately when a place is selected
-                        updateFilteredPlaces();
                     });
 
-                    Log.d("PlaceDebug", "Place fetched and UI updated: " + name + ", Website: " + website);
-
                 } catch (JSONException e) {
-                    Log.e("PlaceDebug", "JSON parsing error", e);
+                    Log.e("SelectedPlacesDebug", "JSON parsing error for placeId: " + placeId, e);
                 }
             }
         });
     }
 
-    private static final String TAG1 = "PlaceFetchDebug";
     private static final int MAX_RESULTS_PER_TYPE = 20;
 
     private List<PlaceData> placeDataList = new ArrayList<>();
 
     private void fetchPlacesOfType(String placeType, int timeSpent) {
-        Log.d(TAG1, "Fetching places for type: " + placeType);
         int currentCall = callcount.incrementAndGet();
 
         getBoundariesFromNominatim(city, () -> {
@@ -375,10 +387,8 @@ public class PlanActivity extends AppCompatActivity {
 
             int radius = calculateRadiusFromBounds(rectangularBounds);
             radius = Math.min(radius, 50000);
-            Log.d(TAG1, "Calculated radius: " + radius + " meters");
 
             String apiKey = getString(R.string.google_api_key1);
-            // Updated: Added websiteUri to the fields
             String url = "https://places.googleapis.com/v1/places:searchNearby"
                     + "?key=" + apiKey
                     + "&fields=places.id,places.displayName.text,places.formattedAddress,places.rating,places.location,places.photos,places.userRatingCount,places.regularOpeningHours,places.websiteUri";
@@ -398,11 +408,8 @@ public class PlanActivity extends AppCompatActivity {
                 bodyJson.put("includedTypes", new JSONArray().put(placeType.toLowerCase()));
                 bodyJson.put("maxResultCount", MAX_RESULTS_PER_TYPE);
             } catch (JSONException e) {
-                Log.e(TAG1, "Failed to build JSON body", e);
                 return;
             }
-
-            Log.d(TAG1, "SearchNearby POST body: " + bodyJson.toString());
 
             OkHttpClient client = new OkHttpClient();
             RequestBody requestBody = RequestBody.create(
@@ -417,27 +424,21 @@ public class PlanActivity extends AppCompatActivity {
             client.newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
-                    Log.e(TAG1, "Places:searchNearby API call failed", e);
                 }
 
                 @Override
                 public void onResponse(Call call, Response response) throws IOException {
                     if (!response.isSuccessful()) {
-                        Log.e(TAG1, "Unexpected response code: " + response.code());
-                        if (response.body() != null) {
-                            String errorBody = response.body().string();
-                            Log.e(TAG1, "Error response: " + errorBody);
-                        }
                         return;
                     }
 
                     String responseBody = response.body().string();
+
                     try {
                         JSONObject json = new JSONObject(responseBody);
                         JSONArray places = json.optJSONArray("places");
 
                         if (places == null || places.length() == 0) {
-                            Log.w(TAG1, "No places found for type: " + placeType);
                             return;
                         }
 
@@ -481,6 +482,7 @@ public class PlanActivity extends AppCompatActivity {
 
                             pd.setOpeningHours(openingHours);
                             pd.setWebsite(website);
+                            pd.setUserSelected(false);
 
                             if (place.has("photos")) {
                                 JSONArray photos = place.getJSONArray("photos");
@@ -495,27 +497,53 @@ public class PlanActivity extends AppCompatActivity {
 
                             newPlaces.add(pd);
                             count++;
-
-                            Log.d(TAG1, "Added place: " + name + ", Website: " + website);
                         }
 
                         synchronized (placeDataList) {
                             placeDataList.addAll(newPlaces);
 
                             // Use a LinkedHashMap to keep insertion order but remove duplicates by placeId
+                            // IMPORTANT: Preserve user-selected places over API results
                             Map<String, PlaceData> uniqueMap = new LinkedHashMap<>();
                             for (PlaceData pd : placeDataList) {
-                                uniqueMap.put(pd.getPlaceId(), pd); // overwrite duplicates, keeps last occurrence
+                                String key = pd.getPlaceId();
+                                PlaceData existing = uniqueMap.get(key);
+
+                                if (existing == null) {
+                                    // No duplicate, add it
+                                    uniqueMap.put(key, pd);
+                                } else {
+                                    // Duplicate found - keep the user-selected version if one exists
+                                    if (pd.isUserSelected()) {
+                                        uniqueMap.put(key, pd); // Replace with user-selected version
+                                    } else if (!existing.isUserSelected()) {
+                                        uniqueMap.put(key, pd); // Both are not user-selected, keep the last one
+                                    }
+                                    // If existing is user-selected and current is not, keep existing (do nothing)
+                                }
                             }
+
                             placeDataList.clear();
                             placeDataList.addAll(uniqueMap.values());
+
+                            // Log selected places after deduplication
+                            Log.d("SelectedPlacesDebug", "=== SELECTED PLACES AFTER DEDUPLICATION ===");
+                            int selectedCount = 0;
+                            for (PlaceData pd : placeDataList) {
+                                if (pd.isUserSelected()) {
+                                    selectedCount++;
+                                    Log.d("SelectedPlacesDebug", "Selected place: " + pd.getName() + " (ID: " + pd.getPlaceId() + ", TimeSpent: " + pd.getTimeSpent() + ")");
+                                }
+                            }
+                            Log.d("SelectedPlacesDebug", "Total selected places: " + selectedCount);
+                            Log.d("SelectedPlacesDebug", "=== END SELECTED PLACES ===");
                         }
 
                         runOnUiThread(() -> {
                             if (placeAdapter1 == null) {
                                 placeAdapter1 = new PlaceAdapter1(placeDataList, apiKey);
                                 activitiesList.setAdapter(placeAdapter1);
-                                activitiesList.setLayoutManager(new LinearLayoutManager(getApplicationContext()));  // set once here
+                                activitiesList.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
                             } else {
                                 placeAdapter1.updatePlaces(placeDataList);
                             }
@@ -526,7 +554,7 @@ public class PlanActivity extends AppCompatActivity {
                             filtered = filterPlacesByRatingAndTime(placeDataList, totalTime);
 
                             runOnUiThread(() -> {
-                                if (filteredAdapter == null) {  // new adapter instance for filteredList
+                                if (filteredAdapter == null) {
                                     filteredAdapter = new PlaceAdapter1(filtered, apiKey);
                                     filteredList.setAdapter(filteredAdapter);
                                     filteredList.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
@@ -541,34 +569,13 @@ public class PlanActivity extends AppCompatActivity {
                         }
 
                     } catch (JSONException e) {
-                        Log.e(TAG1, "JSON parse error", e);
                     }
                 }
             });
         });
     }
 
-    // Helper method to update filtered places
-    private void updateFilteredPlaces() {
-        if (days > 0 && hoursList != null) {
-            int totalTime = TotalTime(days, hoursList);
 
-            synchronized (placeDataList) {
-                filtered = filterPlacesByRatingAndTime(placeDataList, totalTime);
-            }
-
-            runOnUiThread(() -> {
-                if (filteredAdapter == null) {
-                    String apiKey = getString(R.string.google_api_key1);
-                    filteredAdapter = new PlaceAdapter1(filtered, apiKey);
-                    filteredList.setAdapter(filteredAdapter);
-                    filteredList.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
-                } else {
-                    filteredAdapter.updatePlaces(filtered);
-                }
-            });
-        }
-    }
 
     private int TotalTime(int totalDays, ArrayList<Integer> dailyhours) {
         int totalTime = 0;
@@ -579,9 +586,6 @@ public class PlanActivity extends AppCompatActivity {
     }
 
     private List<PlaceData> filterPlacesByRatingAndTime(List<PlaceData> allPlacesData, int totalAvailableTime) {
-        Log.d(TAG1, "Filtering places. Total places: " + allPlacesData.size() +
-                ", Available time: " + totalAvailableTime + " hours");
-
         if (allPlacesData.isEmpty()) {
             return new ArrayList<>();
         }
@@ -629,6 +633,8 @@ public class PlanActivity extends AppCompatActivity {
         for (PlaceData selectedPlace : selectedPlaces) {
             finalSelection.add(selectedPlace);
             totalTime += selectedPlace.getTimeSpent();
+            Log.d("SelectedPlacesDebug", "SELECTED PLACE ADDED: " + selectedPlace.getName() +
+                    " (TimeSpent: " + selectedPlace.getTimeSpent() + ", RunningTotal: " + totalTime + ")");
         }
 
         // Calculate remaining time and distribute among types
@@ -654,9 +660,6 @@ public class PlanActivity extends AppCompatActivity {
                 }
             }
         }
-
-        Log.d(TAG1, "Places filtered: " + finalSelection.size() +
-                " places selected (" + selectedPlaces.size() + " user-selected), Total time: " + totalTime + " hours");
 
         return finalSelection;
     }

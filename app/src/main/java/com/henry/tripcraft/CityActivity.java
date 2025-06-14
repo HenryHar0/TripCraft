@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
@@ -581,34 +582,114 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void handleApiError(String query, int retryCount, String errorMessage) {
+        Log.w("CityActivity", "API Error (attempt " + (retryCount + 1) + "): " + errorMessage);
+
         if (retryCount < MAX_RETRIES) {
-            // Retry with exponential backoff
-            long delayMs = (long) Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+            // Exponential backoff with jitter to avoid thundering herd
+            long baseDelay = (long) Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+            long jitter = (long) (Math.random() * 500); // Add up to 500ms random delay
+            long delayMs = baseDelay + jitter;
 
             searchHandler.postDelayed(() -> {
                 if (latestQuery.equals(query)) { // Only retry if still relevant
+                    runOnUiThread(() -> {
+                        if (loadingIndicator != null) {
+                            loadingIndicator.setVisibility(View.VISIBLE);
+                        }
+                    });
                     fetchCitySuggestionsWithRetry(query, retryCount + 1);
                 }
             }, delayMs);
 
+            // Show different messages based on retry attempt
             runOnUiThread(() -> {
-                if (retryCount == 0) { // Only show message on first failure
-                    Toast.makeText(CityActivity.this,
-                            "Connection slow, retrying...",
-                            Toast.LENGTH_SHORT).show();
+                String message;
+                switch (retryCount) {
+                    case 0:
+                        message = "Connection slow, retrying...";
+                        break;
+                    case 1:
+                        message = "Still connecting, please wait...";
+                        break;
+                    default:
+                        message = "Having trouble connecting, final attempt...";
+                        break;
+                }
+
+                // Only show toast if we don't have cached results to fall back on
+                if (!hasRelevantCachedResults(query)) {
+                    Toast.makeText(CityActivity.this, message, Toast.LENGTH_SHORT).show();
                 }
             });
         } else {
-            // Max retries reached
+            // Max retries reached - check if we can use cached results
             runOnUiThread(() -> {
                 if (loadingIndicator != null) {
                     loadingIndicator.setVisibility(View.GONE);
                 }
-                Toast.makeText(CityActivity.this,
-                        "Unable to load cities. Please check your connection and try again.",
-                        Toast.LENGTH_LONG).show();
+
+                // Try to show cached results from similar queries
+                if (tryFallbackToCache(query)) {
+                    Toast.makeText(CityActivity.this,
+                            "Using cached results (connection unstable)",
+                            Toast.LENGTH_SHORT).show();
+                } else {
+                    // Show retry option
+                    showRetryDialog(query);
+                }
             });
         }
+    }
+
+    private boolean hasRelevantCachedResults(String query) {
+        if (query.length() < 2) return false;
+
+        for (String cacheKey : searchCache.keySet()) {
+            if (cacheKey.toLowerCase().startsWith(query.toLowerCase()) ||
+                    query.toLowerCase().startsWith(cacheKey.toLowerCase())) {
+                HashMap<String, LatLng> cached = searchCache.get(cacheKey);
+                if (cached != null && !cached.isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Try to use cached results as fallback
+     */
+    private boolean tryFallbackToCache(String query) {
+        // Look for partial matches in cache
+        for (String cacheKey : searchCache.keySet()) {
+            if (cacheKey.toLowerCase().contains(query.toLowerCase()) ||
+                    query.toLowerCase().contains(cacheKey.toLowerCase())) {
+                HashMap<String, LatLng> cached = searchCache.get(cacheKey);
+                if (cached != null && !cached.isEmpty()) {
+                    updateAdapterFromCache(query, cached, true);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Show dialog with retry option
+     */
+    private void showRetryDialog(String query) {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Connection Problem")
+                .setMessage("Unable to load cities. This might be due to network issues or server maintenance.")
+                .setPositiveButton("Retry", (dialog, which) -> {
+                    currentRetryCount = 0; // Reset retry count
+                    fetchCitySuggestions(query);
+                })
+                .setNegativeButton("Cancel", (dialog, which) -> {
+                    // Try fallback cache one more time
+                    tryFallbackToCache(query);
+                })
+                .show();
     }
 
     private void updateMap(LatLng cityLocation, String cityName) {

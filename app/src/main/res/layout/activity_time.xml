@@ -166,7 +166,7 @@
                         android:id="@+id/instructionTitle"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="How many hours will you spend sightseeing each day?"
+                        android:text="Hours of sightseeing per day?"
                         android:textSize="18sp"
                         android:textStyle="bold"
                         android:textColor="#1E3A5F"

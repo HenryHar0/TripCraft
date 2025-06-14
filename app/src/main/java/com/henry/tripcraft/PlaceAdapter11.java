@@ -32,15 +32,30 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Map;
+import java.util.HashMap;
+
+import okhttp3.*;
+import org.json.JSONObject;
+import org.json.JSONArray;
+import java.io.IOException;
 
 public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceViewHolder> {
 
     private List<PlaceData> placesList;
     private String apiKey;
+    private String cohereApiKey;
+    private OkHttpClient httpClient;
+    private Map<String, String> aboutCache; // Cache for generated descriptions
 
-    public PlaceAdapter11(List<PlaceData> placesList, String apiKey) {
+    private static final String COHERE_API_URL = "https://api.cohere.ai/v1/generate";
+
+    public PlaceAdapter11(List<PlaceData> placesList, String apiKey, String cohereApiKey) {
         this.placesList = placesList;
         this.apiKey = apiKey;
+        this.cohereApiKey = cohereApiKey;
+        this.httpClient = new OkHttpClient();
+        this.aboutCache = new HashMap<>();
     }
 
     @NonNull
@@ -91,6 +106,9 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
         // Load the main image
         loadPlaceImage(holder, place);
 
+        // Generate and set about section
+        generateAboutSection(holder, place);
+
         // Set click listener for "View on Maps" button only
         holder.viewMapsButton.setOnClickListener(v -> {
             if (place.getLatLng() != null) {
@@ -113,6 +131,148 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
         } else {
             holder.itemView.setAlpha(1.0f);
         }
+    }
+
+    private void generateAboutSection(PlaceViewHolder holder, PlaceData place) {
+        String placeKey = place.getName() + "_" + place.getPlaceType();
+
+        // Check if we already have a cached description
+        if (aboutCache.containsKey(placeKey)) {
+            holder.aboutText.setText(aboutCache.get(placeKey));
+            return;
+        }
+
+        // Show loading text while generating
+        holder.aboutText.setText("Generating description...");
+
+        // Generate description asynchronously
+        generateDescription(place, new DescriptionCallback() {
+            @Override
+            public void onSuccess(String description) {
+                // Cache the result
+                aboutCache.put(placeKey, description);
+
+                // Update UI on main thread
+                holder.aboutText.post(() -> {
+                    holder.aboutText.setText(description);
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.e("PlaceAdapter", "Error generating description: " + error);
+                holder.aboutText.post(() -> {
+                    holder.aboutText.setText(getDefaultDescription(place));
+                });
+            }
+        });
+    }
+
+    private void generateDescription(PlaceData place, DescriptionCallback callback) {
+        // Create prompt for Cohere
+        String prompt = createPrompt(place);
+
+        // Create JSON request body
+        JSONObject requestBody = new JSONObject();
+        try {
+            requestBody.put("model", "command-light");
+            requestBody.put("prompt", prompt);
+            requestBody.put("max_tokens", 150);
+            requestBody.put("temperature", 0.7);
+            requestBody.put("k", 0);
+            requestBody.put("stop_sequences", new JSONArray());
+            requestBody.put("return_likelihoods", "NONE");
+        } catch (Exception e) {
+            callback.onError("Error creating request: " + e.getMessage());
+            return;
+        }
+
+        // Create HTTP request
+        RequestBody body = RequestBody.create(
+                requestBody.toString(),
+                MediaType.parse("application/json")
+        );
+
+        Request request = new Request.Builder()
+                .url(COHERE_API_URL)
+                .post(body)
+                .addHeader("Authorization", "Bearer " + cohereApiKey)
+                .addHeader("Content-Type", "application/json")
+                .build();
+
+        // Execute request asynchronously
+        httpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onError("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try {
+                    if (response.isSuccessful()) {
+                        String responseBody = response.body().string();
+                        JSONObject jsonResponse = new JSONObject(responseBody);
+
+                        if (jsonResponse.has("generations")) {
+                            JSONArray generations = jsonResponse.getJSONArray("generations");
+                            if (generations.length() > 0) {
+                                String generatedText = generations.getJSONObject(0)
+                                        .getString("text")
+                                        .trim();
+                                callback.onSuccess(generatedText);
+                            } else {
+                                callback.onError("No generations in response");
+                            }
+                        } else {
+                            callback.onError("Invalid response format");
+                        }
+                    } else {
+                        callback.onError("API request failed: " + response.code());
+                    }
+                } catch (Exception e) {
+                    callback.onError("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    private String createPrompt(PlaceData place) {
+        String placeType = getFormattedPlaceType(place.getPlaceType());
+        String rating = place.getRating() > 0 ? String.format("%.1f", place.getRating()) : "not rated";
+
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Write a brief, engaging description for a travel destination called \"")
+                .append(place.getName())
+                .append("\". ");
+
+        if (placeType != null) {
+            prompt.append("It's a ").append(placeType.toLowerCase()).append(". ");
+        }
+
+        prompt.append("It has a rating of ").append(rating).append(" stars. ");
+
+        prompt.append("Write 2-3 sentences that would interest a traveler, focusing on what makes this place special and worth visiting. ");
+        prompt.append("Keep it informative but exciting, like a travel guide description.\n\n");
+
+        return prompt.toString();
+    }
+
+    private String getDefaultDescription(PlaceData place) {
+        String placeType = getFormattedPlaceType(place.getPlaceType());
+        if (placeType != null) {
+            return place.getName() + " is a popular " + placeType.toLowerCase() +
+                    " that offers visitors a unique experience. " +
+                    "This destination is worth exploring for its distinctive character and local appeal.";
+        } else {
+            return place.getName() + " is an interesting destination that offers visitors a unique experience worth exploring.";
+        }
+    }
+
+    // Interface for async callback
+    private interface DescriptionCallback {
+        void onSuccess(String description);
+        void onError(String error);
     }
 
     private void setTypeDrawable(PlaceViewHolder holder, String type) {
@@ -161,7 +321,7 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
                 break;
             // Default for unknown types
             default:
-                drawableRes = R.drawable.ic_default_place; // You might want to create a default icon
+                drawableRes = R.drawable.ic_default_place;
                 break;
         }
 
@@ -175,13 +335,11 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
         if (isRestaurantCafeOrService(placeType)) {
             // Show price level for restaurants, cafes, and services
             setPriceLevel(holder, place);
-            // Keep the original icon for price level (you might want to set this to a price/dollar icon)
-            holder.ticketDrawable.setImageResource(R.drawable.ic_money); // Assuming you have a price icon
+            holder.ticketDrawable.setImageResource(R.drawable.ic_money);
             holder.priceLevelText.setText("Price Level");
         } else {
             // Show website for other types (attractions, museums, etc.)
             setWebsite(holder, place);
-            // Change to website icon
             holder.ticketDrawable.setImageResource(R.drawable.ic_website);
             holder.priceLevelText.setText("Website");
         }
@@ -259,8 +417,6 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
                 placeType.contains("shop");
     }
 
-
-
     private void setPriceLevel(PlaceViewHolder holder, PlaceData place) {
         try {
             int priceLevel = place.getPriceLevel();
@@ -274,19 +430,19 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
                     break;
                 case 1:
                     priceText = "$";
-                    color = Color.parseColor("#4CAF50"); // Green
+                    color = Color.parseColor("#4CAF50");
                     break;
                 case 2:
                     priceText = "$$";
-                    color = Color.parseColor("#FFEB3B"); // Yellow
+                    color = Color.parseColor("#FFEB3B");
                     break;
                 case 3:
                     priceText = "$$$";
-                    color = Color.parseColor("#FF9800"); // Orange
+                    color = Color.parseColor("#FF9800");
                     break;
                 case 4:
                     priceText = "$$$$";
-                    color = Color.parseColor("#F44336"); // Red
+                    color = Color.parseColor("#F44336");
                     break;
                 default:
                     priceText = "N/A";
@@ -296,7 +452,6 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
 
             holder.priceLevelValue.setText(priceText);
             holder.priceLevelValue.setTextColor(color);
-
             holder.priceLevelValue.setOnClickListener(null);
             holder.priceLevelValue.setClickable(false);
         } catch (Exception e) {
@@ -307,7 +462,6 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
         }
     }
 
-
     private void setWebsite(PlaceViewHolder holder, PlaceData place) {
         try {
             String website = place.getWebsite();
@@ -315,7 +469,6 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
                 holder.priceLevelValue.setText("Visit Website");
                 holder.priceLevelValue.setClickable(true);
 
-                // Set click listener to open website
                 holder.priceLevelValue.setOnClickListener(v -> {
                     try {
                         String url = website;
@@ -329,7 +482,6 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
                     }
                 });
 
-                // Optional: Change text color to indicate it's clickable
                 holder.priceLevelValue.setTextColor(ContextCompat.getColor(holder.itemView.getContext(),
                         android.R.color.holo_blue_dark));
             } else {
@@ -354,7 +506,6 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
                 if (todayStatus != null) {
                     holder.openingHoursValue.setText(todayStatus);
                 } else {
-                    // Fallback to full schedule if parsing fails
                     String formattedHours = rawHours.replace(";", "\n");
                     holder.openingHoursValue.setText(formattedHours);
                 }
@@ -368,11 +519,9 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
 
     private String parseTodayOpeningHours(String rawHours) {
         try {
-            // Get current day of week
             SimpleDateFormat dayFormat = new SimpleDateFormat("EEEE", Locale.getDefault());
             String today = dayFormat.format(new Date());
 
-            // Split hours by semicolon or newline
             String[] hourLines = rawHours.split("[;\n]");
 
             for (String line : hourLines) {
@@ -382,8 +531,7 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
                 }
             }
 
-            // If exact day not found, try abbreviated day names
-            String todayAbbrev = today.substring(0, 3); // Mon, Tue, etc.
+            String todayAbbrev = today.substring(0, 3);
             for (String line : hourLines) {
                 line = line.trim();
                 if (line.toLowerCase().startsWith(todayAbbrev.toLowerCase())) {
@@ -391,7 +539,7 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
                 }
             }
 
-            return null; // Parsing failed
+            return null;
         } catch (Exception e) {
             return null;
         }
@@ -399,18 +547,14 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
 
     private String formatTodayHours(String todayLine, String dayName) {
         try {
-            // Remove day name from the beginning
             String hoursOnly = todayLine.replaceFirst("(?i)" + dayName, "").trim();
             hoursOnly = hoursOnly.replaceFirst("(?i)" + dayName.substring(0, 3), "").trim();
-
-            // Remove leading colon or dash if present
             hoursOnly = hoursOnly.replaceFirst("^[:\\-]\\s*", "").trim();
 
             if (hoursOnly.toLowerCase().contains("closed")) {
                 return "Closed today";
             }
 
-            // Look for closing time pattern (like "9:00 AM - 6:00 PM")
             Pattern timePattern = Pattern.compile("(\\d{1,2}:?\\d{0,2}\\s*(?:AM|PM|am|pm))\\s*[-–]\\s*(\\d{1,2}:?\\d{0,2}\\s*(?:AM|PM|am|pm))");
             Matcher matcher = timePattern.matcher(hoursOnly);
 
@@ -419,7 +563,6 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
                 return "Open today: closes " + closingTime.toLowerCase();
             }
 
-            // Handle 24-hour format (like "09:00-18:00")
             Pattern time24Pattern = Pattern.compile("(\\d{1,2}:?\\d{2})\\s*[-–]\\s*(\\d{1,2}:?\\d{2})");
             Matcher matcher24 = time24Pattern.matcher(hoursOnly);
 
@@ -429,7 +572,6 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
                 return "Open today: closes " + closingTime12;
             }
 
-            // If we can't parse specific times, show the raw hours for today
             return "Today: " + hoursOnly;
 
         } catch (Exception e) {
@@ -444,23 +586,19 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
             Date date = format24.parse(time24);
             return format12.format(date).toLowerCase();
         } catch (Exception e) {
-            return time24; // Return original if conversion fails
+            return time24;
         }
     }
 
     private void loadPlaceImage(PlaceViewHolder holder, PlaceData place) {
         if (place.getPhotoReferences() != null && !place.getPhotoReferences().isEmpty()) {
-            // Use the first photo reference
             String photoReference = place.getPhotoReferences().get(0);
             Log.d("PlaceAdapter", "Photo reference: " + photoReference);
 
-            // Check if it's already a full URL or just a photo reference
             String photoUrl;
             if (photoReference.startsWith("http")) {
-                // It's already a full URL
                 photoUrl = photoReference;
             } else {
-                // It's a photo reference, construct the URL
                 photoUrl = "https://maps.googleapis.com/maps/api/place/photo" +
                         "?maxwidth=400" +
                         "&photo_reference=" + photoReference +
@@ -471,13 +609,12 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
 
             Glide.with(holder.itemView.getContext())
                     .load(photoUrl)
-                    .transform(new CenterCrop(), new RoundedCorners(24)) // 12dp corner radius * 2 for density
+                    .transform(new CenterCrop(), new RoundedCorners(24))
                     .placeholder(R.drawable.placeholder_image)
                     .error(R.drawable.placeholder_image)
                     .into(holder.placeImage);
         } else {
             Log.d("PlaceAdapter", "No photo references available for: " + place.getName());
-            // Use placeholder if no image available
             holder.placeImage.setImageResource(R.drawable.placeholder_image);
         }
     }
@@ -488,50 +625,32 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
     }
 
     public static class PlaceViewHolder extends RecyclerView.ViewHolder {
-        // Main card elements
         ImageView placeImage;
         TextView placeName;
         TextView placeType;
         TextView placeRating;
-
-        // Type drawable
         ImageView typeDrawable;
-
-        // Info squares elements
         TextView placeTypeValue;
         TextView priceLevelValue;
         TextView openingHoursValue;
-        TextView priceLevelText; // Added this for the label
-        ImageView ticketDrawable; // Added this for the icon
-
-        // About section (if you want to populate it dynamically)
+        TextView priceLevelText;
+        ImageView ticketDrawable;
         TextView aboutText;
-
-        // View Maps button
         LinearLayout viewMapsButton;
 
         public PlaceViewHolder(@NonNull View itemView) {
             super(itemView);
-            // Main card elements
             placeImage = itemView.findViewById(R.id.placeImage);
             placeName = itemView.findViewById(R.id.placeName);
             placeType = itemView.findViewById(R.id.placeType);
             placeRating = itemView.findViewById(R.id.placeRating);
-
-            // Type drawable
             typeDrawable = itemView.findViewById(R.id.typeDrawable);
-
-            // Info squares elements
             placeTypeValue = itemView.findViewById(R.id.placeTypeValue);
             priceLevelValue = itemView.findViewById(R.id.priceLevelValue);
             openingHoursValue = itemView.findViewById(R.id.openingHoursValue);
             priceLevelText = itemView.findViewById(R.id.priceLevelText);
             ticketDrawable = itemView.findViewById(R.id.ticketDrawable);
-
-            // About section
             aboutText = itemView.findViewById(R.id.aboutText);
-
-            // View Maps button
             viewMapsButton = itemView.findViewById(R.id.viewMapsButton);
         }
     }
@@ -541,9 +660,6 @@ public class PlaceAdapter11 extends RecyclerView.Adapter<PlaceAdapter11.PlaceVie
         notifyDataSetChanged();
     }
 
-    /**
-     * Maps raw place type strings to user-friendly display names.
-     */
     private String getFormattedPlaceType(String type) {
         switch (type) {
             case "museum":
