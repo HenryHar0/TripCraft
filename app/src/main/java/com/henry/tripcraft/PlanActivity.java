@@ -267,7 +267,8 @@ public class PlanActivity extends AppCompatActivity {
                         for (int i = 0; i < typesJson.length(); i++) {
                             if (!typesJson.isNull(i)) {
                                 String type = typesJson.getString(i);
-                                placeType = getFormattedPlaceType(type).toString();
+                                Object formatted = getFormattedPlaceType(type);
+                                placeType = (formatted != null) ? formatted.toString() : "";
                                 break;
                             }
                         }
