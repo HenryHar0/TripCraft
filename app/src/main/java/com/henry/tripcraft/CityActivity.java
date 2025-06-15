@@ -35,6 +35,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -42,6 +43,8 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class CityActivity extends AppCompatActivity implements OnMapReadyCallback {
+
+    private static final String TAG = "CityActivity";
 
     private AutoCompleteTextView searchCity;
     private MaterialButton nextButton;
@@ -57,8 +60,8 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
     // Minimum population threshold
     private static final int MIN_POPULATION = 1000;
 
-    // Debounce delay for search (milliseconds)
-    private static final long SEARCH_DEBOUNCE_DELAY = 500; // Increased from 300
+    // Reduced debounce delay for better responsiveness
+    private static final long SEARCH_DEBOUNCE_DELAY = 300; // Reduced from 500
 
     // Cache for previous search results to improve responsiveness
     private final HashMap<String, HashMap<String, LatLng>> searchCache = new HashMap<>();
@@ -91,14 +94,19 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
     // NumberFormat for formatting population numbers
     private NumberFormat numberFormat;
 
-    // Retry mechanism
-    private static final int MAX_RETRIES = 3;
+    // Reduced retry mechanism for faster failure detection
+    private static final int MAX_RETRIES = 2; // Reduced from 3
     private int currentRetryCount = 0;
+
+    // Track request timing for debugging
+    private long requestStartTime = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_city);
+
+        Log.d(TAG, "onCreate: Starting CityActivity");
 
         // Initialize the number formatter for population display
         numberFormat = NumberFormat.getNumberInstance(Locale.getDefault());
@@ -137,15 +145,24 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         setupSearchListeners();
+        Log.d(TAG, "onCreate: Setup complete");
     }
 
     private void initializeRetrofit() {
-        // Create OkHttpClient with improved networking settings
+        Log.d(TAG, "initializeRetrofit: Setting up network client");
+
+        // Add logging interceptor for debugging
+        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor(message ->
+                Log.d(TAG + "_HTTP", message));
+        loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BASIC); // Change to BODY for full debugging
+
+        // Create OkHttpClient with optimized settings
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)     // Increased from default 10s
-                .readTimeout(20, TimeUnit.SECONDS)        // Increased from default 10s
-                .writeTimeout(20, TimeUnit.SECONDS)       // Increased from default 10s
-                .retryOnConnectionFailure(true)           // Enable automatic retry
+                .connectTimeout(10, TimeUnit.SECONDS)     // Reduced from 15s
+                .readTimeout(15, TimeUnit.SECONDS)        // Reduced from 20s
+                .writeTimeout(15, TimeUnit.SECONDS)       // Reduced from 20s
+                .retryOnConnectionFailure(true)
+                .addInterceptor(loggingInterceptor)       // Add logging
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()
@@ -155,11 +172,15 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .build();
 
         geoNamesAPI = retrofit.create(GeoNamesAPI.class);
+        Log.d(TAG, "initializeRetrofit: Network client ready");
     }
 
     private void setupSearchListeners() {
+        Log.d(TAG, "setupSearchListeners: Setting up UI listeners");
+
         // Apply animations to the search field
         searchCity.setOnFocusChangeListener((v, hasFocus) -> {
+            Log.d(TAG, "searchCity focus changed: " + hasFocus);
             if (hasFocus) {
                 searchCity.setHint("Type city name...");
                 if (!latestQuery.isEmpty() && cityAdapter.getCount() > 0) {
@@ -179,6 +200,8 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                 final String query = charSequence.toString().trim();
                 latestQuery = query;
 
+                Log.d(TAG, "onTextChanged: Query = '" + query + "', length = " + query.length());
+
                 // Reset the selected city when typing
                 if (!query.equals(selectedCityName)) {
                     selectedCityName = "";
@@ -188,11 +211,13 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                 // Cancel any pending search operation
                 if (searchRunnable != null) {
                     searchHandler.removeCallbacks(searchRunnable);
+                    Log.d(TAG, "onTextChanged: Cancelled pending search");
                 }
 
                 // Cancel any ongoing API call
-                if (currentApiCall != null) {
+                if (currentApiCall != null && !currentApiCall.isCanceled()) {
                     currentApiCall.cancel();
+                    Log.d(TAG, "onTextChanged: Cancelled ongoing API call");
                 }
 
                 // Reset retry count for new query
@@ -200,6 +225,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 // Check cache and show immediate results
                 if (query.length() >= 2) {
+                    Log.d(TAG, "onTextChanged: Checking cache for query: " + query);
                     checkAndShowFromCache(query);
 
                     // Show loading indicator
@@ -209,10 +235,13 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     // Debounce the search to avoid too many API calls
                     searchRunnable = () -> {
+                        Log.d(TAG, "searchRunnable: Executing search for: " + query);
                         // First check if we already have exact match in cache
                         if (!searchCache.containsKey(query)) {
+                            Log.d(TAG, "searchRunnable: No cache hit, making API call");
                             executorService.execute(() -> fetchCitySuggestions(query));
                         } else {
+                            Log.d(TAG, "searchRunnable: Using cached results only");
                             // Just hide loading indicator if we're only using cache
                             runOnUiThread(() -> {
                                 if (loadingIndicator != null) {
@@ -224,8 +253,12 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     // Delay the search execution
                     searchHandler.postDelayed(searchRunnable, SEARCH_DEBOUNCE_DELAY);
-                } else if (loadingIndicator != null) {
-                    loadingIndicator.setVisibility(View.GONE);
+                    Log.d(TAG, "onTextChanged: Scheduled search with " + SEARCH_DEBOUNCE_DELAY + "ms delay");
+                } else {
+                    Log.d(TAG, "onTextChanged: Query too short, hiding loading indicator");
+                    if (loadingIndicator != null) {
+                        loadingIndicator.setVisibility(View.GONE);
+                    }
                 }
             }
 
@@ -235,6 +268,8 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         searchCity.setOnItemClickListener((parent, view, position, id) -> {
             selectedCityName = (String) parent.getItemAtPosition(position);
+            Log.d(TAG, "onItemClick: Selected city = " + selectedCityName);
+
             if (cityCoordinates.containsKey(selectedCityName)) {
                 updateMap(cityCoordinates.get(selectedCityName), selectedCityName);
                 nextButton.setEnabled(true);
@@ -245,6 +280,8 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
 
         nextButton.setOnClickListener(v -> {
+            Log.d(TAG, "nextButton clicked: selectedCityName = " + selectedCityName);
+
             if (!selectedCityName.isEmpty() && cityCoordinates.containsKey(selectedCityName)) {
                 // Add a subtle feedback animation
                 v.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100)
@@ -263,6 +300,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                 startActivity(intent);
                 overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
             } else {
+                Log.w(TAG, "nextButton clicked but no valid city selected");
                 Toast.makeText(this, "Please select a city before proceeding.", Toast.LENGTH_SHORT).show();
             }
         });
@@ -272,13 +310,17 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
      * Check several cache variants to find potential matches
      */
     private void checkAndShowFromCache(String query) {
+        Log.d(TAG, "checkAndShowFromCache: Checking cache for query = " + query);
+
         // Early return for very short queries
         if (query.length() < 2) {
+            Log.d(TAG, "checkAndShowFromCache: Query too short, returning");
             return;
         }
 
         // Check for precise cache hits
         if (searchCache.containsKey(query)) {
+            Log.d(TAG, "checkAndShowFromCache: Found exact cache hit for: " + query);
             updateAdapterFromCache(query, searchCache.get(query), true);
             return;
         }
@@ -287,6 +329,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
         for (String cacheKey : searchCache.keySet()) {
             if (cacheKey.toLowerCase().startsWith(query.toLowerCase()) ||
                     query.toLowerCase().startsWith(cacheKey.toLowerCase())) {
+                Log.d(TAG, "checkAndShowFromCache: Found prefix cache hit - cacheKey: " + cacheKey + ", query: " + query);
                 // Found a prefix match in cache
                 HashMap<String, LatLng> cachedData = searchCache.get(cacheKey);
                 updateAdapterFromCache(query, cachedData, true);
@@ -322,6 +365,8 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
      * Check for duplicates before showing dropdown
      */
     private void checkForDuplicatesAndShowDropdown() {
+        Log.d(TAG, "checkForDuplicatesAndShowDropdown: Checking " + cityAdapter.getCount() + " items");
+
         // Create a temporary map to check for duplicates
         HashMap<String, Integer> duplicateCount = new HashMap<>();
 
@@ -340,18 +385,20 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Log duplicates found (for debugging)
         for (String key : duplicateCount.keySet()) {
             if (duplicateCount.get(key) > 1) {
-                System.out.println("Duplicate found: " + key + " appears " + duplicateCount.get(key) + " times");
+                Log.w(TAG, "Duplicate found: " + key + " appears " + duplicateCount.get(key) + " times");
             }
         }
 
         // Show dropdown if we have cities and search field has focus
         if (searchCity.hasFocus() && cityAdapter.getCount() > 0) {
             searchCity.showDropDown();
+            Log.d(TAG, "checkForDuplicatesAndShowDropdown: Showing dropdown with " + cityAdapter.getCount() + " items");
         }
     }
 
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
+        Log.d(TAG, "onMapReady: Map is ready");
         mMap = googleMap;
         mMap.getUiSettings().setZoomControlsEnabled(true);
 
@@ -359,17 +406,16 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
         try {
             boolean success = mMap.setMapStyle(
                     MapStyleOptions.loadRawResourceStyle(this, R.raw.map_style));
-            if (!success) {
-                // Fallback to default style
-            }
+            Log.d(TAG, "onMapReady: Map style applied successfully: " + success);
         } catch (Exception e) {
-            // Error loading style
+            Log.e(TAG, "onMapReady: Error applying map style", e);
         }
 
         isMapReady = true;
 
         // Check if we have a pending map update
         if (pendingMapUpdate) {
+            Log.d(TAG, "onMapReady: Processing pending map update");
             updateMap(pendingMapLocation, pendingCityName);
             pendingMapUpdate = false;
         }
@@ -377,8 +423,11 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void updateAdapterFromCache(String query, HashMap<String, LatLng> cachedData, boolean checkDuplicates) {
         if (cachedData == null || cachedData.isEmpty()) {
+            Log.d(TAG, "updateAdapterFromCache: No cached data available");
             return;
         }
+
+        Log.d(TAG, "updateAdapterFromCache: Updating adapter with " + cachedData.size() + " cached items");
 
         runOnUiThread(() -> {
             // Only update if this is still the latest query or related to it
@@ -439,6 +488,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                 // Only notify if we added anything new
                 if (addedNewItems) {
                     cityAdapter.notifyDataSetChanged();
+                    Log.d(TAG, "updateAdapterFromCache: Added new items, adapter now has " + cityAdapter.getCount() + " items");
                 }
 
                 // Check for duplicates before showing dropdown
@@ -455,6 +505,8 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (loadingIndicator != null) {
                     loadingIndicator.setVisibility(View.GONE);
                 }
+            } else {
+                Log.d(TAG, "updateAdapterFromCache: Skipping update - query no longer relevant");
             }
         });
     }
@@ -494,11 +546,18 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void fetchCitySuggestions(String query) {
+        Log.d(TAG, "fetchCitySuggestions: Starting search for: " + query);
+        requestStartTime = System.currentTimeMillis();
         fetchCitySuggestionsWithRetry(query, 0);
     }
 
     private void fetchCitySuggestionsWithRetry(String query, int retryCount) {
-        if (query.isEmpty()) return;
+        if (query.isEmpty()) {
+            Log.d(TAG, "fetchCitySuggestionsWithRetry: Empty query, returning");
+            return;
+        }
+
+        Log.d(TAG, "fetchCitySuggestionsWithRetry: Query = " + query + ", retry = " + retryCount);
 
         // Store the query we're processing
         final String currentQuery = query;
@@ -511,10 +570,17 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                 geoNamesUsername
         );
 
+        Log.d(TAG, "fetchCitySuggestionsWithRetry: API call created, making request...");
+
         currentApiCall.enqueue(new Callback<GeoNamesResponse>() {
             @Override
             public void onResponse(Call<GeoNamesResponse> call, Response<GeoNamesResponse> response) {
+                long responseTime = System.currentTimeMillis() - requestStartTime;
+                Log.d(TAG, "onResponse: Received response in " + responseTime + "ms, code = " + response.code());
+
                 if (response.isSuccessful() && response.body() != null && !call.isCanceled()) {
+                    Log.d(TAG, "onResponse: Successful response, processing data...");
+
                     // Reset retry count on success
                     currentRetryCount = 0;
 
@@ -523,12 +589,16 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                         HashMap<String, LatLng> newCityData = new HashMap<>();
 
                         if (response.body().geonames != null) {
+                            Log.d(TAG, "onResponse: Processing " + response.body().geonames.size() + " cities from API");
+
                             for (GeoNamesResponse.City city : response.body().geonames) {
                                 // Skip if essential data is missing or population is below threshold
                                 if (city.name == null
                                         || city.lat == 0
                                         || city.lng == 0
                                         || city.population < MIN_POPULATION) {
+                                    Log.d(TAG, "onResponse: Skipping city " + (city.name != null ? city.name : "null") +
+                                            " - population: " + city.population);
                                     continue;
                                 }
 
@@ -548,7 +618,11 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     newCityData.put(cityName, new LatLng(city.lat, city.lng));
                                 }
                             }
+                        } else {
+                            Log.w(TAG, "onResponse: No geonames data in response");
                         }
+
+                        Log.d(TAG, "onResponse: Processed " + newCityData.size() + " unique cities");
 
                         // Cache the results (only if we got some)
                         if (!newCityData.isEmpty()) {
@@ -557,16 +631,22 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                             if (!currentQuery.equals(currentQuery.toLowerCase())) {
                                 searchCache.put(currentQuery.toLowerCase(), newCityData);
                             }
+                            Log.d(TAG, "onResponse: Cached results for query: " + currentQuery);
                         }
 
                         // Only update UI if this is still relevant to latest query
                         if (latestQuery.equals(currentQuery)
                                 || latestQuery.toLowerCase().startsWith(currentQuery.toLowerCase())
                                 || currentQuery.toLowerCase().startsWith(latestQuery.toLowerCase())) {
+                            Log.d(TAG, "onResponse: Updating UI with new data");
                             updateAdapterFromCache(currentQuery, newCityData, true);
+                        } else {
+                            Log.d(TAG, "onResponse: Skipping UI update - query no longer relevant");
                         }
                     });
                 } else {
+                    Log.w(TAG, "onResponse: Unsuccessful response - code: " + response.code() +
+                            ", body: " + (response.body() != null) + ", cancelled: " + call.isCanceled());
                     // Handle unsuccessful response
                     handleApiError(currentQuery, retryCount, "Server error: " + response.code());
                 }
@@ -574,30 +654,41 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             @Override
             public void onFailure(Call<GeoNamesResponse> call, Throwable t) {
+                long responseTime = System.currentTimeMillis() - requestStartTime;
+                Log.e(TAG, "onFailure: Request failed after " + responseTime + "ms", t);
+
                 if (!call.isCanceled()) {
                     handleApiError(currentQuery, retryCount, "Network error: " + t.getMessage());
+                } else {
+                    Log.d(TAG, "onFailure: Call was cancelled, not handling as error");
                 }
             }
         });
     }
 
     private void handleApiError(String query, int retryCount, String errorMessage) {
-        Log.w("CityActivity", "API Error (attempt " + (retryCount + 1) + "): " + errorMessage);
+        Log.w(TAG, "handleApiError: Query = " + query + ", attempt = " + (retryCount + 1) +
+                ", error = " + errorMessage);
 
         if (retryCount < MAX_RETRIES) {
             // Exponential backoff with jitter to avoid thundering herd
-            long baseDelay = (long) Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+            long baseDelay = (long) Math.pow(2, retryCount) * 1000; // 1s, 2s
             long jitter = (long) (Math.random() * 500); // Add up to 500ms random delay
             long delayMs = baseDelay + jitter;
 
+            Log.d(TAG, "handleApiError: Scheduling retry in " + delayMs + "ms");
+
             searchHandler.postDelayed(() -> {
                 if (latestQuery.equals(query)) { // Only retry if still relevant
+                    Log.d(TAG, "handleApiError: Executing retry for: " + query);
                     runOnUiThread(() -> {
                         if (loadingIndicator != null) {
                             loadingIndicator.setVisibility(View.VISIBLE);
                         }
                     });
                     fetchCitySuggestionsWithRetry(query, retryCount + 1);
+                } else {
+                    Log.d(TAG, "handleApiError: Skipping retry - query no longer relevant");
                 }
             }, delayMs);
 
@@ -622,6 +713,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
             });
         } else {
+            Log.w(TAG, "handleApiError: Max retries reached for query: " + query);
             // Max retries reached - check if we can use cached results
             runOnUiThread(() -> {
                 if (loadingIndicator != null) {
@@ -630,6 +722,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 // Try to show cached results from similar queries
                 if (tryFallbackToCache(query)) {
+                    Log.d(TAG, "handleApiError: Using fallback cache results");
                     Toast.makeText(CityActivity.this,
                             "Using cached results (connection unstable)",
                             Toast.LENGTH_SHORT).show();

@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- Header Section -->
+        <LinearLayout
+            android:id="@+id/headerSection"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/surface"
+            android:elevation="4dp"
+            android:padding="24dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <!-- Back Button -->
+            <ImageView
+                android:id="@+id/backButton"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@android:drawable/ic_menu_revert"
+                android:layout_marginBottom="16dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:padding="4dp"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <!-- Image Container (FrameLayout to overlay ImageView and placeholder) -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginBottom="16dp">
+
+                <!-- Blog Image Placeholder (color background) -->
+                <View
+                    android:id="@+id/blogImagePlaceholder"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/primary"
+                    android:visibility="visible" />
+
+                <!-- Actual Blog Image -->
+                <ImageView
+                    android:id="@+id/blogImageView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone"
+                    android:contentDescription="Blog image"
+                    android:background="@android:color/transparent" />
+
+            </FrameLayout>
+
+            <!-- Blog Title -->
+            <TextView
+                android:id="@+id/blogTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Blog Title"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/on_background"
+                android:fontFamily="sans-serif-medium"
+                android:lineSpacingExtra="4dp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Author and Date Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/blogAuthor"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Author Name"
+                    android:textSize="14sp"
+                    android:textColor="@color/primary"
+                    android:fontFamily="sans-serif-medium"
+                    android:drawablePadding="8dp" />
+
+                <TextView
+                    android:id="@+id/blogDate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Date"
+                    android:textSize="14sp"
+                    android:textColor="@color/on_surface"
+                    android:fontFamily="sans-serif" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Content Section -->
+        <LinearLayout
+            android:id="@+id/contentSection"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/headerSection">
+
+            <TextView
+                android:id="@+id/blogContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Blog content goes here..."
+                android:textSize="16sp"
+                android:textColor="@color/on_background"
+                android:fontFamily="sans-serif"
+                android:lineSpacingExtra="6dp"
+                android:justificationMode="inter_word"
+                android:layout_marginBottom="32dp" />
+
+            <!-- Action Buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginTop="16dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/shareButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Share"
+                    android:textColor="@color/primary"
+                    android:backgroundTint="@android:color/transparent"
+                    app:strokeColor="@color/primary"
+                    app:strokeWidth="1dp"
+                    app:cornerRadius="8dp"
+                    android:layout_marginEnd="8dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/bookmarkButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Bookmark"
+                    android:textColor="@color/on_primary"
+                    android:backgroundTint="@color/primary"
+                    app:cornerRadius="8dp"
+                    android:layout_marginStart="8dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</ScrollView>

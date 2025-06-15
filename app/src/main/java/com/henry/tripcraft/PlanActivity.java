@@ -585,84 +585,294 @@ public class PlanActivity extends AppCompatActivity {
         return totalTime;
     }
 
-    private List<PlaceData> filterPlacesByRatingAndTime(List<PlaceData> allPlacesData, int totalAvailableTime) {
-        if (allPlacesData.isEmpty()) {
+    private static final float MAX_RATING = 5.0f;
+    private static final float MAX_SCORE = 100.0f;
+    private static final float LOG_NORMALIZATION_FACTOR = 4.0f;
+    private static final float USER_SELECTION_SCORE_BOOST = 10000.0f;
+
+
+    public static List<PlaceData> filterPlacesByRatingAndTime(List<PlaceData> allPlacesData, int totalAvailableTime) {
+        System.out.println("=== STARTING PLACE FILTERING ===");
+        System.out.println("Total available time: " + totalAvailableTime + " minutes");
+
+        if (allPlacesData == null || allPlacesData.isEmpty()) {
+            System.out.println("No places data provided - returning empty list");
             return new ArrayList<>();
         }
 
-        // Step 1: Score computation
-        for (PlaceData place : allPlacesData) {
-            float rating = place.getRating();
-            float normalizedRating = Math.max(0, Math.min(100, (rating / 5.0f) * 100));
-            float reviewScore = 0;
-            int userRatings = place.getUserRatingsTotal();
-            if (userRatings > 0) {
-                float logScale = (float) Math.log10(userRatings);
-                reviewScore = Math.max(0, Math.min(100, (logScale / 4.0f) * 100));
-            }
-            float score = (normalizedRating + reviewScore) / 2.0f;
-            if (place.isUserSelected()) {
-                score += 10000; // This ensures selected places get highest priority
-            }
-            place.setScore(score);
-        }
+        System.out.println("Input places count: " + allPlacesData.size());
 
-        // Step 2: First, always include user-selected places
+        computePlaceScores(allPlacesData);
+
         List<PlaceData> selectedPlaces = new ArrayList<>();
         List<PlaceData> nonSelectedPlaces = new ArrayList<>();
-
         for (PlaceData place : allPlacesData) {
-            if (place.isUserSelected()) {
-                selectedPlaces.add(place);
-            } else {
-                nonSelectedPlaces.add(place);
+            if (place.isUserSelected()) selectedPlaces.add(place);
+            else nonSelectedPlaces.add(place);
+        }
+
+        System.out.println("User selected places: " + selectedPlaces.size());
+        System.out.println("Non-selected places: " + nonSelectedPlaces.size());
+
+        // Log user selected places
+        if (!selectedPlaces.isEmpty()) {
+            System.out.println("--- USER SELECTED PLACES ---");
+            for (PlaceData p : selectedPlaces) {
+                System.out.println("  " + p.getName() + " (Type: " + p.getPlaceType() + ", Time: " + p.getTimeSpent() + "min, Score: " + String.format("%.2f", p.getScore()) + ")");
             }
         }
 
-        // Step 3: Group non-selected places by type for filtering
-        Map<String, List<PlaceData>> placesByType = new HashMap<>();
-        for (PlaceData place : nonSelectedPlaces) {
-            String type = place.getPlaceType();
-            placesByType.computeIfAbsent(type, k -> new ArrayList<>()).add(place);
+        Map<String, List<PlaceData>> placesByType = groupPlacesByType(nonSelectedPlaces);
+        sortTypeGroupsByScore(placesByType);
+
+        // Log place types and counts
+        System.out.println("--- PLACE TYPES ANALYSIS ---");
+        System.out.println("Total place types found: " + placesByType.size());
+        for (Map.Entry<String, List<PlaceData>> entry : placesByType.entrySet()) {
+            String type = entry.getKey();
+            List<PlaceData> places = entry.getValue();
+            System.out.println("Type '" + type + "': " + places.size() + " places");
+
+            // Show top 3 places per type
+            int showCount = Math.min(3, places.size());
+            for (int i = 0; i < showCount; i++) {
+                PlaceData p = places.get(i);
+                System.out.println("  #" + (i+1) + ": " + p.getName() + " (Time: " + p.getTimeSpent() + "min, Score: " + String.format("%.2f", p.getScore()) + ")");
+            }
         }
 
         List<PlaceData> finalSelection = new ArrayList<>();
+        int currentTime = 0;
 
-        // Add all selected places first
-        int totalTime = 0;
-        for (PlaceData selectedPlace : selectedPlaces) {
-            finalSelection.add(selectedPlace);
-            totalTime += selectedPlace.getTimeSpent();
-            Log.d("SelectedPlacesDebug", "SELECTED PLACE ADDED: " + selectedPlace.getName() +
-                    " (TimeSpent: " + selectedPlace.getTimeSpent() + ", RunningTotal: " + totalTime + ")");
+        // Add user selected places first
+        for (PlaceData p : selectedPlaces) {
+            finalSelection.add(p);
+            currentTime += p.getTimeSpent();
+            System.out.println("Added user selected: " + p.getName() + " (Type: " + p.getPlaceType() + ") - Current time: " + currentTime + "min");
         }
 
-        // Calculate remaining time and distribute among types
-        int remainingTime = totalAvailableTime - totalTime;
-        if (remainingTime > 0 && !placesByType.isEmpty()) {
-            int typeCount = placesByType.size();
-            int timePerType = Math.max(1, remainingTime / typeCount);
+        System.out.println("--- STARTING QUOTA BALANCED FILL (TOP 10 TYPES) ---");
+        currentTime = fillByTypeQuotaBalanced(
+                placesByType, finalSelection, currentTime, totalAvailableTime
+        );
 
-            for (Map.Entry<String, List<PlaceData>> entry : placesByType.entrySet()) {
-                List<PlaceData> places = entry.getValue();
+        System.out.println("--- STARTING LEFTOVERS FILL ---");
+        fillWithLeftovers(placesByType, finalSelection, currentTime, totalAvailableTime);
 
-                // Sort by score descending
-                places.sort((p1, p2) -> Float.compare(p2.getScore(), p1.getScore()));
+        // Final analysis
+        System.out.println("=== FINAL RESULTS ===");
+        System.out.println("Total selected places: " + finalSelection.size());
 
-                int timeUsedForType = 0;
-                for (PlaceData place : places) {
-                    if (timeUsedForType + place.getTimeSpent() <= timePerType &&
-                            totalTime + place.getTimeSpent() <= totalAvailableTime) {
-                        finalSelection.add(place);
-                        timeUsedForType += place.getTimeSpent();
-                        totalTime += place.getTimeSpent();
-                    }
-                }
-            }
+        Map<String, Integer> finalTypeCounts = new HashMap<>();
+        int totalFinalTime = 0;
+        for (PlaceData p : finalSelection) {
+            finalTypeCounts.merge(p.getPlaceType(), 1, Integer::sum);
+            totalFinalTime += p.getTimeSpent();
+        }
+
+        System.out.println("Final time used: " + totalFinalTime + "/" + totalAvailableTime + " minutes");
+        System.out.println("Final type distribution:");
+        for (Map.Entry<String, Integer> entry : finalTypeCounts.entrySet()) {
+            System.out.println("  " + entry.getKey() + ": " + entry.getValue() + " places");
         }
 
         return finalSelection;
     }
+
+    /**
+     * Computes and assigns a score to each PlaceData item based on:
+     * - Normalized rating (0–5 scaled to 0–100)
+     * - Log-scaled count of user reviews
+     * - Optional bonus for user-selected places
+     */
+    public static void computePlaceScores(List<PlaceData> places) {
+        System.out.println("--- COMPUTING SCORES ---");
+        float minScore = Float.MAX_VALUE;
+        float maxScore = Float.MIN_VALUE;
+
+        for (PlaceData place : places) {
+            float rating = place.getRating();
+            int reviewCount = place.getUserRatingsTotal();
+
+            // Normalize rating: scale 0–5 to 0–100
+            float normalizedRating = clamp((rating / MAX_RATING) * MAX_SCORE, 0, MAX_SCORE);
+
+            // Normalize review count: log10 scale to compress large values
+            float normalizedReviews = reviewCount > 0
+                    ? clamp((float) (Math.log10(reviewCount) / LOG_NORMALIZATION_FACTOR) * MAX_SCORE, 0, MAX_SCORE)
+                    : 0f;
+
+            // Weighted average of rating and review score
+            float weightRating = 0.7f;
+            float weightReviews = 0.3f;
+            float score = (normalizedRating * weightRating) + (normalizedReviews * weightReviews);
+
+            // Bonus for manually selected places
+            if (place.isUserSelected()) {
+                score += USER_SELECTION_SCORE_BOOST;
+            }
+
+            place.setScore(score);
+
+            minScore = Math.min(minScore, score);
+            maxScore = Math.max(maxScore, score);
+        }
+
+        System.out.println("Score range: " + String.format("%.2f", minScore) + " - " + String.format("%.2f", maxScore));
+    }
+
+    public static Map<String, List<PlaceData>> groupPlacesByType(List<PlaceData> places) {
+        System.out.println("--- GROUPING PLACES BY TYPE ---");
+        Map<String, List<PlaceData>> map = new LinkedHashMap<>();
+        for (PlaceData p : places) {
+            map.computeIfAbsent(p.getPlaceType(), k -> new ArrayList<>()).add(p);
+        }
+
+        System.out.println("Created " + map.size() + " type groups");
+        return map;
+    }
+
+    public static void sortTypeGroupsByScore(Map<String, List<PlaceData>> groupedPlaces) {
+        System.out.println("--- SORTING PLACES BY SCORE WITHIN TYPES ---");
+        for (Map.Entry<String, List<PlaceData>> entry : groupedPlaces.entrySet()) {
+            List<PlaceData> list = entry.getValue();
+            list.sort((a, b) -> Float.compare(b.getScore(), a.getScore()));
+
+            if (!list.isEmpty()) {
+                System.out.println("Type '" + entry.getKey() + "' - Top score: " + String.format("%.2f", list.get(0).getScore()) +
+                        ", Bottom score: " + String.format("%.2f", list.get(list.size()-1).getScore()));
+            }
+        }
+    }
+
+    public static int fillByTypeQuotaBalanced(
+            Map<String, List<PlaceData>> groupedPlaces,
+            List<PlaceData> finalSelection,
+            int currentTime,
+            int totalAvailableTime
+    ) {
+        System.out.println("--- FILL BY TYPE QUOTA BALANCED (TOP 10 TYPES) ---");
+        Set<PlaceData> selectedSet = new HashSet<>(finalSelection);
+        int typeCount = groupedPlaces.size();
+        int minTypes = Math.min(10, typeCount);
+        int minTimePerType = totalAvailableTime / minTypes;
+
+        System.out.println("Type count: " + typeCount + ", Min types to satisfy: " + minTypes);
+        System.out.println("Min time per type: " + minTimePerType + " minutes");
+        System.out.println("Starting time: " + currentTime + " minutes");
+
+        // Phase A: Enforce minimum per type (top 10 types)
+        System.out.println("=== PHASE A: MINIMUM PER TYPE (TOP 10) ===");
+        List<String> typesToSatisfy = new ArrayList<>(groupedPlaces.keySet()).subList(0, minTypes);
+        System.out.println("Types to satisfy: " + typesToSatisfy);
+
+        for (String type : typesToSatisfy) {
+            System.out.println("Processing type: " + type);
+            int timeAllocated = 0;
+            int placesAdded = 0;
+
+            for (PlaceData place : groupedPlaces.get(type)) {
+                if (selectedSet.contains(place)) {
+                    System.out.println("  Skipping " + place.getName() + " - already selected");
+                    continue;
+                }
+
+                int t = place.getTimeSpent();
+                if (currentTime + t > totalAvailableTime) {
+                    System.out.println("  Skipping " + place.getName() + " - would exceed time limit (" + (currentTime + t) + " > " + totalAvailableTime + ")");
+                    break;
+                }
+
+                finalSelection.add(place);
+                selectedSet.add(place);
+                currentTime += t;
+                timeAllocated += t;
+                placesAdded++;
+
+                System.out.println("  Added: " + place.getName() + " (Time: " + t + "min, Score: " + String.format("%.2f", place.getScore()) + ") - Current time: " + currentTime + "min");
+
+                if (timeAllocated >= minTimePerType) {
+                    System.out.println("  Minimum time satisfied for type " + type + " (" + timeAllocated + " >= " + minTimePerType + ")");
+                    break;
+                }
+            }
+
+            System.out.println("Type " + type + " - Added " + placesAdded + " places, " + timeAllocated + " minutes");
+        }
+
+        System.out.println("Phase A completed - Current time: " + currentTime + "min");
+        return currentTime;
+    }
+
+    public static void fillWithLeftovers(
+            Map<String, List<PlaceData>> groupedPlaces,
+            List<PlaceData> finalSelection,
+            int currentTime,
+            int totalAvailableTime
+    ) {
+        System.out.println("--- FILL WITH LEFTOVERS ---");
+        System.out.println("Starting time: " + currentTime + "min");
+
+        Set<PlaceData> selectedSet = new HashSet<>(finalSelection);
+        List<PlaceData> leftovers = new ArrayList<>();
+
+        // Collect all unselected places
+        for (Map.Entry<String, List<PlaceData>> entry : groupedPlaces.entrySet()) {
+            String type = entry.getKey();
+            int leftoverCount = 0;
+
+            for (PlaceData p : entry.getValue()) {
+                if (!selectedSet.contains(p)) {
+                    leftovers.add(p);
+                    leftoverCount++;
+                }
+            }
+
+            System.out.println("Type " + type + " has " + leftoverCount + " leftover places");
+        }
+
+        System.out.println("Total leftovers: " + leftovers.size());
+
+        // Sort by score
+        leftovers.sort((a, b) -> Float.compare(b.getScore(), a.getScore()));
+
+        if (!leftovers.isEmpty()) {
+            System.out.println("Top 5 leftover places by score:");
+            for (int i = 0; i < Math.min(5, leftovers.size()); i++) {
+                PlaceData p = leftovers.get(i);
+                System.out.println("  #" + (i+1) + ": " + p.getName() + " (Type: " + p.getPlaceType() +
+                        ", Time: " + p.getTimeSpent() + "min, Score: " + String.format("%.2f", p.getScore()) + ")");
+            }
+        }
+
+        // Add leftovers that fit
+        int addedCount = 0;
+        for (PlaceData place : leftovers) {
+            int t = place.getTimeSpent();
+            if (currentTime + t > totalAvailableTime) {
+                System.out.println("Skipping " + place.getName() + " - would exceed time limit (" + (currentTime + t) + " > " + totalAvailableTime + ")");
+                continue;
+            }
+
+            finalSelection.add(place);
+            currentTime += t;
+            addedCount++;
+
+            System.out.println("Added leftover: " + place.getName() + " (Type: " + place.getPlaceType() +
+                    ", Time: " + t + "min) - Current time: " + currentTime + "min");
+        }
+
+        System.out.println("Added " + addedCount + " leftover places");
+        System.out.println("Final time: " + currentTime + "min");
+    }
+
+    private static float clamp(float value, float min, float max) {
+        return Math.max(min, Math.min(value, max));
+    }
+
+
+
+
 
 
 

@@ -48,6 +48,9 @@
         <activity android:name=".RestaurantActivity" android:exported="false" />
         <activity android:name=".TimeActivity" android:exported="false" />
         <receiver android:name=".NotificationReceiver" android:exported="false" />
+        <activity
+            android:name=".BlogActivity"
+            android:parentActivityName=".MainActivity" />
 
     </application>
 
