@@ -41,7 +41,6 @@ public class InterestsActivity extends AppCompatActivity {
 
     // UI Components
     private LinearLayout interestsLayout;
-    private TextView statusText;
     private ChipGroup categoriesChipGroup;
     private MaterialButton nextButton;
     private ImageButton backButton;
@@ -86,7 +85,6 @@ public class InterestsActivity extends AppCompatActivity {
 
     private void initializeUI() {
         interestsLayout = findViewById(R.id.interestsLayout);
-        statusText = findViewById(R.id.statusText);
         categoriesChipGroup = findViewById(R.id.categoriesLayout);
         nextButton = findViewById(R.id.next_button);
         backButton = findViewById(R.id.back_button);

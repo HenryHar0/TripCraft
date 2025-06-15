@@ -613,16 +613,6 @@ public class MapPlacesActivity extends AppCompatActivity implements
             List<PlaceMarker> cityPlaces = allPlaces;
             updatePlacesDisplay(cityPlaces);
 
-            // Update title with count
-            TextView titleText = findViewById(R.id.titleText);
-            if (titleText != null && selectedCategoryName != null) {
-                titleText.setText(String.format(
-                        "%s in %s (%d places)",
-                        selectedCategoryName,
-                        selectedCityName,
-                        cityPlaces.size()
-                ));
-            }
 
         } catch (JSONException e) {
             Log.e("MapPlacesActivity", "Error parsing places response", e);
