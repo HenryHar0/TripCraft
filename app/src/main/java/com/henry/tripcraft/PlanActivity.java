@@ -373,13 +373,13 @@ public class PlanActivity extends AppCompatActivity {
         });
     }
 
+    private final AtomicInteger completedCalls = new AtomicInteger(0);
+    private final Object placeDataLock = new Object();
     private static final int MAX_RESULTS_PER_TYPE = 20;
 
     private List<PlaceData> placeDataList = new ArrayList<>();
 
     private void fetchPlacesOfType(String placeType, int timeSpent) {
-        int currentCall = callcount.incrementAndGet();
-
         getBoundariesFromNominatim(city, () -> {
             LatLng centerLatLng = getCenterFromBounds(rectangularBounds);
             double lat = centerLatLng.latitude;
@@ -424,11 +424,15 @@ public class PlanActivity extends AppCompatActivity {
             client.newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
+                    Log.e("API", "Failed to fetch places for type: " + placeType, e);
+                    checkIfAllCallsCompleted(); // Still need to check completion even on failure
                 }
 
                 @Override
                 public void onResponse(Call call, Response response) throws IOException {
                     if (!response.isSuccessful()) {
+                        Log.e("API", "Unsuccessful response for type: " + placeType + ", code: " + response.code());
+                        checkIfAllCallsCompleted();
                         return;
                     }
 
@@ -439,6 +443,8 @@ public class PlanActivity extends AppCompatActivity {
                         JSONArray places = json.optJSONArray("places");
 
                         if (places == null || places.length() == 0) {
+                            Log.w("API", "No places found for type: " + placeType);
+                            checkIfAllCallsCompleted();
                             return;
                         }
 
@@ -499,44 +505,19 @@ public class PlanActivity extends AppCompatActivity {
                             count++;
                         }
 
-                        synchronized (placeDataList) {
+                        Log.d("API", "Fetched " + newPlaces.size() + " places for type: " + placeType);
+
+                        // Thread-safe addition to the main list
+                        synchronized (placeDataLock) {
                             placeDataList.addAll(newPlaces);
 
-                            // Use a LinkedHashMap to keep insertion order but remove duplicates by placeId
-                            // IMPORTANT: Preserve user-selected places over API results
-                            Map<String, PlaceData> uniqueMap = new LinkedHashMap<>();
+                            // Log current state
+                            Map<String, Integer> typeCounts = new HashMap<>();
                             for (PlaceData pd : placeDataList) {
-                                String key = pd.getPlaceId();
-                                PlaceData existing = uniqueMap.get(key);
-
-                                if (existing == null) {
-                                    // No duplicate, add it
-                                    uniqueMap.put(key, pd);
-                                } else {
-                                    // Duplicate found - keep the user-selected version if one exists
-                                    if (pd.isUserSelected()) {
-                                        uniqueMap.put(key, pd); // Replace with user-selected version
-                                    } else if (!existing.isUserSelected()) {
-                                        uniqueMap.put(key, pd); // Both are not user-selected, keep the last one
-                                    }
-                                    // If existing is user-selected and current is not, keep existing (do nothing)
-                                }
+                                typeCounts.merge(pd.getPlaceType(), 1, Integer::sum);
                             }
-
-                            placeDataList.clear();
-                            placeDataList.addAll(uniqueMap.values());
-
-                            // Log selected places after deduplication
-                            Log.d("SelectedPlacesDebug", "=== SELECTED PLACES AFTER DEDUPLICATION ===");
-                            int selectedCount = 0;
-                            for (PlaceData pd : placeDataList) {
-                                if (pd.isUserSelected()) {
-                                    selectedCount++;
-                                    Log.d("SelectedPlacesDebug", "Selected place: " + pd.getName() + " (ID: " + pd.getPlaceId() + ", TimeSpent: " + pd.getTimeSpent() + ")");
-                                }
-                            }
-                            Log.d("SelectedPlacesDebug", "Total selected places: " + selectedCount);
-                            Log.d("SelectedPlacesDebug", "=== END SELECTED PLACES ===");
+                            Log.d("API", "Current placeDataList size: " + placeDataList.size());
+                            Log.d("API", "Current type distribution: " + typeCounts);
                         }
 
                         runOnUiThread(() -> {
@@ -549,31 +530,144 @@ public class PlanActivity extends AppCompatActivity {
                             }
                         });
 
-                        if (currentCall == selectedCategories.size()) {
-                            int totalTime = TotalTime(days, hoursList);
-                            filtered = filterPlacesByRatingAndTime(placeDataList, totalTime);
-
-                            runOnUiThread(() -> {
-                                if (filteredAdapter == null) {
-                                    filteredAdapter = new PlaceAdapter1(filtered, apiKey);
-                                    filteredList.setAdapter(filteredAdapter);
-                                    filteredList.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
-                                } else {
-                                    filteredAdapter.updatePlaces(filtered);
-                                }
-                            });
-
-                            if(days > 0){
-                                DayByDayPlan();
-                            }
-                        }
+                        checkIfAllCallsCompleted();
 
                     } catch (JSONException e) {
+                        Log.e("API", "JSON parsing error for type: " + placeType, e);
+                        checkIfAllCallsCompleted();
                     }
                 }
             });
         });
     }
+
+    private void checkIfAllCallsCompleted() {
+        int completed = completedCalls.incrementAndGet();
+        Log.d("API", "Completed calls: " + completed + "/" + selectedCategories.size());
+
+        if (completed == selectedCategories.size()) {
+            Log.d("API", "All API calls completed, starting deduplication and filtering");
+
+            synchronized (placeDataLock) {
+                // Deduplicate - preserve user-selected places
+                Map<String, PlaceData> uniqueMap = new LinkedHashMap<>();
+                for (PlaceData pd : placeDataList) {
+                    String key = pd.getPlaceId();
+                    PlaceData existing = uniqueMap.get(key);
+
+                    if (existing == null) {
+                        uniqueMap.put(key, pd);
+                    } else {
+                        if (pd.isUserSelected()) {
+                            uniqueMap.put(key, pd); // Replace with user-selected version
+                        } else if (!existing.isUserSelected()) {
+                            uniqueMap.put(key, pd); // Both are not user-selected, keep the last one
+                        }
+                    }
+                }
+
+                placeDataList.clear();
+                placeDataList.addAll(uniqueMap.values());
+
+                // Log final statistics before filtering
+                Map<String, Integer> finalTypeCounts = new HashMap<>();
+                for (PlaceData pd : placeDataList) {
+                    finalTypeCounts.merge(pd.getPlaceType(), 1, Integer::sum);
+                }
+                Log.d("API", "=== FINAL DATA BEFORE FILTERING ===");
+                Log.d("API", "Total places: " + placeDataList.size());
+                Log.d("API", "Type distribution: " + finalTypeCounts);
+
+                // Now filter the complete dataset
+                int totalTime = TotalTime(days, hoursList);
+                filtered = filterPlacesByRatingAndTime(placeDataList, totalTime);
+
+                runOnUiThread(() -> {
+                    if (filteredAdapter == null) {
+                        String apiKey = getString(R.string.google_api_key1);
+                        filteredAdapter = new PlaceAdapter1(filtered, apiKey);
+                        filteredList.setAdapter(filteredAdapter);
+                        filteredList.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
+                    } else {
+                        filteredAdapter.updatePlaces(filtered);
+                    }
+                });
+
+                if (days > 0) {
+                    DayByDayPlan();
+                }
+            }
+        }
+    }
+
+    private void startFetchingAllPlaces() {
+        // Reset counters
+        completedCalls.set(0);
+        placeDataList.clear();
+
+        // Map to hold place types and their corresponding time spent
+        Map<String, Integer> typesToSearch = new HashMap<>();
+
+        // Populate the map based on selected categories
+        for (String category : selectedCategories) {
+            Log.d("SelectedCategory", category.toLowerCase());
+            switch (category) {
+                case "Museum":
+                    typesToSearch.put("museum", 2);
+                    break;
+                case "Tourist Attraction":
+                    typesToSearch.put("tourist_attraction", 2);
+                    break;
+                case "Theater":
+                    typesToSearch.put("concert_hall", 2);
+                    typesToSearch.put("performing_arts_theater", 2);
+                    break;
+                case "Night Club":
+                    typesToSearch.put("night_club", 3);
+                    break;
+                case "Park":
+                    typesToSearch.put("park", 2);
+                    break;
+                case "Beach":
+                    typesToSearch.put("beach", 3);
+                    break;
+                case "Art Gallery":
+                    typesToSearch.put("art_gallery", 2);
+                    break;
+                case "Place of Worship":
+                    typesToSearch.put("church", 1);
+                    typesToSearch.put("hindu_temple", 1);
+                    typesToSearch.put("mosque", 1);
+                    typesToSearch.put("synagogue", 1);
+                    break;
+                case "Zoo":
+                    typesToSearch.put("zoo", 3);
+                    break;
+                case "Aquarium":
+                    typesToSearch.put("aquarium", 2);
+                    break;
+                case "Amusement Park":
+                    typesToSearch.put("amusement_park", 4);
+                    typesToSearch.put("bowling_alley", 2);
+                    break;
+            }
+        }
+
+        // Fetch places by type and time
+        for (Map.Entry<String, Integer> entry : typesToSearch.entrySet()) {
+            String placeType = entry.getKey();
+            int timeSpent = entry.getValue();
+
+            if (selectedPlaceIds != null && !selectedPlaceIds.isEmpty()) {
+                for (String id : selectedPlaceIds) {
+                    fetchPlaceById(id, timeSpent);
+                }
+            }
+
+            fetchPlacesOfType(placeType, timeSpent);
+        }
+    }
+
 
 
 
