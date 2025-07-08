@@ -128,7 +128,6 @@
         app:strokeWidth="1.5dp" />
 
     <ImageView
-        android:id="@+id/imageViewBackground"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:alpha="0.05"

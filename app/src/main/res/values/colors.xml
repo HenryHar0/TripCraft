@@ -1,63 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Material Color System -->
-    <color name="primary">#1565C0</color>          <!-- Medium blue -->
-    <color name="primary_variant">#0D47A1</color>  <!-- Deep navy blue -->
-    <color name="secondary">#00ACC1</color>        <!-- Vivid cyan -->
-    <color name="secondary_variant">#26C6DA</color><!-- Soft aqua -->
-    <color name="background">#F5FAFF</color>       <!-- Light icy blue -->
-    <color name="surface">#FFFFFF</color>          <!-- Pure white surfaces -->
-    <color name="error">#D32F2F</color>             <!-- Standard error color -->
-    <color name="status_background">#F1F5F9</color>
+    <!-- Primary Colors -->
+    <color name="midnight_black">#1A1B23</color>
+    <color name="snow_white">#FFFFFF</color>
+    <color name="pearl_white">#FAFBFC</color>
+    <color name="charcoal_dark">#2A2D36</color>
 
-    <!-- Text & Icon Colors -->
-    <color name="on_primary">#FFFFFF</color>       <!-- White on primary -->
-    <color name="on_secondary">#102027</color>     <!-- Deep charcoal on secondary -->
-    <color name="on_background">#1C1C1E</color>    <!-- Deep gray for text -->
-    <color name="on_surface">#1C1C1E</color>       <!-- Deep gray for surface text -->
-    <color name="on_error">#FFFFFF</color>
+    <!-- Blue Palette -->
+    <color name="ocean_blue">#3B82F6</color>
+    <color name="sky_blue">#60A5FA</color>
+    <color name="sky_blue_light">#EBF4FF</color>
+    <color name="sky_blue_border">#BFDBFE</color>
+    <color name="azure_mist">#F0F8FF</color>
 
-    <!-- Extended Palette -->
-    <color name="sunset_peach">#81D4FA</color>     <!-- Sky blue accent -->
-    <color name="golden_sand">#4FC3F7</color>      <!-- Light metallic blue highlight -->
-    <color name="dusty_rose">#90CAF9</color>       <!-- Soft desaturated blue -->
-    <color name="ocean_blue">#1976D2</color>       <!-- Deep water blue for contrast -->
-    <color name="dusk_purple">#5C6BC0</color>      <!-- Indigo twilight accent -->
+    <!-- Gray Palette -->
+    <color name="stone_gray">#64748B</color>
+    <color name="slate_gray">#475569</color>
+    <color name="silver_gray">#94A3B8</color>
+    <color name="whisper_gray">#E2E8F0</color>
+    <color name="cloud_gray">#F8FAFC</color>
 
-    <!-- State Colors -->
-    <color name="ripple_light">#33FFFFFF</color>   <!-- Light ripple effect -->
-    <color name="ripple_dark">#1F000000</color>    <!-- Dark ripple effect -->
+    <!-- Background Colors -->
+    <color name="background_primary">#FAFBFC</color>
+    <color name="background_secondary">#FFFFFF</color>
+    <color name="background_elevated">#FFFFFF</color>
+    <color name="background_overlay">#F8FAFC</color>
 
-    <!-- Semantic Colors -->
-    <color name="success">#2E7D32</color>          <!-- Positive actions -->
-    <color name="warning">#FFB300</color>          <!-- Warning states -->
-    <color name="info">#0288D1</color>             <!-- Informational elements -->
+    <!-- Text Colors -->
+    <color name="text_primary">#1A1B23</color>
+    <color name="text_secondary">#64748B</color>
+    <color name="text_tertiary">#94A3B8</color>
+    <color name="text_inverse">#FFFFFF</color>
+    <color name="text_accent">#3B82F6</color>
 
-    <!-- Gradient Endpoints -->
-    <color name="gradient_start">#1565C0</color>   <!-- Rich blue -->
-    <color name="gradient_end">#00ACC1</color>     <!-- Vibrant cyan -->
+    <!-- Interactive Colors -->
+    <color name="interactive_primary">#3B82F6</color>
+    <color name="interactive_secondary">#60A5FA</color>
+    <color name="interactive_background">#EBF4FF</color>
+    <color name="interactive_border">#BFDBFE</color>
 
-    <!-- Elevation Overlays -->
-    <color name="elevation_low">#0DFFFFFF</color>
-    <color name="elevation_high">#1AFFFFFF</color>
+    <!-- Navigation Colors -->
+    <color name="nav_selected">#3B82F6</color>
+    <color name="nav_unselected">#94A3B8</color>
+    <color name="nav_background">#FFFFFF</color>
+    <color name="nav_border">#E2E8F0</color>
 
-    <!-- Category Cards -->
-    <color name="card_cultural">#E3F2FD</color>
-    <color name="card_adventure">#E0F7FA</color>
-    <color name="card_culinary">#E1F5FE</color>
-    <color name="card_nature">#B3E5FC</color>
-    <color name="card_relaxation">#E0F2F1</color>
+    <!-- Border Colors -->
+    <color name="border_primary">#E2E8F0</color>
+    <color name="border_secondary">#CBD5E1</color>
+    <color name="border_accent">#BFDBFE</color>
 
-    <color name="divider">#E0E0E0</color>
+    <!-- Status Colors -->
+    <color name="success_primary">#10B981</color>
+    <color name="success_light">#D1FAE5</color>
+    <color name="warning_primary">#F59E0B</color>
+    <color name="warning_light">#FEF3C7</color>
+    <color name="error_primary">#EF4444</color>
+    <color name="error_light">#FEE2E2</color>
 
-    <color name="chip_background">#F0F0F0</color>
-    <color name="chip_selected_background">#E0F2FE</color>
-    <color name="chip_text_color">#333333</color>
-    <color name="chip_selected_text_color">#0077CC</color>
-
-    <color name="dialog_background">#FFFFFF</color>
-    <color name="dialog_border">#E0E0E0</color>
-
+    <!-- System Colors -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
     <color name="transparent">#00000000</color>
 
+    <!-- Shadow Colors -->
+    <color name="shadow_light">#1A1B2310</color>
+    <color name="shadow_medium">#1A1B2320</color>
+    <color name="shadow_dark">#1A1B2330</color>
 </resources>

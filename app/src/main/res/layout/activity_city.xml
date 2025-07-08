@@ -74,7 +74,6 @@
     </LinearLayout>
 
     <View
-        android:id="@+id/blur_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone"
@@ -182,7 +181,6 @@
     </androidx.cardview.widget.CardView>
 
     <com.google.android.material.card.MaterialCardView
-        android:id="@+id/map_container"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginStart="24dp"
@@ -205,7 +203,6 @@
             android:layout_height="match_parent" />
 
         <View
-            android:id="@+id/map_gradient_overlay"
             android:layout_width="match_parent"
             android:layout_height="80dp"
             android:layout_gravity="bottom"
