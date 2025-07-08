@@ -98,7 +98,6 @@ public class SavedPlansActivity extends AppCompatActivity implements BottomNavig
     private void loadSavedPlans() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
-            Toast.makeText(this, "Please sign in to view saved plans", Toast.LENGTH_SHORT).show();
             return;
         }
 

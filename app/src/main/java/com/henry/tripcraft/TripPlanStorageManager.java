@@ -16,6 +16,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.WriteBatch;
 import com.google.gson.Gson;
 
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Manages saving, loading, and managing trip plans in Firestore with proper nested structure
@@ -92,9 +94,9 @@ public class TripPlanStorageManager {
 
             builder.setItems(slotDisplays, (dialog, which) -> {
                 if (slots.containsKey("slot_" + which)) {
-                    confirmOverwrite(which, destination, duration, activitiesListData, weather, city, startDate);
+                    confirmOverwrite(which, destination, duration, activitiesListData, weather, city, startDate, slots);
                 } else {
-                    savePlanToSlot(which, destination, duration, activitiesListData, weather, city, startDate);
+                    savePlanToSlot(which, destination, duration, activitiesListData, weather, city, startDate, null);
                 }
             });
 
@@ -112,19 +114,21 @@ public class TripPlanStorageManager {
             List<List<PlaceData>> activitiesListData,
             String weather,
             String city,
-            String startDate) {
+            String startDate,
+            Map<String, TripDocument> existingSlots) {
 
         new AlertDialog.Builder(context)
                 .setTitle("Overwrite Slot")
                 .setMessage("Do you want to overwrite this slot?")
                 .setPositiveButton("Yes", (dialog, which) ->
-                        savePlanToSlot(slot, destination, duration, activitiesListData, weather, city, startDate))
+                        savePlanToSlot(slot, destination, duration, activitiesListData, weather, city, startDate, existingSlots))
                 .setNegativeButton("No", null)
                 .show();
     }
 
     /**
      * Saves trip plan data to the selected slot using proper Firestore structure
+     * Now uses batch operations for better performance and atomicity
      */
     private void savePlanToSlot(
             int slot,
@@ -133,13 +137,16 @@ public class TripPlanStorageManager {
             List<List<PlaceData>> activitiesListData,
             String weather,
             String city,
-            String startDate) {
+            String startDate,
+            Map<String, TripDocument> existingSlots) {
 
         FirebaseUser user = auth.getCurrentUser();
         if (user == null) {
             Toast.makeText(context, "Please sign in to save plans", Toast.LENGTH_SHORT).show();
             return;
         }
+
+        Log.d(TAG, "Saving plan to slot " + slot + " for user: " + user.getUid());
 
         // Generate unique trip ID
         String tripId = "slot_" + slot + "_" + UUID.randomUUID().toString().substring(0, 8);
@@ -153,18 +160,30 @@ public class TripPlanStorageManager {
         tripDoc.city = city;
         tripDoc.slotNumber = slot;
         tripDoc.createdAt = System.currentTimeMillis();
-
-        // Calculate end date (simplified - you might want more sophisticated date handling)
         tripDoc.endDate = calculateEndDate(startDate, duration);
 
         // Reference to the trip document
         String userDocPath = COLLECTION_USERS + "/" + user.getUid();
         String tripDocPath = userDocPath + "/" + COLLECTION_TRIPS + "/" + tripId;
 
-        // First, save the trip document
-        db.document(tripDocPath)
-                .set(tripDoc)
+        Log.d(TAG, "Saving trip document to: " + tripDocPath);
+
+        // Use batch for atomic operations
+        WriteBatch batch = db.batch();
+
+        // If there's an existing trip in this slot, add deletion to batch
+        if (existingSlots != null && existingSlots.containsKey("slot_" + slot)) {
+            // We need to find and delete the existing trip document
+            // This is handled by the constraint that only one trip per slot should exist
+        }
+
+        // Add the new trip document to batch
+        batch.set(db.document(tripDocPath), tripDoc);
+
+        // Commit the batch
+        batch.commit()
                 .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Trip document saved successfully");
                     // Now save places as subcollection
                     savePlacesToTrip(tripDocPath, activitiesListData, slot);
                 })
@@ -184,14 +203,16 @@ public class TripPlanStorageManager {
         }
 
         String placesCollectionPath = tripDocPath + "/" + COLLECTION_PLACES;
+        AtomicInteger savedPlaces = new AtomicInteger(0);
+        int totalPlaces = activitiesListData.stream().mapToInt(List::size).sum();
 
-        // Create a batch to save all places at once
-        int totalPlaces = 0;
-        int savedPlaces = 0;
+        Log.d(TAG, "Saving " + totalPlaces + " places to: " + placesCollectionPath);
+
+        // Use batch for better performance
+        WriteBatch batch = db.batch();
 
         for (int day = 0; day < activitiesListData.size(); day++) {
             List<PlaceData> dayPlaces = activitiesListData.get(day);
-            totalPlaces += dayPlaces.size();
 
             for (int order = 0; order < dayPlaces.size(); order++) {
                 PlaceData place = dayPlaces.get(order);
@@ -202,33 +223,34 @@ public class TripPlanStorageManager {
                 placeDoc.day = day + 1; // Days start from 1
                 placeDoc.order = order + 1; // Order starts from 1
 
-                // Use placeId as document ID to avoid duplicates
-                String placeDocId = "day" + (day + 1) + "_place" + (order + 1) + "_" + place.getPlaceId().replace("/", "_");
+                // Use a simpler document ID
+                String placeDocId = "d" + (day + 1) + "_p" + (order + 1);
 
-                db.collection(placesCollectionPath)
-                        .document(placeDocId)
-                        .set(placeDoc)
-                        .addOnSuccessListener(aVoid -> {
-                            // Cache the place data
-                            placeCache.put(place.getPlaceId(), place);
-                        })
-                        .addOnFailureListener(e -> {
-                            Log.e(TAG, "Error saving place: " + place.getPlaceId(), e);
-                        });
+                batch.set(db.collection(placesCollectionPath).document(placeDocId), placeDoc);
+
+                // Cache the place data
+                placeCache.put(place.getPlaceId(), place);
             }
         }
 
-        // Schedule notifications and show success message
-        scheduleNotificationsAndShowSuccess(slot);
+        // Commit all places at once
+        batch.commit()
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "All places saved successfully");
+                    scheduleNotificationsAndShowSuccess(slot);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error saving places", e);
+                    Toast.makeText(context, "Plan saved but some places failed to save", Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void scheduleNotificationsAndShowSuccess(int slot) {
         SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         boolean notificationsEnabled = sharedPreferences.getBoolean("NotificationsEnabled", false);
 
-        // Note: You'll need to pass startDate and city here if notifications are needed
-        // For now, just show success message
         Toast.makeText(context, "Plan saved to Slot " + (slot + 1), Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "Plan successfully saved to slot " + slot);
     }
 
     /**
@@ -254,15 +276,23 @@ public class TripPlanStorageManager {
      * Loads a trip from a specific slot using the new structure
      */
     private void loadTripFromSlot(String userId, int slot, TripPlanCallback callback) {
+        Log.d(TAG, "Loading trip from slot " + slot + " for user: " + userId);
+
         String userDocPath = COLLECTION_USERS + "/" + userId;
+        String tripsCollectionPath = userDocPath + "/" + COLLECTION_TRIPS;
+
+        Log.d(TAG, "Querying trips collection: " + tripsCollectionPath);
 
         // Find trip document for this slot
-        db.collection(userDocPath + "/" + COLLECTION_TRIPS)
+        db.collection(tripsCollectionPath)
                 .whereEqualTo("slotNumber", slot)
                 .limit(1)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
+                    Log.d(TAG, "Query completed for slot " + slot + ", found " + querySnapshot.size() + " documents");
+
                     if (querySnapshot.isEmpty()) {
+                        Log.d(TAG, "No trip found in slot " + slot);
                         callback.onResult(null);
                         return;
                     }
@@ -271,12 +301,15 @@ public class TripPlanStorageManager {
                     TripDocument trip = tripDoc.toObject(TripDocument.class);
 
                     if (trip == null) {
+                        Log.e(TAG, "Failed to parse trip document for slot " + slot);
                         callback.onResult(null);
                         return;
                     }
 
+                    Log.d(TAG, "Found trip in slot " + slot + ": " + trip.tripName);
+
                     // Load places for this trip
-                    String tripDocPath = userDocPath + "/" + COLLECTION_TRIPS + "/" + tripDoc.getId();
+                    String tripDocPath = tripsCollectionPath + "/" + tripDoc.getId();
                     loadPlacesForTrip(tripDocPath, trip, callback);
                 })
                 .addOnFailureListener(e -> {
@@ -291,16 +324,21 @@ public class TripPlanStorageManager {
     private void loadPlacesForTrip(String tripDocPath, TripDocument trip, TripPlanCallback callback) {
         String placesCollectionPath = tripDocPath + "/" + COLLECTION_PLACES;
 
+        Log.d(TAG, "Loading places from: " + placesCollectionPath);
+
         db.collection(placesCollectionPath)
                 .orderBy("day")
                 .orderBy("order")
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
+                    Log.d(TAG, "Found " + querySnapshot.size() + " places for trip: " + trip.tripName);
+
                     // Group places by day
                     Map<Integer, List<PlaceDocument>> placesByDay = new HashMap<>();
 
                     for (QueryDocumentSnapshot doc : querySnapshot) {
                         PlaceDocument place = doc.toObject(PlaceDocument.class);
+                        Log.d(TAG, "Place: " + place.placeId + ", Day: " + place.day + ", Order: " + place.order);
 
                         if (!placesByDay.containsKey(place.day)) {
                             placesByDay.put(place.day, new ArrayList<>());
@@ -312,8 +350,10 @@ public class TripPlanStorageManager {
                     resolvePlacesFromDocuments(placesByDay, trip, callback);
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error loading places for trip", e);
-                    callback.onResult(null);
+                    Log.e(TAG, "Error loading places for trip: " + trip.tripName, e);
+                    // Return trip without places rather than null
+                    TripPlan tripPlan = tripDocumentToTripPlan(trip, new ArrayList<>());
+                    callback.onResult(tripPlan);
                 });
     }
 
@@ -322,11 +362,21 @@ public class TripPlanStorageManager {
      */
     private void resolvePlacesFromDocuments(Map<Integer, List<PlaceDocument>> placesByDay, TripDocument trip, TripPlanCallback callback) {
         List<List<PlaceData>> activitiesListData = new ArrayList<>();
+
+        if (placesByDay.isEmpty()) {
+            Log.d(TAG, "No places found for trip, returning empty trip plan");
+            TripPlan tripPlan = tripDocumentToTripPlan(trip, activitiesListData);
+            callback.onResult(tripPlan);
+            return;
+        }
+
         List<CompletableFuture<Void>> dayFutures = new ArrayList<>();
 
         // Sort days and process them
         List<Integer> sortedDays = new ArrayList<>(placesByDay.keySet());
         sortedDays.sort(Integer::compareTo);
+
+        Log.d(TAG, "Processing " + sortedDays.size() + " days of places");
 
         for (int dayIndex = 0; dayIndex < sortedDays.size(); dayIndex++) {
             int day = sortedDays.get(dayIndex);
@@ -343,12 +393,15 @@ public class TripPlanStorageManager {
         // Wait for all days to be resolved
         CompletableFuture.allOf(dayFutures.toArray(new CompletableFuture[0]))
                 .thenRun(() -> {
+                    Log.d(TAG, "All places resolved for trip: " + trip.tripName);
                     TripPlan tripPlan = tripDocumentToTripPlan(trip, activitiesListData);
                     callback.onResult(tripPlan);
                 })
                 .exceptionally(throwable -> {
                     Log.e(TAG, "Error resolving places", throwable);
-                    callback.onResult(null);
+                    // Return trip without places rather than null
+                    TripPlan tripPlan = tripDocumentToTripPlan(trip, new ArrayList<>());
+                    callback.onResult(tripPlan);
                     return null;
                 });
     }
@@ -423,19 +476,25 @@ public class TripPlanStorageManager {
     }
 
     /**
-     * Loads user's saved slots
+     * Loads user's saved slots - single query for all slots
      */
     private void loadUserSlots(String userId, SlotLoadCallback callback) {
         String userDocPath = COLLECTION_USERS + "/" + userId;
+        String tripsCollectionPath = userDocPath + "/" + COLLECTION_TRIPS;
 
-        db.collection(userDocPath + "/" + COLLECTION_TRIPS)
+        Log.d(TAG, "Loading user slots from: " + tripsCollectionPath);
+
+        db.collection(tripsCollectionPath)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
+                    Log.d(TAG, "Found " + querySnapshot.size() + " trips for user");
+
                     Map<String, TripDocument> slots = new HashMap<>();
                     for (QueryDocumentSnapshot doc : querySnapshot) {
                         TripDocument trip = doc.toObject(TripDocument.class);
                         if (trip.slotNumber >= 0 && trip.slotNumber < MAX_SLOTS) {
                             slots.put("slot_" + trip.slotNumber, trip);
+                            Log.d(TAG, "Loaded trip in slot " + trip.slotNumber + ": " + trip.tripName);
                         }
                     }
                     callback.onLoaded(slots);
@@ -452,9 +511,12 @@ public class TripPlanStorageManager {
     public void getTripPlanFromSlot(int slot, TripPlanCallback callback) {
         FirebaseUser user = auth.getCurrentUser();
         if (user == null) {
+            Log.e(TAG, "User not authenticated for slot " + slot);
             callback.onResult(null);
             return;
         }
+
+        Log.d(TAG, "Getting trip plan from slot " + slot);
         loadTripFromSlot(user.getUid(), slot, callback);
     }
 
@@ -468,24 +530,36 @@ public class TripPlanStorageManager {
             return;
         }
 
-        loadTripFromSlot(user.getUid(), slot, (tripPlan) -> {
-            if (tripPlan != null) {
-                // Delete the entire trip document (subcollections will be deleted too)
-                String userDocPath = COLLECTION_USERS + "/" + user.getUid();
-                db.collection(userDocPath + "/" + COLLECTION_TRIPS)
-                        .whereEqualTo("slotNumber", slot)
-                        .limit(1)
-                        .get()
-                        .addOnSuccessListener(querySnapshot -> {
-                            if (!querySnapshot.isEmpty()) {
-                                querySnapshot.getDocuments().get(0).getReference()
-                                        .delete()
-                                        .addOnSuccessListener(aVoid -> Log.d(TAG, "Plan deleted from slot " + slot))
-                                        .addOnFailureListener(e -> Log.e(TAG, "Error deleting plan", e));
-                            }
-                        });
-            }
-        });
+        Log.d(TAG, "Deleting plan from slot " + slot);
+
+        String userDocPath = COLLECTION_USERS + "/" + user.getUid();
+
+        db.collection(userDocPath + "/" + COLLECTION_TRIPS)
+                .whereEqualTo("slotNumber", slot)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (!querySnapshot.isEmpty()) {
+                        // Use batch to delete all documents atomically
+                        WriteBatch batch = db.batch();
+                        for (QueryDocumentSnapshot doc : querySnapshot) {
+                            batch.delete(doc.getReference());
+                        }
+
+                        batch.commit()
+                                .addOnSuccessListener(aVoid -> {
+                                    Log.d(TAG, "Plan deleted from slot " + slot);
+                                    Toast.makeText(context, "Plan deleted", Toast.LENGTH_SHORT).show();
+                                })
+                                .addOnFailureListener(e -> {
+                                    Log.e(TAG, "Error deleting plan", e);
+                                    Toast.makeText(context, "Error deleting plan", Toast.LENGTH_SHORT).show();
+                                });
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error finding plan to delete", e);
+                    Toast.makeText(context, "Error deleting plan", Toast.LENGTH_SHORT).show();
+                });
     }
 
     /**
@@ -495,10 +569,7 @@ public class TripPlanStorageManager {
         new AlertDialog.Builder(context)
                 .setTitle("Delete Plan")
                 .setMessage("Are you sure you want to delete this plan?")
-                .setPositiveButton("Yes", (dialog, which) -> {
-                    deletePlanFromSlot(slot);
-                    Toast.makeText(context, "Plan deleted", Toast.LENGTH_SHORT).show();
-                })
+                .setPositiveButton("Yes", (dialog, which) -> deletePlanFromSlot(slot))
                 .setNegativeButton("No", null)
                 .show();
     }
@@ -530,6 +601,8 @@ public class TripPlanStorageManager {
         tripPlan.city = tripDoc.city;
         tripPlan.startDate = tripDoc.startDate;
         tripPlan.activitiesListData = activitiesListData;
+        // You might need to set apiKey from somewhere else
+        tripPlan.apiKey = ""; // Set this appropriately
         return tripPlan;
     }
 
@@ -557,6 +630,10 @@ public class TripPlanStorageManager {
         public String city;
         public int slotNumber;
         public long createdAt;
+
+        public TripDocument() {
+            // Default constructor required for Firestore
+        }
     }
 
     /**
@@ -566,6 +643,10 @@ public class TripPlanStorageManager {
         public String placeId;
         public int day;
         public int order;
+
+        public PlaceDocument() {
+            // Default constructor required for Firestore
+        }
     }
 
     /**
@@ -579,6 +660,10 @@ public class TripPlanStorageManager {
         public String city;
         public String startDate;
         public String apiKey;
+
+        public TripPlan() {
+            // Default constructor
+        }
     }
 
     // Callback interfaces

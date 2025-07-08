@@ -14,6 +14,7 @@ import androidx.appcompat.widget.Toolbar;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.io.File;
 import java.text.DecimalFormat;
@@ -272,11 +273,19 @@ public class SettingsActivity extends AppCompatActivity {
                 .setTitle("Sign Out")
                 .setMessage("Are you sure you want to sign out?")
                 .setPositiveButton("Sign Out", (dialog, which) -> {
+                    // Clear SharedPreferences
                     SharedPreferences.Editor editor = sharedPreferences.edit();
                     editor.remove("user_id");
                     editor.remove("user_token");
+                    editor.clear(); // Clear all preferences to be safe
                     editor.apply();
+
+                    // Sign out from Firebase
+                    FirebaseAuth.getInstance().signOut();
+
                     Toast.makeText(this, "Signed out successfully", Toast.LENGTH_SHORT).show();
+
+                    // Navigate to LoginActivity
                     Intent intent = new Intent(this, LoginActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
