@@ -20,6 +20,7 @@ import com.bumptech.glide.request.target.CustomTarget;
 import com.bumptech.glide.request.transition.Transition;
 import com.henry.tripcraft.activities.CityActivity;
 import com.henry.tripcraft.R;
+import com.henry.tripcraft.models.City;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -28,11 +29,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public class CityAutoCompleteAdapter extends ArrayAdapter<CityActivity.City> {
+public class CityAutoCompleteAdapter extends ArrayAdapter<City> {
 
     private final Context context;
-    private final List<CityActivity.City> originalCities;
-    private List<CityActivity.City> filteredCities;
+    private final List<City> originalCities;
+    private List<City> filteredCities;
     private final LayoutInflater inflater;
     private final NumberFormat numberFormat;
 
@@ -40,7 +41,7 @@ public class CityAutoCompleteAdapter extends ArrayAdapter<CityActivity.City> {
     private final Map<String, Drawable> flagCache = new HashMap<>();
     private static final String FLAGS_API_BASE_URL = "https://flagsapi.com/";
 
-    public CityAutoCompleteAdapter(@NonNull Context context, @NonNull List<CityActivity.City> cities) {
+    public CityAutoCompleteAdapter(@NonNull Context context, @NonNull List<City> cities) {
         super(context, R.layout.item_city_dropdown, cities);
         this.context = context;
         this.originalCities = cities;
@@ -56,7 +57,7 @@ public class CityAutoCompleteAdapter extends ArrayAdapter<CityActivity.City> {
 
     @Nullable
     @Override
-    public CityActivity.City getItem(int position) {
+    public City getItem(int position) {
         return filteredCities.get(position);
     }
 
@@ -82,7 +83,7 @@ public class CityAutoCompleteAdapter extends ArrayAdapter<CityActivity.City> {
             holder = (ViewHolder) convertView.getTag();
         }
 
-        CityActivity.City city = filteredCities.get(position);
+        City city = filteredCities.get(position);
         if (city != null) {
             holder.cityName.setText(city.getName());
 
@@ -163,10 +164,10 @@ public class CityAutoCompleteAdapter extends ArrayAdapter<CityActivity.City> {
                     results.values = originalCities;
                     results.count = originalCities.size();
                 } else {
-                    List<CityActivity.City> filtered = new ArrayList<>();
+                    List<City> filtered = new ArrayList<>();
                     String filterPattern = constraint.toString().toLowerCase().trim();
 
-                    for (CityActivity.City city : originalCities) {
+                    for (City city : originalCities) {
                         if (city.getName().toLowerCase().contains(filterPattern) ||
                                 city.getCountry().toLowerCase().contains(filterPattern) ||
                                 (city.getRegion() != null && city.getRegion().toLowerCase().contains(filterPattern))) {
@@ -184,7 +185,7 @@ public class CityAutoCompleteAdapter extends ArrayAdapter<CityActivity.City> {
             @Override
             @SuppressWarnings("unchecked")
             protected void publishResults(CharSequence constraint, FilterResults results) {
-                filteredCities = (List<CityActivity.City>) results.values;
+                filteredCities = (List<City>) results.values;
                 if (results.count > 0) {
                     notifyDataSetChanged();
                 } else {
@@ -194,7 +195,7 @@ public class CityAutoCompleteAdapter extends ArrayAdapter<CityActivity.City> {
         };
     }
 
-    public void updateCities(List<CityActivity.City> newCities) {
+    public void updateCities(List<City> newCities) {
         originalCities.clear();
         originalCities.addAll(newCities);
         filteredCities.clear();

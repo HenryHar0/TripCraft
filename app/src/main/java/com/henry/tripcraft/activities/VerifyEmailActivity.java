@@ -135,7 +135,7 @@ public class VerifyEmailActivity extends AppCompatActivity {
         flashAnimation.setRepeatMode(Animation.REVERSE);
         flashAnimation.setRepeatCount(1);
 
-        cardViewStatus.setCardBackgroundColor(getResources().getColor(R.color.success, null));
+        cardViewStatus.setCardBackgroundColor(getResources().getColor(R.color.success_primary, null));
         cardViewStatus.startAnimation(flashAnimation);
 
         flashAnimation.setAnimationListener(new Animation.AnimationListener() {
@@ -144,7 +144,7 @@ public class VerifyEmailActivity extends AppCompatActivity {
 
             @Override
             public void onAnimationEnd(Animation animation) {
-                cardViewStatus.setCardBackgroundColor(getResources().getColor(R.color.background, null));
+                cardViewStatus.setCardBackgroundColor(getResources().getColor(R.color.background_primary, null));
             }
 
             @Override
@@ -187,9 +187,9 @@ public class VerifyEmailActivity extends AppCompatActivity {
     private void updateUserProfile(FirebaseUser user, String name) {
         // Show verification success UI changes
         imageViewEmail.setImageResource(R.drawable.ic_check);
-        imageViewEmail.setColorFilter(getResources().getColor(R.color.success, null));
+        imageViewEmail.setColorFilter(getResources().getColor(R.color.success_primary, null));
         textViewWaiting.setText(R.string.email_verified);
-        textViewWaiting.setTextColor(getResources().getColor(R.color.success, null));
+        textViewWaiting.setTextColor(getResources().getColor(R.color.success_primary, null));
 
         UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
                 .setDisplayName(name).build();
@@ -197,7 +197,7 @@ public class VerifyEmailActivity extends AppCompatActivity {
         user.updateProfile(profileUpdates).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
                 // Show success feedback with animation
-                cardViewStatus.setCardBackgroundColor(getResources().getColor(R.color.success, null));
+                cardViewStatus.setCardBackgroundColor(getResources().getColor(R.color.success_primary, null));
 
                 Toast.makeText(VerifyEmailActivity.this, R.string.email_verified_redirecting, Toast.LENGTH_SHORT).show();
 

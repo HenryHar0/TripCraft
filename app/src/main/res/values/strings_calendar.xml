@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan_your_trip">Plan Your Trip</string>
+    <string name="select_your_travel_dates">Select your travel dates</string>
+    <string name="when_will_you_be_visiting">When will you be visiting?</string>
+    <string name="how_many_days_will_you_stay">How many days will you stay?</string>
+    <string name="plus_symbol">+</string>
+    <string name="minus_symbol">-</string>
+    <string name="your_trip_summary">Your Trip Summary</string>
+    <string name="arrival">Arrival</string>
+    <string name="departure">Departure</string>
+    <plurals name="day_count">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+</resources>

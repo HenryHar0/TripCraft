@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:transitionName="transitionButton"
-    android:background="@color/background">
+    android:background="@color/background_primary">
 
     <!-- Close button (X) -->
     <ImageButton
@@ -16,10 +16,10 @@
         android:padding="12dp"
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
-        android:contentDescription="Go back"
+        android:contentDescription="@string/go_back"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:tint="@color/primary" />
+        app:tint="@color/interactive_primary" />
 
     <LinearLayout
         android:id="@+id/progress_container"
@@ -40,7 +40,7 @@
             android:layout_height="4dp"
             android:layout_weight="1"
             android:background="@drawable/rounded_progress_bar"
-            android:backgroundTint="@color/primary"
+            android:backgroundTint="@color/interactive_primary"
             android:layout_marginEnd="4dp"/>
 
         <View
@@ -49,7 +49,7 @@
             android:layout_height="4dp"
             android:layout_weight="1"
             android:background="@drawable/rounded_progress_bar"
-            android:backgroundTint="@color/divider"
+            android:backgroundTint="@color/border_primary"
             android:layout_marginStart="4dp"
             android:layout_marginEnd="4dp"/>
 
@@ -59,7 +59,7 @@
             android:layout_height="4dp"
             android:layout_weight="1"
             android:background="@drawable/rounded_progress_bar"
-            android:backgroundTint="@color/divider"
+            android:backgroundTint="@color/border_primary"
             android:layout_marginStart="4dp"
             android:layout_marginEnd="4dp"/>
 
@@ -69,7 +69,7 @@
             android:layout_height="4dp"
             android:layout_weight="1"
             android:background="@drawable/rounded_progress_bar"
-            android:backgroundTint="@color/divider"
+            android:backgroundTint="@color/border_primary"
             android:layout_marginStart="4dp"/>
     </LinearLayout>
 
@@ -77,7 +77,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone"
-        android:background="#80FFFFFF"
+        android:background="@color/shadow_medium"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -98,9 +98,9 @@
         android:id="@+id/title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Explore"
+        android:text="@string/explore"
         android:textSize="36sp"
-        android:textColor="@color/primary_variant"
+        android:textColor="@color/text_primary"
         android:fontFamily="sans-serif-medium"
         android:letterSpacing="0.05"
         android:layout_marginTop="24dp"
@@ -112,9 +112,9 @@
         android:id="@+id/subtitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Find your next adventure"
+        android:text="@string/find_your_next_adventure"
         android:textSize="16sp"
-        android:textColor="@color/primary"
+        android:textColor="@color/text_secondary"
         android:fontFamily="sans-serif"
         android:layout_marginStart="32dp"
         android:layout_marginTop="4dp"
@@ -147,7 +147,7 @@
                 android:src="@drawable/ic_search"
                 android:layout_centerVertical="true"
                 android:layout_marginStart="16dp"
-                app:tint="@color/primary" />
+                app:tint="@color/text_secondary" />
 
             <ProgressBar
                 android:id="@+id/loading_indicator"
@@ -156,7 +156,7 @@
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
                 android:layout_marginEnd="16dp"
-                android:indeterminateTint="@color/primary"
+                android:indeterminateTint="@color/interactive_primary"
                 android:visibility="gone" />
 
             <androidx.appcompat.widget.AppCompatAutoCompleteTextView
@@ -166,9 +166,9 @@
                 android:layout_toEndOf="@id/search_icon"
                 android:layout_toStartOf="@id/loading_indicator"
                 android:background="@null"
-                android:hint="Where are you going?"
-                android:textColorHint="#9E9E9E"
-                android:textColor="@color/on_surface"
+                android:hint="@string/where_are_you_going"
+                android:textColorHint="@color/text_tertiary"
+                android:textColor="@color/text_primary"
                 android:textSize="16sp"
                 android:fontFamily="sans-serif"
                 android:paddingStart="16dp"
@@ -190,7 +190,7 @@
         app:cardCornerRadius="28dp"
         app:cardElevation="6dp"
         app:strokeWidth="0dp"
-        app:strokeColor="@color/divider"
+        app:strokeColor="@color/border_primary"
         app:layout_constraintTop_toBottomOf="@id/search_container"
         app:layout_constraintBottom_toTopOf="@id/button_container"
         app:layout_constraintStart_toStartOf="parent"
@@ -224,16 +224,15 @@
             android:id="@+id/next_button"
             android:layout_width="match_parent"
             android:layout_height="60dp"
-            android:text="Continue"
-            android:textColor="@color/on_primary"
+            android:text="@string/_continue"
+            android:textColor="@color/text_inverse"
             android:textSize="16sp"
             android:fontFamily="sans-serif-medium"
-            android:backgroundTint="@color/primary"
+            android:backgroundTint="@color/interactive_primary"
             app:cornerRadius="30dp"
-            app:rippleColor="@color/ripple_light"
+            app:rippleColor="@color/interactive_secondary"
             android:elevation="4dp"
             android:stateListAnimator="@null"/>
     </FrameLayout>
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

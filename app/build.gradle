@@ -3,6 +3,20 @@ plugins {
     id 'com.google.gms.google-services'
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
+}
+
+def rapidapiKey = localProperties.getProperty("RAPIDAPI_KEY", "")
+def googleMapsApiKey = localProperties.getProperty("googleMapsApiKey", "")
+if (rapidapiKey.isEmpty() || googleMapsApiKey.isEmpty()) {
+    throw new GradleException("Please set RAPIDAPI_KEY and googleMapsApiKey in local.properties")
+}
+// Ensure the local.properties contains the required keys
+
+
 android {
     namespace 'com.henry.tripcraft'
     compileSdk 34
@@ -15,6 +29,11 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField "String", "RAPIDAPI_KEY", "\"${rapidapiKey}\""
+
+        // Inject Google Maps API key here to replace placeholder in manifest
+        manifestPlaceholders = [GOOGLE_MAPS_API_KEY: googleMapsApiKey]
     }
 
     buildTypes {
@@ -32,6 +51,10 @@ android {
     viewBinding {
         enabled = true
     }
+
+    buildFeatures {
+        buildConfig true
+    }
 }
 
 dependencies {
@@ -48,7 +71,6 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.10.0'
     implementation 'org.json:json:20210307'
     implementation 'com.google.code.gson:gson:2.10.1'
-    
 
     // Google Play Services
     implementation 'com.google.android.gms:play-services-auth:20.1.0'
@@ -70,7 +92,6 @@ dependencies {
     implementation 'com.github.chrisbanes:PhotoView:2.3.0'
     implementation 'de.hdodenhof:circleimageview:3.1.0'
     implementation 'com.tbuonomo:dotsindicator:4.3'
-
 
     // Utils
     implementation 'org.apache.commons:commons-math3:3.6.1'

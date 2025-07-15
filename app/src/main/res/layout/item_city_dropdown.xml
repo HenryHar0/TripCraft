@@ -14,7 +14,6 @@
         android:layout_height="32dp"
         android:layout_marginEnd="16dp"
         android:scaleType="centerCrop"
-        android:contentDescription="Country flag"
         android:background="@drawable/flag_background"
         android:src="@drawable/ic_flag_placeholder" />
 
@@ -29,11 +28,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="16sp"
-            android:textColor="@color/on_surface"
+            android:textColor="@color/text_primary"
             android:fontFamily="sans-serif-medium"
             android:maxLines="1"
             android:ellipsize="end"
-            android:text="London" />
+            android:text="" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -48,18 +47,18 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:textSize="14sp"
-                android:textColor="@color/on_surface"
+                android:textColor="@color/text_secondary"
                 android:fontFamily="sans-serif"
                 android:maxLines="1"
                 android:ellipsize="end"
-                android:text="England, United Kingdom" />
+                android:text="" />
 
             <TextView
                 android:id="@+id/population_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="12sp"
-                android:textColor="@color/on_primary"
+                android:textColor="@color/text_inverse"
                 android:fontFamily="sans-serif"
                 android:background="@drawable/population_badge_background"
                 android:paddingStart="8dp"
@@ -67,7 +66,7 @@
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
                 android:layout_marginStart="8dp"
-                android:text="Pop: 9,000,000"
+                android:text=""
                 android:visibility="visible" />
 
         </LinearLayout>

@@ -32,7 +32,7 @@
             android:id="@+id/greetingText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Hello, Username!"
+            android:text="@string/hello_username"
             android:textSize="32sp"
             android:textStyle="bold"
             android:textColor="@color/midnight_black"
@@ -43,7 +43,7 @@
             android:id="@+id/subtitleText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Let's explore the world together"
+            android:text="@string/let_s_explore_the_world_together"
             android:textSize="16sp"
             android:textColor="@color/stone_gray"
             android:fontFamily="sans-serif"
@@ -97,20 +97,13 @@
                     app:cardElevation="0dp"
                     android:layout_marginBottom="32dp">
 
-                    <ImageView
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:src="@drawable/ic_travel_placeholder"
-                        android:layout_gravity="center"
-                        android:contentDescription="Travel icon"
-                        app:tint="@color/ocean_blue" />
 
                 </androidx.cardview.widget.CardView>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Ready for your next adventure?"
+                    android:text="@string/ready_for_your_next_adventure"
                     android:textSize="22sp"
                     android:textStyle="bold"
                     android:textColor="@color/midnight_black"
@@ -122,7 +115,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Create your first travel plan and discover\namazing destinations around the world"
+                    android:text="@string/create_your_first_travel_plan_and_discover_namazing_destinations_around_the_world"
                     android:textSize="15sp"
                     android:textColor="@color/stone_gray"
                     android:fontFamily="sans-serif"
@@ -133,6 +126,7 @@
 
                 <!-- CTA Button -->
                 <androidx.cardview.widget.CardView
+                    android:id="@+id/createPlanButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     app:cardBackgroundColor="@color/ocean_blue"
@@ -155,13 +149,12 @@
                             android:layout_height="22dp"
                             android:src="@drawable/ic_plus"
                             android:layout_marginEnd="12dp"
-                            android:contentDescription="Add icon"
                             app:tint="@color/snow_white" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Create my first plan"
+                            android:text="@string/create_my_first_plan"
                             android:textSize="16sp"
                             android:textStyle="bold"
                             android:textColor="@color/snow_white"

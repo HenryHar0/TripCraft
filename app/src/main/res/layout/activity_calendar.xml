@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    android:background="@color/background_primary">
 
     <!-- Close button (X) -->
     <ImageButton
@@ -17,10 +17,10 @@
         android:padding="12dp"
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
-        android:contentDescription="Go back"
+        android:contentDescription="@string/go_back"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:tint="@color/primary" />
+        app:tint="@color/interactive_primary" />
 
     <LinearLayout
         android:id="@+id/progress_container"
@@ -40,7 +40,7 @@
             android:layout_height="4dp"
             android:layout_weight="1"
             android:background="@drawable/rounded_progress_bar"
-            android:backgroundTint="@color/primary"
+            android:backgroundTint="@color/interactive_primary"
             android:layout_marginEnd="4dp"/>
 
         <View
@@ -48,7 +48,7 @@
             android:layout_height="4dp"
             android:layout_weight="1"
             android:background="@drawable/rounded_progress_bar"
-            android:backgroundTint="@color/primary"
+            android:backgroundTint="@color/interactive_primary"
             android:layout_marginStart="4dp"
             android:layout_marginEnd="4dp"/>
 
@@ -57,7 +57,7 @@
             android:layout_height="4dp"
             android:layout_weight="1"
             android:background="@drawable/rounded_progress_bar"
-            android:backgroundTint="@color/divider"
+            android:backgroundTint="@color/border_primary"
             android:layout_marginStart="4dp"
             android:layout_marginEnd="4dp"/>
 
@@ -66,7 +66,7 @@
             android:layout_height="4dp"
             android:layout_weight="1"
             android:background="@drawable/rounded_progress_bar"
-            android:backgroundTint="@color/divider"
+            android:backgroundTint="@color/border_primary"
             android:layout_marginStart="4dp"/>
     </LinearLayout>
 
@@ -86,9 +86,9 @@
         android:id="@+id/title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Plan Your Trip"
+        android:text="@string/plan_your_trip"
         android:textSize="32sp"
-        android:textColor="@color/primary_variant"
+        android:textColor="@color/text_primary"
         android:fontFamily="sans-serif-medium"
         android:letterSpacing="0.05"
         android:layout_marginTop="20dp"
@@ -100,9 +100,9 @@
         android:id="@+id/subtitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Select your travel dates"
+        android:text="@string/select_your_travel_dates"
         android:textSize="16sp"
-        android:textColor="@color/primary"
+        android:textColor="@color/text_secondary"
         android:fontFamily="sans-serif"
         android:layout_marginStart="32dp"
         android:layout_marginTop="4dp"
@@ -129,7 +129,7 @@
             android:layout_height="wrap_content"
             app:cardCornerRadius="28dp"
             app:cardElevation="6dp"
-            app:cardBackgroundColor="@color/surface"
+            app:cardBackgroundColor="@color/background_elevated"
             app:strokeWidth="0dp">
 
             <LinearLayout
@@ -149,15 +149,15 @@
                         android:layout_width="28dp"
                         android:layout_height="28dp"
                         android:src="@drawable/ic_calendar"
-                        app:tint="@color/primary" />
+                        app:tint="@color/interactive_primary" />
 
                     <androidx.appcompat.widget.AppCompatTextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="When will you be visiting?"
+                        android:text="@string/when_will_you_be_visiting"
                         android:textSize="18sp"
-                        android:textColor="@color/on_surface"
+                        android:textColor="@color/text_primary"
                         android:layout_marginStart="16dp"
                         android:fontFamily="sans-serif-medium"
                         android:includeFontPadding="false"
@@ -184,15 +184,15 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:src="@drawable/ic_nights"
-                        app:tint="@color/primary" />
+                        app:tint="@color/interactive_primary" />
 
                     <androidx.appcompat.widget.AppCompatTextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="How many days will you stay?"
+                        android:text="@string/how_many_days_will_you_stay"
                         android:textSize="16sp"
-                        android:textColor="@color/on_surface"
+                        android:textColor="@color/text_primary"
                         android:layout_marginStart="12dp"
                         android:fontFamily="sans-serif-medium" />
 
@@ -206,14 +206,14 @@
                             android:id="@+id/decrease_days"
                             android:layout_width="40dp"
                             android:layout_height="40dp"
-                            android:text="-"
+                            android:text="@string/minus_symbol"
                             android:textSize="18sp"
-                            android:textColor="@color/primary"
+                            android:textColor="@color/interactive_primary"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
                             app:cornerRadius="20dp"
-                            app:backgroundTint="@color/surface"
-                            app:strokeColor="@color/primary"
+                            app:backgroundTint="@color/background_elevated"
+                            app:strokeColor="@color/interactive_border"
                             app:strokeWidth="1dp"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
@@ -221,9 +221,9 @@
                             android:id="@+id/days_counter"
                             android:layout_width="60dp"
                             android:layout_height="wrap_content"
-                            android:text="1"
+                            android:text=""
                             android:textSize="18sp"
-                            android:textColor="@color/primary_variant"
+                            android:textColor="@color/text_primary"
                             android:fontFamily="sans-serif-medium"
                             android:gravity="center"
                             android:layout_marginHorizontal="8dp" />
@@ -232,14 +232,14 @@
                             android:id="@+id/increase_days"
                             android:layout_width="40dp"
                             android:layout_height="40dp"
-                            android:text="+"
+                            android:text="@string/plus_symbol"
                             android:textSize="18sp"
-                            android:textColor="@color/primary"
+                            android:textColor="@color/interactive_primary"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
                             app:cornerRadius="20dp"
-                            app:backgroundTint="@color/surface"
-                            app:strokeColor="@color/primary"
+                            app:backgroundTint="@color/background_elevated"
+                            app:strokeColor="@color/interactive_border"
                             app:strokeWidth="1dp"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
                     </LinearLayout>
@@ -250,7 +250,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     app:cardCornerRadius="20dp"
-                    app:cardBackgroundColor="@color/card_cultural"
+                    app:cardBackgroundColor="@color/interactive_background"
                     app:strokeWidth="0dp"
                     app:cardElevation="2dp">
 
@@ -263,9 +263,9 @@
                         <androidx.appcompat.widget.AppCompatTextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Your Trip Summary"
+                            android:text="@string/your_trip_summary"
                             android:textSize="16sp"
-                            android:textColor="@color/primary"
+                            android:textColor="@color/text_accent"
                             android:fontFamily="sans-serif-medium"
                             android:includeFontPadding="false"
                             android:lineSpacingMultiplier="1.1"
@@ -285,25 +285,25 @@
                                 <androidx.appcompat.widget.AppCompatTextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Arrival"
+                                    android:text="@string/arrival"
                                     android:textSize="12sp"
-                                    android:textColor="@color/on_surface"
+                                    android:textColor="@color/text_tertiary"
                                     android:alpha="0.8" />
 
                                 <androidx.appcompat.widget.AppCompatTextView
                                     android:id="@+id/arrival_date"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="-"
+                                    android:text=""
                                     android:textSize="16sp"
-                                    android:textColor="@color/primary_variant"
+                                    android:textColor="@color/text_primary"
                                     android:fontFamily="sans-serif-medium" />
                             </LinearLayout>
 
                             <View
                                 android:layout_width="1dp"
                                 android:layout_height="match_parent"
-                                android:background="@color/divider"
+                                android:background="@color/border_primary"
                                 android:layout_marginHorizontal="16dp" />
 
                             <LinearLayout
@@ -315,18 +315,18 @@
                                 <androidx.appcompat.widget.AppCompatTextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Departure"
+                                    android:text="@string/departure"
                                     android:textSize="12sp"
-                                    android:textColor="@color/on_surface"
+                                    android:textColor="@color/text_tertiary"
                                     android:alpha="0.8" />
 
                                 <androidx.appcompat.widget.AppCompatTextView
                                     android:id="@+id/departure_date"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="-"
+                                    android:text=""
                                     android:textSize="16sp"
-                                    android:textColor="@color/primary_variant"
+                                    android:textColor="@color/text_primary"
                                     android:fontFamily="sans-serif-medium" />
                             </LinearLayout>
                         </LinearLayout>
@@ -343,16 +343,16 @@
                                 android:layout_width="16dp"
                                 android:layout_height="16dp"
                                 android:src="@drawable/ic_nights"
-                                app:tint="@color/primary"
+                                app:tint="@color/interactive_primary"
                                 android:layout_marginEnd="6dp" />
 
                             <androidx.appcompat.widget.AppCompatTextView
                                 android:id="@+id/days_count"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="1 day"
+                                android:text=""
                                 android:textSize="14sp"
-                                android:textColor="@color/primary"
+                                android:textColor="@color/text_accent"
                                 android:fontFamily="sans-serif-medium" />
                         </LinearLayout>
 
@@ -367,16 +367,16 @@
         android:id="@+id/next_button"
         android:layout_width="0dp"
         android:layout_height="60dp"
-        android:text="Continue"
-        android:textColor="@color/on_primary"
+        android:text="@string/_continue"
+        android:textColor="@color/text_inverse"
         android:textSize="16sp"
         android:fontFamily="sans-serif-medium"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
         android:layout_marginBottom="32dp"
         app:cornerRadius="30dp"
-        app:backgroundTint="@color/primary"
-        app:rippleColor="@color/ripple_light"
+        app:backgroundTint="@color/interactive_primary"
+        app:rippleColor="@color/interactive_background"
         android:elevation="4dp"
         android:stateListAnimator="@null"
         app:layout_constraintStart_toStartOf="parent"

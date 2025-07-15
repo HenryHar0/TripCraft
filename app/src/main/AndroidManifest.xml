@@ -22,7 +22,7 @@
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAsvWvvAs1b1HWVzVKDkvVGdEFbeRzN50E" />
+            android:value="${GOOGLE_MAPS_API_KEY}" />
 
         <activity
             android:name=".activities.SignUpActivity"
@@ -39,18 +39,8 @@
         <activity android:name=".activities.ProfileActivity" android:exported="false" />
         <activity android:name=".activities.CityActivity" android:exported="false" />
         <activity android:name=".activities.CalendarActivity" android:exported="false" />
-        <activity android:name=".PlanActivity" android:exported="false" />
         <activity android:name=".activities.VerifyEmailActivity" android:exported="false" />
-        <activity android:name=".SavedPlansActivity" android:exported="false" />
-        <activity android:name=".MapPlacesActivity" android:exported="false" />
-        <activity android:name=".InterestsActivity" android:exported="false" />
         <activity android:name=".activities.SettingsActivity" android:exported="false" />
-        <activity android:name=".RestaurantActivity" android:exported="false" />
-        <activity android:name=".TimeActivity" android:exported="false" />
-        <receiver android:name=".NotificationReceiver" android:exported="false" />
-        <activity
-            android:name=".activities.BlogActivity"
-            android:parentActivityName=".activities.MainActivity" />
 
     </application>
 

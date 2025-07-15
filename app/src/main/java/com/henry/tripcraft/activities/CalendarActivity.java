@@ -23,9 +23,10 @@ public class CalendarActivity extends AppCompatActivity {
 
     // Intent keys
     public static final String EXTRA_CITY = "city";
-    public static final String EXTRA_GEONAME_ID = "geonameId";
     public static final String EXTRA_LATITUDE = "latitude";
     public static final String EXTRA_LONGITUDE = "longitude";
+
+    private static final int MAX_DURATION_DAYS = 30;
 
     private CalendarView calendarView;
     private MaterialButton nextButton;
@@ -43,7 +44,6 @@ public class CalendarActivity extends AppCompatActivity {
     private final SimpleDateFormat storageFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
 
     private String city;
-    private int geonameId;
     private double latitude;
     private double longitude;
 
@@ -56,7 +56,18 @@ public class CalendarActivity extends AppCompatActivity {
 
         initViews();
         extractIntentData();
+        ConfigureCalendar();
 
+        // Calculate and set initial departure date
+        updateDepartureDateFromDuration();
+
+        setupDateChangeListener();
+        setupDurationControls();
+        setupNextButton();
+        setupBackButton();
+    }
+
+    private void ConfigureCalendar(){
         // Set week to start with Monday
         calendarView.setFirstDayOfWeek(Calendar.MONDAY);
 
@@ -67,15 +78,8 @@ public class CalendarActivity extends AppCompatActivity {
         Date todayDate = new Date(today.getTimeInMillis());
         startDateStorage = storageFormat.format(todayDate);
         arrivalDateText.setText(displayFormat.format(todayDate));
-
-        // Calculate and set initial departure date
-        updateDepartureDateFromDuration();
-
-        setupDateChangeListener();
-        setupDurationControls();
-        setupNextButton();
-        setupBackButton();
     }
+
 
     private void initViews() {
         calendarView = findViewById(R.id.date_picker);
@@ -92,7 +96,6 @@ public class CalendarActivity extends AppCompatActivity {
     private void extractIntentData() {
         Intent intent = getIntent();
         city = intent.getStringExtra(EXTRA_CITY);
-        geonameId = intent.getIntExtra(EXTRA_GEONAME_ID, -1);
         latitude = intent.getDoubleExtra(EXTRA_LATITUDE, 0.0);
         longitude = intent.getDoubleExtra(EXTRA_LONGITUDE, 0.0);
     }
@@ -112,6 +115,8 @@ public class CalendarActivity extends AppCompatActivity {
         });
     }
 
+
+
     private void setupDurationControls() {
         decreaseDaysButton.setOnClickListener(v -> {
             if (durationDays > 1) {
@@ -122,7 +127,7 @@ public class CalendarActivity extends AppCompatActivity {
         });
 
         increaseDaysButton.setOnClickListener(v -> {
-            if (durationDays < 30) { // Set a reasonable maximum
+            if (durationDays < MAX_DURATION_DAYS) {
                 durationDays++;
                 updateDurationDisplay();
                 updateDepartureDateFromDuration();
@@ -132,9 +137,16 @@ public class CalendarActivity extends AppCompatActivity {
 
     private void updateDurationDisplay() {
         daysCounterText.setText(String.valueOf(durationDays));
-        String durationText = durationDays + (durationDays == 1 ? " day" : " days");
+
+        String durationText = getResources().getQuantityString(
+                R.plurals.day_count,
+                durationDays,
+                durationDays
+        );
+
         daysCountText.setText(durationText);
     }
+
 
     private void updateDepartureDateFromDuration() {
         if (startDateStorage != null) {
@@ -163,7 +175,7 @@ public class CalendarActivity extends AppCompatActivity {
                 return;
             }
 
-            startActivity(createInterestsIntent());
+            startActivity(createExtraQuestionsIntent());
         });
     }
 
@@ -178,13 +190,22 @@ public class CalendarActivity extends AppCompatActivity {
         }
     }
 
-    private Intent createInterestsIntent() {
-        Intent intent = new Intent(this, InterestsActivity.class);
+    @Override
+    public void onBackPressed() {
+        Intent intent = new Intent(CalendarActivity.this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
+    }
+
+
+    private Intent createExtraQuestionsIntent() {
+        Intent intent = new Intent(this, ExtraQuestionsActivity.class);
         intent.putExtra("start_date", startDateStorage);
         intent.putExtra("end_date", endDateStorage);
         intent.putExtra("duration_days", durationDays);
         intent.putExtra(EXTRA_CITY, city);
-        intent.putExtra(EXTRA_GEONAME_ID, geonameId);
         intent.putExtra(EXTRA_LATITUDE, latitude);
         intent.putExtra(EXTRA_LONGITUDE, longitude);
         return intent;
@@ -197,47 +218,5 @@ public class CalendarActivity extends AppCompatActivity {
             Log.e("CalendarActivity", "Date parsing failed", e);
             return null;
         }
-    }
-
-    private long parseStorageToMillis(String storageDate) {
-        Date date = parseStorageDate(storageDate);
-        return (date != null) ? date.getTime() : System.currentTimeMillis();
-    }
-
-    // Fixed method to handle date parsing correctly
-    private long parseStorageToMillisCorrect(String storageDate) {
-        try {
-            Date date = storageFormat.parse(storageDate);
-            if (date != null) {
-                // Create calendar and set the parsed date to avoid timezone issues
-                Calendar cal = Calendar.getInstance();
-                cal.setTime(date);
-                // Ensure we're using the correct date at midnight
-                cal.set(Calendar.HOUR_OF_DAY, 0);
-                cal.set(Calendar.MINUTE, 0);
-                cal.set(Calendar.SECOND, 0);
-                cal.set(Calendar.MILLISECOND, 0);
-                return cal.getTimeInMillis();
-            }
-        } catch (ParseException e) {
-            Log.e("CalendarActivity", "Date parsing failed", e);
-        }
-        return System.currentTimeMillis();
-    }
-
-    private boolean isEndBeforeStart(String start, String end) {
-        Date d1 = parseStorageDate(start);
-        Date d2 = parseStorageDate(end);
-        return d1 != null && d2 != null && d2.before(d1);
-    }
-
-    private int calculateDurationDays(String start, String end) {
-        Date d1 = parseStorageDate(start);
-        Date d2 = parseStorageDate(end);
-        if (d1 != null && d2 != null) {
-            long diff = d2.getTime() - d1.getTime();
-            return (int) (diff / (1000 * 60 * 60 * 24) + 1);
-        }
-        return 0;
     }
 }

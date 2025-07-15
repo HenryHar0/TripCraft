@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    android:background="@color/background_primary">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
@@ -15,7 +15,7 @@
         <com.google.android.material.appbar.CollapsingToolbarLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:contentScrim="@color/primary"
+            app:contentScrim="@color/interactive_primary"
             app:expandedTitleMarginStart="24dp"
             app:expandedTitleMarginBottom="160dp"
             app:expandedTitleTextAppearance="@style/TextAppearance.MaterialComponents.Headline3"
@@ -28,7 +28,6 @@
                 <ImageView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:contentDescription="Profile Header Background"
                     android:scaleType="centerCrop"
                     android:src="@drawable/profile_header_bg"
                     app:layout_constraintTop_toTopOf="parent" />
@@ -45,14 +44,14 @@
                     android:layout_height="100dp"
                     android:layout_marginBottom="70dp"
                     android:padding="3dp"
-                    android:background="@color/on_primary"
+                    android:background="@color/text_inverse"
                     android:scaleType="centerCrop"
                     android:src="@drawable/profile_picture"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     android:layout_marginStart="24dp"
                     app:shapeAppearanceOverlay="@style/CircleImageView"
-                    app:strokeColor="@color/on_primary"
+                    app:strokeColor="@color/text_inverse"
                     app:strokeWidth="3dp" />
 
                 <TextView
@@ -61,21 +60,20 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="24dp"
                     android:layout_marginTop="8dp"
-                    android:text="-"
-                    android:textColor="@color/on_primary"
+                    android:text=""
+                    android:textColor="@color/text_inverse"
                     android:textSize="22sp"
                     android:textStyle="bold"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/profileImage" />
-
 
                 <TextView
                     android:id="@+id/profileUsername"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="24dp"
-                    android:text="-"
-                    android:textColor="@color/on_primary"
+                    android:text=""
+                    android:textColor="@color/text_inverse"
                     android:textSize="16sp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/profileName" />
@@ -88,8 +86,7 @@
                 android:layout_height="?attr/actionBarSize"
                 app:layout_collapseMode="pin">
 
-
-            <RelativeLayout
+                <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent">
 
@@ -97,8 +94,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_centerVertical="true"
-                        android:text="Profile"
-                        android:textColor="@color/on_primary"
+                        android:text="@string/profile"
+                        android:textColor="@color/text_inverse"
                         android:textSize="20sp"
                         android:textStyle="bold" />
 
@@ -110,9 +107,9 @@
                         android:layout_centerVertical="true"
                         android:layout_marginEnd="8dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="Settings"
+                        android:contentDescription="@string/settings"
                         android:src="@drawable/ic_setting"
-                        app:tint="@color/on_primary" />
+                        app:tint="@color/text_inverse" />
                 </RelativeLayout>
             </androidx.appcompat.widget.Toolbar>
         </com.google.android.material.appbar.CollapsingToolbarLayout>
@@ -133,7 +130,7 @@
             android:layout_marginEnd="16dp"
             app:cardCornerRadius="16dp"
             app:cardElevation="4dp"
-            app:strokeColor="#FFCCCCCC"
+            app:strokeColor="@color/border_primary"
             app:strokeWidth="1dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -148,8 +145,8 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="About Me"
-                    android:textColor="@color/primary"
+                    android:text="@string/about_me"
+                    android:textColor="@color/text_accent"
                     android:textSize="20sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="16dp" />
@@ -164,16 +161,15 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:contentDescription="Username Icon"
                         android:src="@drawable/ic_person"
-                        app:tint="@color/primary" />
+                        app:tint="@color/interactive_primary" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="16dp"
-                        android:text="Username"
-                        android:textColor="@color/on_secondary"
+                        android:text="@string/username"
+                        android:textColor="@color/text_secondary"
                         android:textSize="16sp" />
 
                     <TextView
@@ -183,8 +179,8 @@
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
                         android:gravity="end"
-                        android:text="-"
-                        android:textColor="@color/on_background"
+                        android:text=""
+                        android:textColor="@color/text_primary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -192,7 +188,7 @@
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/divider" />
+                    android:background="@color/border_primary" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -204,9 +200,8 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:contentDescription="Bio Icon"
                         android:src="@drawable/ic_info"
-                        app:tint="@color/primary" />
+                        app:tint="@color/interactive_primary" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -217,8 +212,8 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Bio"
-                            android:textColor="@color/on_secondary"
+                            android:text="@string/bio"
+                            android:textColor="@color/text_secondary"
                             android:textSize="16sp" />
 
                         <TextView
@@ -226,8 +221,8 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="-"
-                            android:textColor="@color/on_background"
+                            android:text=""
+                            android:textColor="@color/text_primary"
                             android:textSize="16sp" />
                     </LinearLayout>
                 </LinearLayout>
@@ -235,7 +230,7 @@
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/divider" />
+                    android:background="@color/border_primary" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -247,16 +242,15 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:contentDescription="Email Icon"
                         android:src="@drawable/ic_email"
-                        app:tint="@color/primary" />
+                        app:tint="@color/interactive_primary" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="16dp"
-                        android:text="Email"
-                        android:textColor="@color/on_secondary"
+                        android:text="@string/email"
+                        android:textColor="@color/text_secondary"
                         android:textSize="16sp" />
 
                     <TextView
@@ -266,8 +260,8 @@
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
                         android:gravity="end"
-                        android:text="-"
-                        android:textColor="@color/on_background"
+                        android:text=""
+                        android:textColor="@color/text_primary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -285,19 +279,17 @@
             android:id="@+id/bottomNavigation"
             android:layout_width="match_parent"
             android:layout_height="70dp"
-            android:background="@color/surface"
+            android:background="@color/nav_background"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:itemIconTint="@color/bottom_nav_selector"
             app:itemTextColor="@color/bottom_nav_selector"
-            app:itemActiveIndicatorStyle="@color/on_surface"
+            app:itemActiveIndicatorStyle="@color/interactive_background"
             app:menu="@menu/bottom_navigation_menu"
             app:labelVisibilityMode="unlabeled"
             android:elevation="8dp" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
-
-
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

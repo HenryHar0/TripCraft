@@ -5,13 +5,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="@color/background_primary"
     tools:context=".activities.SettingsActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/primary">
+        android:background="@color/interactive_primary">
 
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/settings_toolbar"
@@ -19,7 +19,7 @@
             android:layout_height="?attr/actionBarSize"
             android:elevation="4dp"
             app:title="Settings"
-            app:titleTextColor="@color/on_primary"
+            app:titleTextColor="@color/text_inverse"
             app:navigationIcon="@drawable/ic_arrow_back" />
 
     </com.google.android.material.appbar.AppBarLayout>
@@ -42,7 +42,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Account"
-                android:textColor="@color/primary"
+                android:textColor="@color/text_accent"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:layout_marginBottom="8dp"/>
@@ -51,7 +51,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardBackgroundColor="@color/surface"
+                app:cardBackgroundColor="@color/background_elevated"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp">
 
@@ -76,7 +76,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_account_circle"
                             android:contentDescription="Profile"
-                            app:tint="@color/primary" />
+                            app:tint="@color/interactive_primary" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -89,7 +89,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Edit Profile"
-                                android:textColor="@color/on_surface"
+                                android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
 
@@ -97,7 +97,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Change your personal information"
-                                android:textColor="#757575"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
 
                         </LinearLayout>
@@ -108,7 +108,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_chevron_right"
                             android:contentDescription="Next"
-                            app:tint="#757575" />
+                            app:tint="@color/text_tertiary" />
 
                     </LinearLayout>
 
@@ -116,7 +116,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginStart="56dp"
-                        android:background="@color/divider" />
+                        android:background="@color/border_primary" />
 
                     <LinearLayout
                         android:id="@+id/setting_password"
@@ -134,7 +134,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_lock"
                             android:contentDescription="Password"
-                            app:tint="@color/primary" />
+                            app:tint="@color/interactive_primary" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -147,7 +147,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Change Password"
-                                android:textColor="@color/on_surface"
+                                android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
 
@@ -155,7 +155,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Update your security credentials"
-                                android:textColor="#757575"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
 
                         </LinearLayout>
@@ -166,7 +166,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_chevron_right"
                             android:contentDescription="Next"
-                            app:tint="#757575" />
+                            app:tint="@color/text_tertiary" />
 
                     </LinearLayout>
 
@@ -179,7 +179,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Preferences"
-                android:textColor="@color/primary"
+                android:textColor="@color/text_accent"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:layout_marginBottom="8dp"/>
@@ -188,7 +188,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardBackgroundColor="@color/surface"
+                app:cardBackgroundColor="@color/background_elevated"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp">
 
@@ -213,7 +213,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_notifications"
                             android:contentDescription="Notifications"
-                            app:tint="@color/primary" />
+                            app:tint="@color/interactive_primary" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -226,7 +226,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Notifications"
-                                android:textColor="@color/on_surface"
+                                android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
 
@@ -234,7 +234,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Configure notification preferences"
-                                android:textColor="#757575"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
 
                         </LinearLayout>
@@ -252,7 +252,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginStart="56dp"
-                        android:background="@color/divider" />
+                        android:background="@color/border_primary" />
 
                     <LinearLayout
                         android:id="@+id/setting_language"
@@ -270,7 +270,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_language"
                             android:contentDescription="Language"
-                            app:tint="@color/primary" />
+                            app:tint="@color/interactive_primary" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -283,7 +283,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Language"
-                                android:textColor="@color/on_surface"
+                                android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
 
@@ -292,7 +292,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="English (US)"
-                                android:textColor="#757575"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
 
                         </LinearLayout>
@@ -303,7 +303,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_chevron_right"
                             android:contentDescription="Next"
-                            app:tint="#757575" />
+                            app:tint="@color/text_tertiary" />
 
                     </LinearLayout>
 
@@ -311,7 +311,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginStart="56dp"
-                        android:background="@color/divider" />
+                        android:background="@color/border_primary" />
 
                     <LinearLayout
                         android:id="@+id/setting_currency"
@@ -329,7 +329,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_attach_money"
                             android:contentDescription="Currency"
-                            app:tint="@color/primary" />
+                            app:tint="@color/interactive_primary" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -342,7 +342,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Currency"
-                                android:textColor="@color/on_surface"
+                                android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
 
@@ -351,7 +351,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="USD ($)"
-                                android:textColor="#757575"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
 
                         </LinearLayout>
@@ -362,7 +362,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_chevron_right"
                             android:contentDescription="Next"
-                            app:tint="#757575" />
+                            app:tint="@color/text_tertiary" />
 
                     </LinearLayout>
 
@@ -375,7 +375,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="App Settings"
-                android:textColor="@color/primary"
+                android:textColor="@color/text_accent"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:layout_marginBottom="8dp"/>
@@ -384,7 +384,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardBackgroundColor="@color/surface"
+                app:cardBackgroundColor="@color/background_elevated"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp">
 
@@ -410,7 +410,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_data_usage"
                             android:contentDescription="Data Usage"
-                            app:tint="@color/primary" />
+                            app:tint="@color/interactive_primary" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -423,7 +423,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Data Usage"
-                                android:textColor="@color/on_surface"
+                                android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
 
@@ -431,7 +431,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Manage how the app uses data"
-                                android:textColor="#757575"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
                         </LinearLayout>
 
@@ -441,7 +441,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_chevron_right"
                             android:contentDescription="Next"
-                            app:tint="#757575" />
+                            app:tint="@color/text_tertiary" />
 
                     </LinearLayout>
 
@@ -462,7 +462,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_delete"
                             android:contentDescription="Clear Cache"
-                            app:tint="@color/primary" />
+                            app:tint="@color/interactive_primary" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -475,7 +475,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Clear Cache"
-                                android:textColor="@color/on_surface"
+                                android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
 
@@ -483,7 +483,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Free up storage space"
-                                android:textColor="#757575"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
                         </LinearLayout>
 
@@ -493,7 +493,7 @@
                             android:layout_height="wrap_content"
                             android:layout_gravity="center_vertical"
                             android:text="45 MB"
-                            android:textColor="#757575"
+                            android:textColor="@color/text_secondary"
                             android:textSize="14sp"
                             android:textStyle="bold" />
 
@@ -509,7 +509,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Support"
-                android:textColor="@color/primary"
+                android:textColor="@color/text_accent"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:layout_marginBottom="8dp"/>
@@ -518,7 +518,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardBackgroundColor="@color/surface"
+                app:cardBackgroundColor="@color/background_elevated"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp">
 
@@ -543,7 +543,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_help"
                             android:contentDescription="Help"
-                            app:tint="@color/primary" />
+                            app:tint="@color/interactive_primary" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -556,7 +556,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Help Center"
-                                android:textColor="@color/on_surface"
+                                android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
 
@@ -564,7 +564,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="FAQs and user guides"
-                                android:textColor="#757575"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
 
                         </LinearLayout>
@@ -575,7 +575,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_chevron_right"
                             android:contentDescription="Next"
-                            app:tint="#757575" />
+                            app:tint="@color/text_tertiary" />
 
                     </LinearLayout>
 
@@ -583,7 +583,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginStart="56dp"
-                        android:background="@color/divider" />
+                        android:background="@color/border_primary" />
 
                     <LinearLayout
                         android:id="@+id/setting_feedback"
@@ -601,7 +601,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_feedback"
                             android:contentDescription="Feedback"
-                            app:tint="@color/primary" />
+                            app:tint="@color/interactive_primary" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -614,7 +614,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Send Feedback"
-                                android:textColor="@color/on_surface"
+                                android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
 
@@ -622,7 +622,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Report issues or suggest improvements"
-                                android:textColor="#757575"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
 
                         </LinearLayout>
@@ -633,7 +633,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_chevron_right"
                             android:contentDescription="Next"
-                            app:tint="#757575" />
+                            app:tint="@color/text_tertiary" />
 
                     </LinearLayout>
 
@@ -641,7 +641,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginStart="56dp"
-                        android:background="@color/divider" />
+                        android:background="@color/border_primary" />
 
                     <LinearLayout
                         android:id="@+id/setting_about"
@@ -659,7 +659,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_info"
                             android:contentDescription="About"
-                            app:tint="@color/primary" />
+                            app:tint="@color/interactive_primary" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -672,7 +672,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="About TripCraft"
-                                android:textColor="@color/on_surface"
+                                android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
 
@@ -681,7 +681,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Version 1.0.0"
-                                android:textColor="#757575"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
 
                         </LinearLayout>
@@ -692,7 +692,7 @@
                             android:layout_gravity="center_vertical"
                             android:src="@drawable/ic_chevron_right"
                             android:contentDescription="Next"
-                            app:tint="#757575" />
+                            app:tint="@color/text_tertiary" />
 
                     </LinearLayout>
 
@@ -706,10 +706,10 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="Sign Out"
-                android:textColor="@color/on_primary"
+                android:textColor="@color/text_inverse"
                 android:padding="12dp"
                 android:textSize="16sp"
-                app:backgroundTint="@color/primary"
+                app:backgroundTint="@color/interactive_primary"
                 app:cornerRadius="12dp"
                 app:elevation="4dp" />
 

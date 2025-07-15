@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hello_username">Hello, %1$s!</string>
+    <string name="let_s_explore_the_world_together">Let\'s explore the world together</string>
+    <string name="ready_for_your_next_adventure">Ready for your next adventure?</string>
+    <string name="create_your_first_travel_plan_and_discover_namazing_destinations_around_the_world">Create your first travel plan and discover\namazing destinations around the world</string>
+    <string name="create_my_first_plan">Create my first plan</string>
+</resources>

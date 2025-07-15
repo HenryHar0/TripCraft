@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    android:background="@color/background_primary">
 
     <androidx.cardview.widget.CardView
         android:id="@+id/cardViewStatus"
@@ -11,7 +11,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
-        app:cardBackgroundColor="@color/background"
+        app:cardBackgroundColor="@color/background_secondary"
         app:cardCornerRadius="16dp"
         app:cardElevation="4dp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -35,7 +35,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:tint="@color/primary" />
+                app:tint="@color/interactive_primary" />
 
             <TextView
                 android:id="@+id/textViewTitle"
@@ -44,7 +44,7 @@
                 android:layout_marginTop="24dp"
                 android:gravity="center"
                 android:text="@string/email_verification"
-                android:textColor="@color/primary"
+                android:textColor="@color/text_primary"
                 android:textSize="24sp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -59,7 +59,7 @@
                 android:gravity="center"
                 android:lineSpacingExtra="4dp"
                 android:text="@string/verification_instructions"
-                android:textColor="@color/secondary_variant"
+                android:textColor="@color/text_secondary"
                 android:textSize="16sp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -70,7 +70,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
-                app:cardBackgroundColor="@color/status_background"
+                app:cardBackgroundColor="@color/interactive_background"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="0dp"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -85,7 +85,7 @@
                     android:gravity="center"
                     android:padding="12dp"
                     android:text="@string/waiting_for_verification"
-                    android:textColor="@color/secondary_variant"
+                    android:textColor="@color/text_secondary"
                     android:textSize="14sp" />
             </com.google.android.material.card.MaterialCardView>
 
@@ -98,7 +98,7 @@
                 android:fontFamily="@font/poppins_medium"
                 android:padding="8dp"
                 android:text="@string/resend_verification_email"
-                android:textColor="@color/primary"
+                android:textColor="@color/text_accent"
                 android:textSize="14sp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -118,13 +118,13 @@
         android:fontFamily="@font/poppins_medium"
         android:text="@string/back_to_signup"
         android:textAllCaps="false"
-        android:textColor="@color/primary"
+        android:textColor="@color/interactive_primary"
         android:textSize="16sp"
         app:cornerRadius="12dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:strokeColor="@color/primary"
+        app:strokeColor="@color/interactive_primary"
         app:strokeWidth="1.5dp" />
 
     <ImageView

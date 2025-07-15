@@ -29,6 +29,10 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.button.MaterialButton;
 import com.henry.tripcraft.R;
 import com.henry.tripcraft.adapters.CityAutoCompleteAdapter;
+import com.henry.tripcraft.models.City;
+import com.henry.tripcraft.utils.CountryCodeUtil;
+import com.henry.tripcraft.BuildConfig;
+
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -36,9 +40,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -48,13 +50,12 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+
+
 public class CityActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private static final String TAG = "CityActivity";
-    private static final String GEODB_API_URL = "https://wft-geo-db.p.rapidapi.com/v1/geo/cities";
-    private static final String RAPIDAPI_KEY = "b0b96f2159msh6a3d44fc56ef3c8p10d0c3jsn4368e4ace4b1";
-    private static final String RAPIDAPI_HOST = "wft-geo-db.p.rapidapi.com";
-    private static final int SEARCH_DELAY_MS = 300;
+
 
     // UI Components
     private AppCompatAutoCompleteTextView searchCity;
@@ -72,82 +73,11 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Runnable searchRunnable;
     private OkHttpClient httpClient;
     private ExecutorService executorService;
+    private static final String GEODB_API_URL = "https://wft-geo-db.p.rapidapi.com/v1/geo/cities";
+    private static final String RAPIDAPI_KEY = BuildConfig.RAPIDAPI_KEY;
+    private static final String RAPIDAPI_HOST = "wft-geo-db.p.rapidapi.com";
 
-    // Country code mapping for better flag support
-    private static final Map<String, String> COUNTRY_CODE_MAP = new HashMap<>();
-    static {
-        // Add common country mappings (ISO 3166-1 alpha-2 codes)
-        COUNTRY_CODE_MAP.put("United States", "US");
-        COUNTRY_CODE_MAP.put("United Kingdom", "GB");
-        COUNTRY_CODE_MAP.put("Canada", "CA");
-        COUNTRY_CODE_MAP.put("Australia", "AU");
-        COUNTRY_CODE_MAP.put("Germany", "DE");
-        COUNTRY_CODE_MAP.put("France", "FR");
-        COUNTRY_CODE_MAP.put("Spain", "ES");
-        COUNTRY_CODE_MAP.put("Italy", "IT");
-        COUNTRY_CODE_MAP.put("Japan", "JP");
-        COUNTRY_CODE_MAP.put("China", "CN");
-        COUNTRY_CODE_MAP.put("India", "IN");
-        COUNTRY_CODE_MAP.put("Brazil", "BR");
-        COUNTRY_CODE_MAP.put("Russia", "RU");
-        COUNTRY_CODE_MAP.put("Mexico", "MX");
-        COUNTRY_CODE_MAP.put("Netherlands", "NL");
-        COUNTRY_CODE_MAP.put("Belgium", "BE");
-        COUNTRY_CODE_MAP.put("Switzerland", "CH");
-        COUNTRY_CODE_MAP.put("Austria", "AT");
-        COUNTRY_CODE_MAP.put("Sweden", "SE");
-        COUNTRY_CODE_MAP.put("Norway", "NO");
-        COUNTRY_CODE_MAP.put("Denmark", "DK");
-        COUNTRY_CODE_MAP.put("Finland", "FI");
-        COUNTRY_CODE_MAP.put("Poland", "PL");
-        COUNTRY_CODE_MAP.put("Czech Republic", "CZ");
-        COUNTRY_CODE_MAP.put("Hungary", "HU");
-        COUNTRY_CODE_MAP.put("Portugal", "PT");
-        COUNTRY_CODE_MAP.put("Greece", "GR");
-        COUNTRY_CODE_MAP.put("Turkey", "TR");
-        COUNTRY_CODE_MAP.put("South Korea", "KR");
-        COUNTRY_CODE_MAP.put("Thailand", "TH");
-        COUNTRY_CODE_MAP.put("Singapore", "SG");
-        COUNTRY_CODE_MAP.put("Malaysia", "MY");
-        COUNTRY_CODE_MAP.put("Indonesia", "ID");
-        COUNTRY_CODE_MAP.put("Philippines", "PH");
-        COUNTRY_CODE_MAP.put("Vietnam", "VN");
-        COUNTRY_CODE_MAP.put("South Africa", "ZA");
-        COUNTRY_CODE_MAP.put("Egypt", "EG");
-        COUNTRY_CODE_MAP.put("Argentina", "AR");
-        COUNTRY_CODE_MAP.put("Chile", "CL");
-        COUNTRY_CODE_MAP.put("Colombia", "CO");
-        COUNTRY_CODE_MAP.put("Peru", "PE");
-        COUNTRY_CODE_MAP.put("Venezuela", "VE");
-        COUNTRY_CODE_MAP.put("Israel", "IL");
-        COUNTRY_CODE_MAP.put("Saudi Arabia", "SA");
-        COUNTRY_CODE_MAP.put("United Arab Emirates", "AE");
-        COUNTRY_CODE_MAP.put("New Zealand", "NZ");
-        COUNTRY_CODE_MAP.put("Ireland", "IE");
-        COUNTRY_CODE_MAP.put("Iceland", "IS");
-        COUNTRY_CODE_MAP.put("Luxembourg", "LU");
-        COUNTRY_CODE_MAP.put("Monaco", "MC");
-        COUNTRY_CODE_MAP.put("San Marino", "SM");
-        COUNTRY_CODE_MAP.put("Vatican City", "VA");
-        COUNTRY_CODE_MAP.put("Armenia", "AM");
-        COUNTRY_CODE_MAP.put("Georgia", "GE");
-        COUNTRY_CODE_MAP.put("Azerbaijan", "AZ");
-        COUNTRY_CODE_MAP.put("Kazakhstan", "KZ");
-        COUNTRY_CODE_MAP.put("Uzbekistan", "UZ");
-        COUNTRY_CODE_MAP.put("Ukraine", "UA");
-        COUNTRY_CODE_MAP.put("Belarus", "BY");
-        COUNTRY_CODE_MAP.put("Moldova", "MD");
-        COUNTRY_CODE_MAP.put("Romania", "RO");
-        COUNTRY_CODE_MAP.put("Bulgaria", "BG");
-        COUNTRY_CODE_MAP.put("Serbia", "RS");
-        COUNTRY_CODE_MAP.put("Croatia", "HR");
-        COUNTRY_CODE_MAP.put("Slovenia", "SI");
-        COUNTRY_CODE_MAP.put("Bosnia and Herzegovina", "BA");
-        COUNTRY_CODE_MAP.put("Montenegro", "ME");
-        COUNTRY_CODE_MAP.put("North Macedonia", "MK");
-        COUNTRY_CODE_MAP.put("Albania", "AL");
-        COUNTRY_CODE_MAP.put("Kosovo", "XK");
-    }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -180,16 +110,31 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void setupEventListeners() {
-        backButton.setOnClickListener(v -> onBackPressed());
+        backButton.setOnClickListener(v -> {
+            navigateBackToMain();
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
+        });
 
         nextButton.setOnClickListener(v -> {
             if (selectedCity != null) {
                 navigateToCalendarActivity();
-            } else {
-                Toast.makeText(this, "Please select a city first", Toast.LENGTH_SHORT).show();
             }
         });
     }
+
+    @Override
+    public void onBackPressed() {
+        navigateBackToMain();
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
+    }
+
+    private void navigateBackToMain() {
+        Intent intent = new Intent(CityActivity.this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
+    }
+
 
     private void setupMap() {
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -199,6 +144,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    private static final int SEARCH_DELAY_MS = 300;
     private void setupAutoComplete() {
         autoCompleteAdapter = new CityAutoCompleteAdapter(this, cityList);
         searchCity.setAdapter(autoCompleteAdapter);
@@ -344,7 +290,7 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
                     // Extract country code if available, otherwise map from country name
                     String countryCode = cityJson.optString("countryCode", "");
                     if (countryCode.isEmpty()) {
-                        countryCode = getCountryCode(country);
+                        countryCode = CountryCodeUtil.getCountryCode(country);
                     }
 
                     if (!name.isEmpty() && !country.isEmpty() && latitude != 0.0 && longitude != 0.0 && population > 0) {
@@ -374,9 +320,6 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private String getCountryCode(String countryName) {
-        return COUNTRY_CODE_MAP.getOrDefault(countryName, "");
-    }
 
     private void updateMapWithSelectedCity() {
         if (googleMap != null && selectedCity != null) {
@@ -408,16 +351,6 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void enableContinueButton() {
         nextButton.setEnabled(true);
         nextButton.setAlpha(1.0f);
-        nextButton.animate()
-                .scaleX(1.05f)
-                .scaleY(1.05f)
-                .setDuration(100)
-                .withEndAction(() -> nextButton.animate()
-                        .scaleX(1.0f)
-                        .scaleY(1.0f)
-                        .setDuration(100)
-                        .start())
-                .start();
     }
 
     private void clearSelection() {
@@ -461,7 +394,6 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
         LatLng initialPosition = new LatLng(20.0, 0.0);
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(initialPosition, 2f));
 
-        // Apply custom map style (optional)
         try {
             boolean success = googleMap.setMapStyle(
                     MapStyleOptions.loadRawResourceStyle(this, R.raw.map_style)
@@ -492,50 +424,4 @@ public class CityActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
-    }
-
-    // Updated City data class with country code support
-    public static class City {
-        private final String name;
-        private final String country;
-        private final String region;
-        private final double latitude;
-        private final double longitude;
-        private final int population;
-        private final String countryCode;
-
-        public City(String name, String country, String region, double latitude, double longitude, int population, String countryCode) {
-            this.name = name;
-            this.country = country;
-            this.region = region;
-            this.latitude = latitude;
-            this.longitude = longitude;
-            this.population = population;
-            this.countryCode = countryCode;
-        }
-
-        public String getName() { return name; }
-        public String getCountry() { return country; }
-        public String getRegion() { return region; }
-        public double getLatitude() { return latitude; }
-        public double getLongitude() { return longitude; }
-        public int getPopulation() { return population; }
-        public String getCountryCode() { return countryCode; }
-
-        public String getDisplayName() {
-            if (region != null && !region.isEmpty() && !region.equals(country)) {
-                return name + ", " + region + ", " + country;
-            }
-            return name + ", " + country;
-        }
-
-        @Override
-        public String toString() {
-            return getDisplayName();
-        }
-    }
 }

@@ -4,15 +4,15 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="@color/background_primary"
     tools:context=".activities.LoginActivity">
 
     <TextView
         android:id="@+id/textViewSignUpTopRight"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Sign Up"
-        android:textColor="@color/primary"
+        android:text="@string/sign_up"
+        android:textColor="@color/interactive_primary"
         android:textSize="16sp"
         android:textStyle="bold"
         android:padding="18dp"
@@ -39,8 +39,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="TripCraft"
-                android:textColor="@color/primary"
+                android:text="@string/tripcraft"
+                android:textColor="@color/interactive_primary"
                 android:textSize="36sp"
                 android:textStyle="bold"
                 android:fontFamily="sans-serif-medium"
@@ -54,8 +54,8 @@
                 android:id="@+id/textViewTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Welcome Back"
-                android:textColor="@color/primary"
+                android:text="@string/welcome_back"
+                android:textColor="@color/text_primary"
                 android:textSize="24sp"
                 android:textStyle="bold"
                 android:layout_marginTop="8dp"
@@ -71,8 +71,8 @@
                 android:layout_marginEnd="24dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/background"
-                app:strokeColor="@color/primary"
+                app:cardBackgroundColor="@color/background_secondary"
+                app:strokeColor="@color/interactive_border"
                 app:strokeWidth="1.2dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -89,22 +89,22 @@
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="12dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                        app:boxStrokeColor="@color/primary"
-                        app:hintTextColor="@color/primary"
-                        app:boxStrokeErrorColor="@color/error"
-                        app:errorTextColor="@color/error">
+                        app:boxStrokeColor="@color/interactive_primary"
+                        app:hintTextColor="@color/text_secondary"
+                        app:boxStrokeErrorColor="@color/error_primary"
+                        app:errorTextColor="@color/error_primary">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/editTextEmail"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Username or Email"
+                            android:hint="@string/username_or_email"
                             android:inputType="textEmailAddress"
                             android:padding="14dp"
                             android:drawableStart="@drawable/ic_email"
                             android:drawablePadding="12dp"
-                            android:drawableTint="@color/primary"
-                            android:textColor="@color/on_surface" />
+                            android:drawableTint="@color/text_secondary"
+                            android:textColor="@color/text_primary" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -112,32 +112,32 @@
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                        app:boxStrokeColor="@color/primary"
-                        app:hintTextColor="@color/primary"
+                        app:boxStrokeColor="@color/interactive_primary"
+                        app:hintTextColor="@color/text_secondary"
                         app:passwordToggleEnabled="true"
-                        app:passwordToggleTint="@color/primary"
-                        app:boxStrokeErrorColor="@color/error"
-                        app:errorTextColor="@color/error">
+                        app:passwordToggleTint="@color/text_secondary"
+                        app:boxStrokeErrorColor="@color/error_primary"
+                        app:errorTextColor="@color/error_primary">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/editTextPassword"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Password"
+                            android:hint="@string/password"
                             android:inputType="textPassword"
                             android:padding="14dp"
                             android:drawableStart="@drawable/ic_lock"
                             android:drawablePadding="12dp"
-                            android:drawableTint="@color/primary"
-                            android:textColor="@color/on_surface" />
+                            android:drawableTint="@color/text_secondary"
+                            android:textColor="@color/text_primary" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <TextView
                         android:id="@+id/textViewForgotPassword"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Forgot Password?"
-                        android:textColor="@color/secondary"
+                        android:text="@string/forgot_password"
+                        android:textColor="@color/text_accent"
                         android:textSize="14sp"
                         android:layout_gravity="end"
                         android:layout_marginBottom="16dp"
@@ -150,13 +150,13 @@
                         android:id="@+id/buttonLogin"
                         android:layout_width="match_parent"
                         android:layout_height="54dp"
-                        android:text="Log In"
+                        android:text="@string/log_in"
                         android:textAllCaps="false"
                         android:textSize="16sp"
                         app:cornerRadius="10dp"
-                        android:textColor="@color/on_primary"
-                        app:rippleColor="@color/ripple_light"
-                        app:backgroundTint="@color/primary" />
+                        android:textColor="@color/text_inverse"
+                        app:rippleColor="@color/interactive_secondary"
+                        app:backgroundTint="@color/interactive_primary" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -170,24 +170,24 @@
                             android:layout_width="0dp"
                             android:layout_height="1dp"
                             android:layout_weight="1"
-                            android:background="@color/on_secondary"
+                            android:background="@color/border_primary"
                             android:alpha="0.3" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="OR"
+                            android:text="@string/or"
                             android:textAlignment="center"
                             android:textSize="14sp"
                             android:paddingStart="16dp"
                             android:paddingEnd="16dp"
-                            android:textColor="@color/on_secondary" />
+                            android:textColor="@color/text_secondary" />
 
                         <View
                             android:layout_width="0dp"
                             android:layout_height="1dp"
                             android:layout_weight="1"
-                            android:background="@color/on_secondary"
+                            android:background="@color/border_primary"
                             android:alpha="0.3" />
                     </LinearLayout>
 
@@ -211,10 +211,10 @@
                             android:insetBottom="0dp"
                             app:cornerRadius="10dp"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            app:strokeColor="@color/primary"
+                            app:strokeColor="@color/interactive_border"
                             app:strokeWidth="1dp"
-                            android:textColor="@android:color/black"
-                            app:rippleColor="@android:color/darker_gray"
+                            android:textColor="@color/text_primary"
+                            app:rippleColor="@color/interactive_background"
                             app:iconTint="@null" />
                     </LinearLayout>
 
@@ -228,13 +228,13 @@
         android:id="@+id/buttonTestUser"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Test User"
+        android:text="@string/test_user"
         android:textAllCaps="false"
         android:textSize="16sp"
-        android:textColor="@color/on_primary"
+        android:textColor="@color/text_inverse"
         app:cornerRadius="10dp"
-        app:backgroundTint="@color/secondary"
-        app:rippleColor="@color/ripple_light"
+        app:backgroundTint="@color/interactive_secondary"
+        app:rippleColor="@color/interactive_background"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
         android:layout_marginBottom="16dp"

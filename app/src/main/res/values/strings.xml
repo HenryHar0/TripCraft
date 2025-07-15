@@ -1,18 +1,11 @@
 <resources>
-    <string name="app_name">Tripcraft</string>
-    <string name="default_web_client_id">901872539229-b5h4ochbh413ku8el9jnl8aqtaqqd591.apps.googleusercontent.com</string>
-    <!-- Verify Email Screen -->
-    <string name="email_verification">Verify Your Email</string>
-    <string name="verification_instructions">We\'ve sent a verification link to your email. Please check your inbox and click the link to verify your account.</string>
-    <string name="waiting_for_verification">Waiting for verification…</string>
-    <string name="resend_verification_email">Resend verification email</string>
-    <string name="back_to_signup">Back to Sign Up</string>
-    <string name="email_verified">Email successfully verified!</string>
-    <string name="email_verified_redirecting">Email verified! Redirecting…</string>
-    <string name="failed_to_update_profile">Failed to update profile</string>
-    <string name="verification_email_sent">Verification email sent!</string>
-    <string name="failed_to_send_email">Failed to send verification email</string>
-    <string name="sending">Sending...</string>
-    <string name="email_verification_icon">Email verification icon</string>
-    <string name="background_pattern">Background pattern</string>
+    <string name="_continue">Continue</string>
+    <string name="go_back">Go back</string>
+    <string name="tripcraft">TripCraft</string>
+    <string name="profile">Profile</string>
+    <string name="settings">Settings</string>
+    <string name="about_me">About Me</string>
+    <string name="username">Username</string>
+    <string name="bio">Bio</string>
+    <string name="email">Email</string>
 </resources>
